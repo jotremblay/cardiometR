@@ -1,0 +1,44 @@
+Package: cardiometR
+Title: Cardiopulmonary Exercise Testing Analysis with S7 Classes
+Version: 0.1.0
+Authors@R:
+    person("First", "Last", email = "your.email@example.com", role = c("aut", "cre"))
+Description: Import, process, and report cardiopulmonary exercise testing (CPET)
+    data from COSMED Quark CPET metabolic carts. Uses S7 classes for type-safe
+    data structures. Includes a Shiny application for interactive analysis and
+    bilingual (English/French) PDF report generation via Typst.
+License: MIT + file LICENSE
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.3
+Imports:
+    S7 (>= 0.2.0),
+    dplyr (>= 1.1.0),
+    tidyr,
+    purrr,
+    readxl,
+    ggplot2,
+    gt,
+    scales,
+    zoo,
+    cli,
+    rlang,
+    glue,
+    yaml,
+    typr,
+    shiny (>= 1.7.0),
+    bslib,
+    DT
+Suggests:
+    testthat (>= 3.0.0),
+    shinytest2,
+    knitr,
+    rmarkdown,
+    plotly,
+    patchwork,
+    tibble
+Config/testthat/edition: 3
+VignetteBuilder: knitr
+URL: https://github.com/youruser/cardiometR
+BugReports: https://github.com/youruser/cardiometR/issues
+LazyData: true

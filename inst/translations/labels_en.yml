@@ -1,0 +1,103 @@
+# English labels for cardiometR
+# Application UI
+app_title: "CPET Analysis"
+upload_prompt: "Drop COSMED xlsx file here"
+no_file_selected: "No file selected"
+browse: "Browse"
+generate_report: "Generate PDF Report"
+download_report: "Download Report"
+language_toggle: "Language"
+
+# Navigation
+nav_upload: "Upload"
+nav_configure: "Configure"
+nav_preview: "Preview"
+nav_report: "Report"
+
+# Participant Information
+participant_info: "Participant Information"
+participant_id: "ID"
+participant_name: "Name"
+participant_age: "Age"
+participant_sex: "Sex"
+participant_height: "Height"
+participant_weight: "Weight"
+participant_sport: "Sport/Activity"
+years: "years"
+male: "Male"
+female: "Female"
+other: "Other"
+
+# Test Metadata
+test_info: "Test Information"
+test_date: "Test Date"
+device: "Device"
+protocol: "Protocol"
+technician: "Technician"
+calibration_date: "Calibration Date"
+
+# Analysis Settings
+settings_title: "Analysis Settings"
+averaging_method: "Averaging Method"
+averaging_window: "Averaging Window (s)"
+method_time: "Time-based"
+method_breath: "Breath-based"
+method_rolling: "Rolling average"
+protocol_step: "Step protocol"
+protocol_ramp: "Ramp protocol"
+stage_duration: "Stage Duration (s)"
+threshold_methods: "Threshold Detection Methods"
+
+# Results
+results_title: "Results"
+stage_results: "Stage Results"
+peak_values: "Peak Values"
+threshold_results: "Ventilatory Thresholds"
+
+# Report
+report_title: "CPET Analysis Report"
+report_generated: "Report generated successfully"
+report_error: "Error generating report"
+
+# Variables
+vo2: "VO2"
+vo2_kg: "VO2/kg"
+vco2: "VCO2"
+ve: "VE"
+hr: "HR"
+rer: "RER"
+power: "Power"
+time: "Time"
+stage: "Stage"
+
+# Units
+unit_ml_min: "mL/min"
+unit_ml_kg_min: "mL/kg/min"
+unit_l_min: "L/min"
+unit_bpm: "bpm"
+unit_watts: "W"
+unit_seconds: "s"
+unit_minutes: "min"
+unit_cm: "cm"
+unit_kg: "kg"
+
+# Thresholds
+vt1: "VT1 (Aerobic Threshold)"
+vt2: "VT2 (Respiratory Compensation)"
+threshold_confidence: "Confidence"
+confidence_high: "High"
+confidence_moderate: "Moderate"
+confidence_low: "Low"
+
+# Validation
+file_valid: "File loaded successfully"
+file_invalid: "Invalid file format"
+validation_passed: "Validation passed"
+validation_warnings: "Validation warnings"
+validation_errors: "Validation errors"
+
+# Actions
+submit: "Submit"
+cancel: "Cancel"
+reset: "Reset"
+export: "Export"

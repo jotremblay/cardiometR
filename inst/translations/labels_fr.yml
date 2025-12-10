@@ -1,0 +1,103 @@
+# French labels for cardiometR
+# Application UI
+app_title: "Analyse CPET"
+upload_prompt: "Déposez le fichier xlsx COSMED ici"
+no_file_selected: "Aucun fichier sélectionné"
+browse: "Parcourir"
+generate_report: "Générer le rapport PDF"
+download_report: "Télécharger le rapport"
+language_toggle: "Langue"
+
+# Navigation
+nav_upload: "Téléverser"
+nav_configure: "Configurer"
+nav_preview: "Aperçu"
+nav_report: "Rapport"
+
+# Participant Information
+participant_info: "Informations du participant"
+participant_id: "ID"
+participant_name: "Nom"
+participant_age: "Âge"
+participant_sex: "Sexe"
+participant_height: "Taille"
+participant_weight: "Poids"
+participant_sport: "Sport/Activité"
+years: "ans"
+male: "Homme"
+female: "Femme"
+other: "Autre"
+
+# Test Metadata
+test_info: "Informations du test"
+test_date: "Date du test"
+device: "Appareil"
+protocol: "Protocole"
+technician: "Technicien"
+calibration_date: "Date de calibration"
+
+# Analysis Settings
+settings_title: "Paramètres d'analyse"
+averaging_method: "Méthode de moyennage"
+averaging_window: "Fenêtre de moyennage (s)"
+method_time: "Basé sur le temps"
+method_breath: "Basé sur les respirations"
+method_rolling: "Moyenne glissante"
+protocol_step: "Protocole par paliers"
+protocol_ramp: "Protocole en rampe"
+stage_duration: "Durée du palier (s)"
+threshold_methods: "Méthodes de détection des seuils"
+
+# Results
+results_title: "Résultats"
+stage_results: "Résultats par palier"
+peak_values: "Valeurs maximales"
+threshold_results: "Seuils ventilatoires"
+
+# Report
+report_title: "Rapport d'analyse CPET"
+report_generated: "Rapport généré avec succès"
+report_error: "Erreur lors de la génération du rapport"
+
+# Variables
+vo2: "VO2"
+vo2_kg: "VO2/kg"
+vco2: "VCO2"
+ve: "VE"
+hr: "FC"
+rer: "QR"
+power: "Puissance"
+time: "Temps"
+stage: "Palier"
+
+# Units
+unit_ml_min: "mL/min"
+unit_ml_kg_min: "mL/kg/min"
+unit_l_min: "L/min"
+unit_bpm: "bpm"
+unit_watts: "W"
+unit_seconds: "s"
+unit_minutes: "min"
+unit_cm: "cm"
+unit_kg: "kg"
+
+# Thresholds
+vt1: "SV1 (Seuil aérobie)"
+vt2: "SV2 (Point de compensation respiratoire)"
+threshold_confidence: "Confiance"
+confidence_high: "Élevée"
+confidence_moderate: "Modérée"
+confidence_low: "Faible"
+
+# Validation
+file_valid: "Fichier chargé avec succès"
+file_invalid: "Format de fichier invalide"
+validation_passed: "Validation réussie"
+validation_warnings: "Avertissements de validation"
+validation_errors: "Erreurs de validation"
+
+# Actions
+submit: "Soumettre"
+cancel: "Annuler"
+reset: "Réinitialiser"
+export: "Exporter"
