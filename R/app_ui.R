@@ -1,8 +1,8 @@
 #' Main Application UI
 #'
 #' @description
-#' Builds the main Shiny UI using bslib page_navbar with four tabs:
-#' Upload, Configure, Results, and Report.
+#' Builds the main Shiny UI using bslib page_navbar with five tabs:
+#' Upload, Configure, Results, Quality, and Report.
 #'
 #' @return A Shiny UI definition.
 #'
@@ -12,7 +12,15 @@ app_ui <- function() {
 
   bslib::page_navbar(
     id = "main_navbar",
-    title = tr("app_title", lang),
+    title = shiny::tagList(
+      shiny::img(
+        src = "cardiometR/Ec-_kinesiologie_-act_-phy_officiel-RVB.png",
+        alt = "UdeM Logo",
+        height = "35px",
+        class = "me-2"
+      ),
+      tr("app_title", lang)
+    ),
     theme = bslib::bs_theme(
       version = 5,
       bootswatch = "flatly",

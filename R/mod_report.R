@@ -30,11 +30,33 @@ mod_report_ui <- function(id, language = "en") {
           label = tr("lab_name", language),
           placeholder = "e.g., Exercise Physiology Lab"
         ),
-        shiny::fileInput(
-          ns("logo"),
+
+        # Logo selection
+        shiny::selectInput(
+          ns("logo_choice"),
           label = tr("logo", language),
-          accept = c(".png", ".jpg", ".jpeg")
+          choices = c(
+            "Universit\u00e9 de Montr\u00e9al" = "udem",
+            "Centre \u00c9PIC - ICM" = "epic",
+            "None" = "none",
+            "Custom..." = "custom"
+          ),
+          selected = "udem"
         ),
+
+        # Conditional file upload for custom logo
+        shiny::conditionalPanel(
+          condition = sprintf("input['%s'] == 'custom'", ns("logo_choice")),
+          shiny::fileInput(
+            ns("logo_custom"),
+            label = tr("logo_upload", language),
+            accept = c(".png", ".jpg", ".jpeg")
+          )
+        ),
+
+        # Logo preview
+        shiny::uiOutput(ns("logo_preview")),
+
         shiny::textInput(
           ns("technician"),
           label = tr("technician", language)
@@ -80,13 +102,53 @@ mod_report_server <- function(id, language, analysis) {
   shiny::moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
+    # Get the selected logo path
+    logo_path <- shiny::reactive({
+      choice <- input$logo_choice %||% "udem"
+
+      if (choice == "udem") {
+        system.file("assets", "Ec-_kinesiologie_-act_-phy_officiel-RVB.png", package = "cardiometR")
+      } else if (choice == "epic") {
+        system.file("assets", "Centre_EPIC_ICM.jpg", package = "cardiometR")
+      } else if (choice == "custom" && !is.null(input$logo_custom)) {
+        input$logo_custom$datapath
+      } else {
+        NULL
+      }
+    })
+
+    # Render logo preview
+    output$logo_preview <- shiny::renderUI({
+      path <- logo_path()
+
+      if (is.null(path) || path == "" || !file.exists(path)) {
+        return(NULL)
+      }
+
+      shiny::div(
+        class = "mt-2 mb-3 p-2 bg-light rounded text-center",
+        shiny::img(
+          src = if (input$logo_choice %in% c("udem", "epic")) {
+            # Use the www path for package assets
+            paste0("cardiometR/", basename(path))
+          } else {
+            # For custom uploads, use datapath
+            path
+          },
+          alt = "Logo preview",
+          style = "max-height: 60px; max-width: 100%;",
+          class = "img-fluid"
+        )
+      )
+    })
+
     # Build ReportConfig from inputs
     report_config <- shiny::reactive({
       ReportConfig(
         language = language(),
         institution = if (nchar(input$institution %||% "") > 0) input$institution else NULL,
         lab_name = if (nchar(input$lab_name %||% "") > 0) input$lab_name else NULL,
-        logo_path = if (!is.null(input$logo)) input$logo$datapath else NULL,
+        logo_path = logo_path(),
         technician = if (nchar(input$technician %||% "") > 0) input$technician else NULL
       )
     })
