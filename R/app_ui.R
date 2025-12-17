@@ -63,6 +63,14 @@ app_ui <- function() {
       )
     ),
 
+    # Tab: Quality
+    bslib::nav_panel(
+      title = tr("nav_quality", lang),
+      value = "quality",
+      icon = shiny::icon("clipboard-check"),
+      mod_quality_ui("quality", lang)
+    ),
+
     # Tab: Report
     bslib::nav_panel(
       title = tr("nav_report", lang),

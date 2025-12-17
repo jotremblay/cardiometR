@@ -149,3 +149,68 @@ report_preview: "Report Preview"
 generating_report: "Generating report..."
 generating_graphs: "Generating graphs..."
 title: "CPET Report"
+
+# Quality Assessment
+nav_quality: "Quality"
+quality_dashboard: "Data Quality Dashboard"
+maximal_criteria: "Maximal Exercise Criteria (ACSM)"
+protocol_quality: "Protocol Quality"
+data_quality: "Data Quality"
+stage_details: "Stage-by-Stage Analysis"
+recommendations: "Recommendations"
+optional_criteria: "Optional Criteria (if available)"
+
+# Maximal criteria labels
+of_predicted: "of predicted"
+vo2_plateau: "VO2 Plateau"
+rpe: "RPE"
+rpe_label: "RPE (6-20 Borg)"
+lactate: "Lactate"
+lactate_label: "Lactate (mmol/L)"
+not_recorded: "Not recorded"
+not_detected: "Not detected"
+detected: "Detected"
+criteria_met: "criteria met"
+criteria_met_short: "criteria"
+maximal_test_confirmed: "MAXIMAL TEST"
+maximal_test_not_confirmed: "Maximal effort not confirmed"
+update_assessment: "Update"
+
+# Determination labels
+determination_maximal: "Maximal"
+determination_likely_maximal: "Likely Maximal"
+determination_submaximal: "Submaximal"
+determination_indeterminate: "Indeterminate"
+
+# Quality scores and ratings
+overall_grade: "Overall Grade"
+data_score: "Data Score"
+effort_level: "Effort Level"
+rating: "Rating"
+score: "Score"
+rating_excellent: "Excellent"
+rating_good: "Good"
+rating_acceptable: "Acceptable"
+rating_poor: "Poor"
+rating_unable_to_assess: "Unable to assess"
+
+# Protocol metrics
+vo2_slope: "VO2/W Slope"
+expected_slope: "Expected"
+deviation: "Deviation"
+exercise_duration: "Exercise Duration"
+unit_ml_min_w: "mL/min/W"
+
+# Data quality metrics
+aberrant_breaths: "Aberrant Breaths"
+missing_hr: "Missing HR"
+baseline_cv: "Baseline CV"
+calibration_drift: "Calibration Drift"
+signal_quality: "Signal Quality"
+
+# Stage table
+expected_vo2: "Expected VO2"
+actual_vo2: "Actual VO2"
+
+# Misc
+no_recommendations: "No specific recommendations"
