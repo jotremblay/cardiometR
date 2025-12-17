@@ -66,6 +66,15 @@ language <- shiny::reactiveVal(getOption("cardiometR.language", "en"))
     analysis = results_result$analysis
   )
 
+  # ---- Module: Quality ----
+  # Returns: list(quality = reactive())
+  quality_result <- mod_quality_server(
+    "quality",
+    language,
+    cpet_data = upload_result$cpet_data,
+    analysis = results_result$analysis
+  )
+
   # ---- Module: Report ----
   # Handles PDF generation
   mod_report_server(

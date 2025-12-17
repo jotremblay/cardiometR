@@ -156,3 +156,151 @@ extract_stages <- new_generic("extract_stages", "x")
 #'
 #' @export
 summarize_stages <- new_generic("summarize_stages", "x")
+
+
+#' Assess Maximal Exercise Criteria
+#'
+#' Evaluate ACSM criteria for determining if a CPET test achieved maximal effort.
+#'
+#' @param x A CpetData object or CpetAnalysis object
+#' @param rpe Optional RPE value reported by participant (6-20 Borg scale)
+#' @param lactate Optional blood lactate concentration in mmol/L
+#' @param rer_threshold RER threshold for maximal effort (default 1.10)
+#' @param hr_threshold_pct HR threshold as percentage of predicted max (default 85)
+#' @param plateau_threshold Maximum VO2 increase to indicate plateau (default 150 mL/min)
+#' @param ... Additional arguments passed to methods
+#'
+#' @return An ExerciseQualityCriteria S7 object
+#'
+#' @details
+#' Criteria assessed (based on ACSM Guidelines, 11th edition):
+#' - **RER >= 1.10**: Primary criterion for maximal effort
+#' - **HR >= 85% predicted max**: Using 220 - age formula
+#' - **VO2 plateau**: < 150 mL/min increase despite increased workload
+#' - **RPE >= 17**: If provided (Borg 6-20 scale)
+#' - **Blood lactate >= 8.0 mmol/L**: If provided
+#'
+#' A test is considered maximal if >= 3 criteria are met.
+#'
+#' @examples
+#' \dontrun{
+#' criteria <- assess_maximal_criteria(cpet_data)
+#' if (criteria@is_maximal) {
+#'   message("Test achieved maximal effort")
+#' }
+#'
+#' # With optional RPE and lactate
+#' criteria <- assess_maximal_criteria(cpet_data, rpe = 19, lactate = 10.2)
+#' }
+#'
+#' @export
+assess_maximal_criteria <- new_generic("assess_maximal_criteria", "x")
+
+
+#' Assess Protocol Quality
+#'
+#' Evaluate the quality of the exercise protocol based on the VO2/workload
+#' relationship and test parameters.
+#'
+#' @param x A CpetData object with stages defined
+#' @param modality Exercise modality: "cycling", "treadmill", or "auto" (default)
+#' @param expected_slope Expected VO2/W slope (NULL = use default for modality)
+#' @param ... Additional arguments passed to methods
+#'
+#' @return A ProtocolQuality S7 object
+#'
+#' @details
+#' For cycling, the expected VO2/workload slope is approximately 10 mL/min/W
+#' (range 9-11 mL/min/W is acceptable). This reflects the oxygen cost of
+#' external work on a cycle ergometer.
+#'
+#' Quality indicators:
+#' - **Slope deviation**: Actual vs expected VO2/W relationship
+
+#' - **R-squared**: Linearity of the VO2/workload relationship (>0.95 excellent)
+#' - **Stage CV**: Consistency of steady-state values within stages (<10% good)
+#' - **Test duration**: Exercise phase 8-12 minutes is optimal
+#' - **Warm-up**: Adequate preparation period (>= 2 minutes)
+#'
+#' @examples
+#' \dontrun{
+#' protocol <- assess_protocol_quality(cpet_data)
+#' print(protocol@overall_rating)
+#' print(protocol@stage_details)
+#' }
+#'
+#' @export
+assess_protocol_quality <- new_generic("assess_protocol_quality", "x")
+
+
+#' Assess Data Quality
+#'
+#' Evaluate breath-by-breath data quality including signal quality,
+#' missing data, and aberrant breaths.
+#'
+#' @param x A CpetData object
+#' @param aberrant_threshold SD threshold for aberrant breath detection (default 3)
+#' @param ... Additional arguments passed to methods
+#'
+#' @return A DataQualityReport S7 object
+#'
+#' @details
+#' Quality factors assessed:
+#' - **Aberrant breaths**: Percentage of outlier breaths (>3 SD from local mean)
+#' - **Missing HR**: Percentage of missing heart rate values
+#' - **Missing power**: Percentage of missing power values
+#' - **Baseline stability**: CV of resting VO2
+#' - **Signal quality**: Overall assessment of measurement quality
+#' - **Calibration drift**: Detection of systematic changes over time
+#'
+#' Scoring rubric (0-100):
+#' - 90-100: Excellent (<2% aberrant, <5% missing, stable baseline)
+#' - 75-89: Good (<5% aberrant, <10% missing)
+#' - 60-74: Acceptable (<10% aberrant, <20% missing)
+#' - <60: Poor (>10% aberrant or >20% missing)
+#'
+#' @examples
+#' \dontrun{
+#' quality <- assess_data_quality(cpet_data)
+#' print(quality@overall_score)
+#' print(quality@recommendations)
+#' }
+#'
+#' @export
+assess_data_quality <- new_generic("assess_data_quality", "x")
+
+
+#' Compute Overall Quality Assessment
+#'
+#' Combine exercise criteria, protocol quality, and data quality into
+#' a comprehensive quality assessment.
+#'
+#' @param x A CpetData or CpetAnalysis object
+#' @param rpe Optional RPE value for maximal criteria assessment
+#' @param lactate Optional lactate value for maximal criteria assessment
+#' @param ... Additional arguments passed to methods
+#'
+#' @return A QualityAssessment S7 object
+#'
+#' @details
+#' The overall grade is determined by:
+#' - **A (90-100)**: Excellent quality, maximal test, reliable results
+#' - **B (75-89)**: Good quality, likely maximal, results interpretable
+#' - **C (60-74)**: Acceptable quality, some limitations noted
+#' - **D (50-59)**: Poor quality, interpret with caution
+#' - **F (<50)**: Unacceptable quality, results unreliable
+#'
+#' The assessment combines:
+#' - Exercise criteria (40% weight): Was maximal effort achieved?
+#' - Protocol quality (30% weight): Was the protocol appropriate?
+#' - Data quality (30% weight): Is the data reliable?
+#'
+#' @examples
+#' \dontrun{
+#' assessment <- assess_quality(cpet_data)
+#' print(assessment@overall_grade)
+#' print(assessment@summary_text)
+#' }
+#'
+#' @export
+assess_quality <- new_generic("assess_quality", "x")
