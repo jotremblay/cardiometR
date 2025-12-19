@@ -32,6 +32,8 @@ Participant(
 \item{weight_kg}{Weight in kilograms}
 
 \item{sport}{Optional sport or physical activity (NULL if not specified)}
+
+\item{date_of_birth}{Optional date of birth (NULL if not specified)}
 }
 \value{
 A Participant S7 object

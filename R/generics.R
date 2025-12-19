@@ -6,11 +6,13 @@
 #' Apply averaging to breath-by-breath CPET data.
 #'
 #' @param x A CpetData object
-#' @param method Averaging method: "time" (time-based windows), "breath"
-#'   (fixed number of breaths), or "rolling" (rolling/moving average)
-#' @param window Window size: seconds for "time" method, number of breaths
-#'   for "breath" method, seconds for "rolling" method
-#' @param ... Additional arguments passed to methods
+#' @param ... Additional arguments passed to methods, including:
+#'   \describe{
+#'     \item{method}{Averaging method: "time" (time-based windows), "breath"
+#'       (fixed number of breaths), or "rolling" (rolling/moving average)}
+#'     \item{window}{Window size: seconds for "time" method, number of breaths
+#'       for "breath" method, seconds for "rolling" method}
+#'   }
 #'
 #' @return A new CpetData object with averaged data and is_averaged = TRUE
 #'
@@ -48,7 +50,7 @@ average <- new_generic("average", "x")
 #' - Calibration data presence
 #'
 #' @examples
-#' \dontrun
+#' \dontrun{
 #' validation <- validate(cpet_data)
 #' if (validation@is_valid) {
 #'   message("Data passed validation")
@@ -67,9 +69,11 @@ validate <- new_generic("validate", "x")
 #' using multiple methods.
 #'
 #' @param x A CpetData object (should be averaged)
-#' @param methods Character vector of detection methods to use. Options:
-#'   "V-slope", "VE_VO2", "VE_VCO2", "PETO2", "PETCO2"
-#' @param ... Additional arguments passed to methods
+#' @param ... Additional arguments passed to methods, including:
+#'   \describe{
+#'     \item{methods}{Character vector of detection methods to use. Options:
+#'       "V-slope", "VE_VO2", "VE_VCO2", "PETO2", "PETCO2"}
+#'   }
 #'
 #' @return A Thresholds S7 object with detected threshold values
 #'
@@ -96,8 +100,10 @@ detect_thresholds <- new_generic("detect_thresholds", "x")
 #' Determine peak/maximal values from CPET data.
 #'
 #' @param x A CpetData object
-#' @param averaging Seconds to average for peak determination (default 30)
-#' @param ... Additional arguments passed to methods
+#' @param ... Additional arguments passed to methods, including:
+#'   \describe{
+#'     \item{averaging}{Seconds to average for peak determination (default 30)}
+#'   }
 #'
 #' @return A PeakValues S7 object containing peak VO2, HR, VE, RER, etc.
 #'
@@ -122,9 +128,11 @@ find_peaks <- new_generic("find_peaks", "x")
 #' Identify and annotate exercise stages from a CPET protocol.
 #'
 #' @param x A CpetData object
-#' @param protocol Protocol type: "step" or "ramp"
-#' @param stage_duration Duration of each stage in seconds (for step protocols)
-#' @param ... Additional arguments passed to methods
+#' @param ... Additional arguments passed to methods, including:
+#'   \describe{
+#'     \item{protocol}{Protocol type: "step" or "ramp"}
+#'     \item{stage_duration}{Duration of each stage in seconds (for step protocols)}
+#'   }
 #'
 #' @return A CpetData object with stages property populated
 #'
@@ -143,9 +151,11 @@ extract_stages <- new_generic("extract_stages", "x")
 #' Create summary statistics for each exercise stage.
 #'
 #' @param x A CpetData object with stages defined
-#' @param method Summarization method: "last30s" (last 30 seconds of stage),
-#'   "last60s", "mean" (stage mean), or "peak" (stage maximum)
-#' @param ... Additional arguments passed to methods
+#' @param ... Additional arguments passed to methods, including:
+#'   \describe{
+#'     \item{method}{Summarization method: "last30s" (last 30 seconds of stage),
+#'       "last60s", "mean" (stage mean), or "peak" (stage maximum)}
+#'   }
 #'
 #' @return A tibble with one row per stage and summary statistics
 #'

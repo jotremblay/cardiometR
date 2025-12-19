@@ -1,5 +1,6 @@
 # S7 Methods for Stage Extraction and Summarization
 
+#' @name extract_stages
 #' @rdname extract_stages
 #' @export
 method(extract_stages, CpetData) <- function(x,
@@ -192,6 +193,7 @@ detect_power_increment <- function(power) {
 }
 
 
+#' @name summarize_stages
 #' @rdname summarize_stages
 #' @export
 method(summarize_stages, CpetData) <- function(x,

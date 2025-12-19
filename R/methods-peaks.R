@@ -1,5 +1,6 @@
 # S7 Methods for Peak Value Determination
 
+#' @name find_peaks
 #' @rdname find_peaks
 #' @export
 method(find_peaks, CpetData) <- function(x, averaging = 30, ...) {

@@ -1013,10 +1013,12 @@ format_duration <- function(seconds) {
 #' logo <- get_logo("udem")
 #'
 #' # Use in report config
+#' \dontrun{
 #' config <- ReportConfig(
-#'   institution = "École de kinésiologie et des sciences de l'activité physique, Université de Montréal",
+#'   institution = "Ecole de kinesiologie, UdeM",
 #'   logo_path = get_logo("udem")
 #' )
+#' }
 #'
 #' @export
 get_logo <- function(institution = c("udem", "epic")) {

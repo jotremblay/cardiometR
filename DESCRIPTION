@@ -19,11 +19,9 @@ Imports:
     readxl,
     ggplot2,
     gt,
-    scales,
     zoo,
     cli,
     rlang,
-    glue,
     yaml,
     typr,
     shiny (>= 1.7.0),
@@ -32,13 +30,19 @@ Imports:
 Suggests:
     testthat (>= 3.0.0),
     shinytest2,
+    withr,
     knitr,
     rmarkdown,
+    quarto,
     plotly,
     patchwork,
-    tibble
+    tibble,
+    lintr,
+    pkgdown,
+    scales,
+    glue
 Config/testthat/edition: 3
-VignetteBuilder: knitr
+VignetteBuilder: quarto
 URL: https://github.com/youruser/cardiometR
 BugReports: https://github.com/youruser/cardiometR/issues
 LazyData: true

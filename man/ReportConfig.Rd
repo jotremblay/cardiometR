@@ -19,6 +19,8 @@ ReportConfig(
 
 \item{institution}{Optional institution name for report header}
 
+\item{lab_name}{Optional laboratory name}
+
 \item{logo_path}{Optional path to logo image file}
 
 \item{technician}{Optional technician name}

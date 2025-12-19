@@ -1,0 +1,388 @@
+---
+title: "Introduction to cardiometR"
+format: html
+vignette: >
+  %\VignetteIndexEntry{Introduction to cardiometR}
+  %\VignetteEngine{quarto::html}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r}
+#| label: setup
+#| include: false
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.width = 7,
+  fig.height = 5
+)
+```
+
+## Overview
+
+**cardiometR** is an R package for analyzing Cardiopulmonary Exercise Testing (CPET) data. It provides:
+
+- Import functions for COSMED Quark CPET metabolic cart exports
+- Type-safe S7 classes for CPET data structures
+- Peak value detection and ventilatory threshold analysis
+- 9-panel CPET visualization following clinical guidelines
+- Bilingual (English/French) PDF report generation
+- Interactive Shiny application for clinical use
+
+## Installation
+
+```{r}
+#| label: install
+#| eval: false
+# Install from GitHub
+# install.packages("pak")
+pak::pak("youruser/cardiometR")
+```
+
+## Quick Start
+
+### Loading Data
+
+```{r}
+#| label: load-data
+#| eval: false
+library(cardiometR)
+
+# Import COSMED xlsx file
+data <- read_cpet("path/to/cosmed_export.xlsx")
+
+# View participant information
+print(data@participant)
+
+# View test metadata
+print(data@metadata)
+
+# Preview breath-by-breath data
+head(data@breaths)
+```
+
+### Basic Analysis Workflow
+
+```{r}
+#| label: analysis-workflow
+#| eval: false
+
+# 1. Validate the data
+validation <- validate(data)
+print(validation)
+
+# 2. Apply rolling average (30-second window)
+averaged <- average(data, method = "rolling", window = 30)
+
+# 3. Find peak values
+peaks <- find_peaks(averaged, averaging = 30)
+print(peaks)
+
+# 4. Detect ventilatory thresholds
+thresholds <- detect_thresholds(averaged, methods = c("V-slope", "VE_VO2"))
+print(thresholds)
+
+# 5. Create analysis object
+analysis <- CpetAnalysis(
+  data = averaged,
+  peaks = peaks,
+  thresholds = thresholds,
+  validation = validation
+)
+```
+
+## S7 Class Structure
+
+cardiometR uses S7 classes for type-safe data handling:
+
+| Class | Description |
+|-------|-------------|
+| `Participant` | Patient demographics (ID, name, age, sex, height, weight) |
+| `CpetMetadata` | Test information (date, device, protocol, conditions) |
+| `CpetData` | Container for breath-by-breath data with participant/metadata |
+| `PeakValues` | Maximal values (VO2peak, HRmax, VEmax, etc.) |
+| `Thresholds` | Ventilatory thresholds (VT1, VT2) with detection methods |
+| `ValidationReport` | Data quality checks with errors/warnings/info |
+| `CpetAnalysis` | Complete analysis combining all components |
+| `ReportConfig` | PDF report configuration options |
+
+### Creating Objects Manually
+
+```{r}
+#| label: manual-objects
+#| eval: false
+
+# Create a participant
+participant <- Participant(
+  id = "P001",
+  name = "Jean Dupont",
+  age = 35,
+  sex = "M",
+  height_cm = 175,
+  weight_kg = 72,
+  sport = "cycling"
+)
+
+# Access properties with @
+participant@age
+participant@weight_kg
+```
+
+## Visualization
+
+### 9-Panel CPET Display
+
+The standard clinical CPET display shows key relationships:
+
+```{r}
+#| label: plot-panel
+#| eval: false
+
+# Create 9-panel plot
+plot_cpet_panel(analysis, language = "en")
+
+# French labels
+plot_cpet_panel(analysis, language = "fr")
+```
+
+The panels include:
+
+1. O2 Pulse vs Power - stroke volume response
+2. VO2 vs Power - linear relationship (efficiency)
+3. VE vs VCO2 - ventilatory efficiency slope
+4. V-Slope (VCO2 vs VO2) - threshold detection
+5. Ventilatory Equivalents (VE/VO2, VE/VCO2)
+6. RER vs VO2 - substrate utilization
+7. PETO2/PETCO2 vs VO2 - end-tidal gases
+8. HR vs Power - cardiovascular response
+9. VE vs Time - ventilatory pattern
+
+### Individual Plots
+
+```{r}
+#| label: individual-plots
+#| eval: false
+
+# V-slope for threshold visualization
+plot_v_slope(analysis, thresholds = thresholds)
+
+# Ventilatory equivalents
+plot_ventilatory_equivalents(analysis, x_axis = "vo2")
+
+# Heart rate response
+plot_heart_rate(data, x_axis = "time", show_zones = TRUE)
+
+# Power output with VO2 overlay
+plot_power(data, show_vo2 = TRUE)
+```
+
+### Normative Comparison
+
+Compare measured values against predicted and sport-specific norms:
+
+```{r}
+#| label: normative
+#| eval: false
+
+# General population comparison
+plot_predicted_comparison(analysis)
+
+# Elite cyclist comparison (includes gross efficiency)
+plot_predicted_comparison(analysis, sport = "cycling", level = "elite")
+
+# Recreational runner comparison
+plot_predicted_comparison(analysis, sport = "running", level = "recreational")
+```
+
+## PDF Report Generation
+
+Generate professional bilingual reports using Typst:
+
+```{r}
+#| label: report
+#| eval: false
+
+# Configure report
+config <- ReportConfig(
+  language = "fr",
+  institution = "Centre EPIC",
+  technician = "Dr. Smith"
+)
+
+# Generate PDF
+generate_report(
+  analysis = analysis,
+  output_file = "cpet_report.pdf",
+  config = config,
+  include_graphs = TRUE,
+  athlete_sport = "cycling",
+  athlete_level = "competitive"
+)
+```
+
+### Using Institution Logos
+
+```{r}
+#| label: logos
+#| eval: false
+
+# Built-in logos
+config <- ReportConfig(
+  institution = "Universite de Montreal",
+  logo_path = get_logo("udem")
+)
+
+# Or custom logo
+config <- ReportConfig(
+  institution = "My Lab",
+  logo_path = "path/to/logo.png"
+)
+```
+
+## Interactive Shiny Application
+
+Launch the interactive analysis application:
+
+```{r}
+#| label: shiny
+#| eval: false
+
+# Start the app
+run_app()
+
+# Start with French interface
+run_app(language = "fr")
+```
+
+The app provides:
+
+- **Upload**: Drag-and-drop COSMED file import with validation
+- **Configure**: Edit participant info and analysis settings
+- **Results**: Interactive tables and plots with threshold markers
+- **Report**: Configure and download PDF reports
+
+## Bilingual Support
+
+All user-facing text supports English and French:
+
+```{r}
+#| label: i18n
+#| eval: false
+
+# Get translated label
+tr("peak_values", "en")
+#> "Peak Values"
+
+tr("peak_values", "fr")
+#> "Valeurs Maximales"
+```
+
+## Analysis Methods
+
+### Peak Value Detection
+
+Peak values use rolling averages (default 30 seconds) per ATS/ACCP guidelines:
+
+```{r}
+#| label: peaks-detail
+#| eval: false
+
+peaks <- find_peaks(data, averaging = 30)
+
+# Access individual peaks
+peaks@vo2_peak      # Absolute VO2 (mL/min)
+peaks@vo2_kg_peak   # Relative VO2 (mL/kg/min)
+peaks@hr_peak       # Heart rate (bpm)
+peaks@ve_peak       # Minute ventilation (L/min)
+peaks@rer_peak      # Respiratory exchange ratio
+peaks@power_peak    # Power output (W)
+```
+
+### Ventilatory Threshold Detection
+
+Multiple methods available for threshold detection:
+
+```{r}
+#| label: thresholds-detail
+#| eval: false
+
+thresholds <- detect_thresholds(
+  data,
+  methods = c("V-slope", "VE_VO2", "VE_VCO2", "PETO2")
+)
+
+# VT1 (aerobic threshold)
+thresholds@vt1_vo2     # VO2 at VT1
+thresholds@vt1_hr      # HR at VT1
+thresholds@vt1_power   # Power at VT1
+thresholds@vt1_method  # Detection method used
+
+# VT2 (respiratory compensation point)
+thresholds@vt2_vo2
+thresholds@vt2_hr
+thresholds@vt2_power
+thresholds@vt2_method
+
+# Detection confidence
+thresholds@confidence  # "high", "moderate", "low", or "unable"
+```
+
+### Data Averaging
+
+Three averaging methods available:
+
+```{r}
+#| label: averaging
+#| eval: false
+
+# Time-based bins (e.g., 30-second epochs)
+avg_time <- average(data, method = "time", window = 30)
+
+# Breath-based bins (e.g., every 10 breaths)
+avg_breath <- average(data, method = "breath", window = 10)
+
+# Rolling/moving average
+avg_rolling <- average(data, method = "rolling", window = 30)
+```
+
+## Data Validation
+
+Comprehensive validation following ATS/ACCP guidelines:
+
+```{r}
+#| label: validation
+#| eval: false
+
+validation <- validate(data)
+
+# Check if data passed validation
+validation@is_valid
+
+# View any errors
+validation@errors
+
+# View warnings
+validation@warnings
+
+# View informational messages
+validation@info
+```
+
+Validation checks include:
+
+- Required columns present
+- Physiological plausibility (VO2, HR, RER ranges)
+- Time series monotonicity
+- Data completeness
+- Aberrant breath detection
+
+## References
+
+- ATS/ACCP Statement on Cardiopulmonary Exercise Testing. *Am J Respir Crit Care Med*. 2003;167(2):211-277.
+- Beaver WL, Wasserman K, Whipp BJ. A new method for detecting anaerobic threshold by gas exchange. *J Appl Physiol*. 1986;60(6):2020-2027.
+- Jones NL, et al. *Clinical Exercise Testing*. 4th ed. Saunders; 1997.
+
+## See Also
+
+- [spiro package](https://docs.ropensci.org/spiro/) - rOpenSci CPET package
+- [whippr package](https://fmmattioni.github.io/whippr/) - VO2 kinetics analysis

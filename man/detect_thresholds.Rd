@@ -9,10 +9,11 @@ detect_thresholds(x, ...)
 \arguments{
 \item{x}{A CpetData object (should be averaged)}
 
-\item{...}{Additional arguments passed to methods}
-
+\item{...}{Additional arguments passed to methods, including:
+\describe{
 \item{methods}{Character vector of detection methods to use. Options:
 "V-slope", "VE_VO2", "VE_VCO2", "PETO2", "PETCO2"}
+}}
 }
 \value{
 A Thresholds S7 object with detected threshold values

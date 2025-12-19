@@ -1,6 +1,7 @@
 # S7 Methods for Data Validation
 # Based on ATS/ACCP CPET Guidelines
 
+#' @name validate
 #' @rdname validate
 #' @export
 method(validate, CpetData) <- function(x,

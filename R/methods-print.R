@@ -1,8 +1,7 @@
 # S7 Print Methods for cardiometR
 # Clean console output for all S7 classes
+# Print methods are automatically registered by S7 and don't need @export
 
-#' @rdname Participant
-#' @export
 method(print, Participant) <- function(x, ...) {
   cli::cli_h3("Participant")
   cli::cli_dl(c(
@@ -20,8 +19,6 @@ method(print, Participant) <- function(x, ...) {
 }
 
 
-#' @rdname CpetMetadata
-#' @export
 method(print, CpetMetadata) <- function(x, ...) {
  cli::cli_h3("CPET Metadata")
   cli::cli_dl(c(
@@ -47,8 +44,6 @@ method(print, CpetMetadata) <- function(x, ...) {
 }
 
 
-#' @rdname CpetData
-#' @export
 method(print, CpetData) <- function(x, ...) {
   cli::cli_h1("CpetData")
 
@@ -84,8 +79,6 @@ method(print, CpetData) <- function(x, ...) {
 }
 
 
-#' @rdname PeakValues
-#' @export
 method(print, PeakValues) <- function(x, ...) {
   cli::cli_h3("Peak Values")
   cli::cli_text("(averaged over {x@averaging_s}s)")
@@ -105,8 +98,6 @@ method(print, PeakValues) <- function(x, ...) {
 }
 
 
-#' @rdname Thresholds
-#' @export
 method(print, Thresholds) <- function(x, ...) {
   cli::cli_h3("Ventilatory Thresholds")
 
@@ -143,8 +134,6 @@ method(print, Thresholds) <- function(x, ...) {
 }
 
 
-#' @rdname ValidationReport
-#' @export
 method(print, ValidationReport) <- function(x, ...) {
   if (x@is_valid) {
     cli::cli_alert_success("Validation passed")
@@ -174,8 +163,6 @@ method(print, ValidationReport) <- function(x, ...) {
 }
 
 
-#' @rdname CpetAnalysis
-#' @export
 method(print, CpetAnalysis) <- function(x, ...) {
   cli::cli_h1("CPET Analysis")
 
@@ -210,8 +197,6 @@ method(print, CpetAnalysis) <- function(x, ...) {
 }
 
 
-#' @rdname ReportConfig
-#' @export
 method(print, ReportConfig) <- function(x, ...) {
   cli::cli_h3("Report Configuration")
   cli::cli_dl(c(

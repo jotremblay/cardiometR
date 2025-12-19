@@ -1,0 +1,122 @@
+url: https://youruser.github.io/cardiometR/
+
+template:
+  bootstrap: 5
+  bootswatch: flatly
+  bslib:
+    primary: "#2E86AB"
+    border-radius: 0.5rem
+    btn-border-radius: 0.25rem
+
+home:
+  title: cardiometR
+  description: >
+    R package for Cardiopulmonary Exercise Testing (CPET) analysis with
+    S7 classes, interactive Shiny app, and bilingual PDF reports.
+
+navbar:
+  structure:
+    left: [intro, reference, articles]
+    right: [search, github]
+  components:
+    articles:
+      text: Articles
+      menu:
+        - text: Getting Started
+          href: articles/introduction.html
+        - text: "---"
+        - text: CPET Analysis
+        - text: S7 Classes
+          href: articles/s7-classes.html
+        - text: Visualization
+          href: articles/visualization.html
+        - text: Report Generation
+          href: articles/reports.html
+        - text: "---"
+        - text: Shiny Application
+        - text: Using the App
+          href: articles/shiny-app.html
+
+reference:
+  - title: Data Import
+    desc: Functions for importing CPET data from metabolic carts
+    contents:
+      - read_cpet
+      - read_cosmed
+
+  - title: S7 Classes
+    desc: Type-safe data structures for CPET analysis
+    contents:
+      - Participant
+      - CpetMetadata
+      - CpetData
+      - PeakValues
+      - Thresholds
+      - ValidationReport
+      - CpetAnalysis
+      - ReportConfig
+
+  - title: Analysis Functions
+    desc: Core analysis operations
+    contents:
+      - validate
+      - average
+      - find_peaks
+      - detect_thresholds
+      - extract_stages
+      - summarize_stages
+
+  - title: Visualization
+    desc: Plotting functions for CPET data
+    contents:
+      - plot_cpet_panel
+      - plot_v_slope
+      - plot_ventilatory_equivalents
+      - plot_gas_exchange
+      - plot_heart_rate
+      - plot_power
+      - plot_predicted_comparison
+
+  - title: Reports
+    desc: PDF report generation
+    contents:
+      - generate_report
+      - create_summary_table
+      - get_logo
+
+  - title: Shiny Application
+    desc: Interactive application
+    contents:
+      - run_app
+
+  - title: Internationalization
+    desc: Bilingual support (EN/FR)
+    contents:
+      - tr
+
+  - title: Normative Data
+    desc: Reference values and predictions
+    contents:
+      - starts_with("get_normative")
+      - starts_with("calculate_predicted")
+
+articles:
+  - title: Getting Started
+    navbar: ~
+    contents:
+      - introduction
+
+  - title: Advanced Topics
+    contents:
+      - s7-classes
+      - visualization
+      - reports
+      - shiny-app
+
+news:
+  one_page: true
+
+footer:
+  structure:
+    left: developed_by
+    right: built_with

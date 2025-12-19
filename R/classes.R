@@ -15,6 +15,7 @@
 #' @param height_cm Height in centimeters
 #' @param weight_kg Weight in kilograms
 #' @param sport Optional sport or physical activity (NULL if not specified)
+#' @param date_of_birth Optional date of birth (NULL if not specified)
 #'
 #' @return A Participant S7 object
 #'
@@ -395,6 +396,7 @@ CpetAnalysis <- new_class("CpetAnalysis",
 #'
 #' @param language Report language: "en" (English) or "fr" (French)
 #' @param institution Optional institution name for report header
+#' @param lab_name Optional laboratory name
 #' @param logo_path Optional path to logo image file
 #' @param technician Optional technician name
 #' @param output_format Output format (default "pdf")

@@ -1,5 +1,6 @@
 # S7 Methods for Data Averaging
 
+#' @name average
 #' @rdname average
 #' @export
 method(average, CpetData) <- function(x,
