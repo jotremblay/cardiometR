@@ -431,3 +431,333 @@ ReportConfig <- new_class("ReportConfig",
     template = class_character | NULL
   )
 )
+
+
+# ExerciseQualityCriteria --------------------------------------------------
+
+#' Exercise Quality Criteria Class
+#'
+#' @description
+#' Assessment of ACSM maximal exercise criteria for determining if a CPET test
+#' achieved true maximal effort. Based on ACSM Guidelines for Exercise Testing
+#' and Prescription (11th edition).
+#'
+#' @param peak_rer Peak respiratory exchange ratio achieved
+#' @param rer_met Logical indicating if RER criterion was met (>= 1.10)
+#' @param peak_hr Peak heart rate achieved in bpm
+#' @param predicted_hr_max Age-predicted maximum heart rate (220 - age)
+#' @param hr_pct_predicted Percentage of predicted max HR achieved
+#' @param hr_met Logical indicating if HR criterion was met (>= 85% predicted)
+#' @param vo2_plateau_detected Logical indicating if VO2 plateau was detected
+#' @param vo2_plateau_delta Change in VO2 (mL/min) during plateau assessment
+#' @param plateau_met Logical indicating if plateau criterion was met (< 150 mL/min increase)
+#' @param rpe_reported Optional reported RPE on 6-20 Borg scale
+#' @param rpe_met Optional logical indicating if RPE criterion was met (>= 17)
+#' @param lactate_mmol Optional blood lactate concentration in mmol/L
+#' @param lactate_met Optional logical indicating if lactate criterion was met (>= 8.0)
+#' @param criteria_met Number of criteria met
+#' @param criteria_available Number of criteria that could be assessed
+#' @param is_maximal Logical indicating if test is considered maximal (>= 3 criteria)
+#' @param determination Character description: "maximal", "likely_maximal", "submaximal", "indeterminate"
+#'
+#' @return An ExerciseQualityCriteria S7 object
+#'
+#' @export
+ExerciseQualityCriteria <- new_class("ExerciseQualityCriteria",
+  properties = list(
+    # RER criterion
+    peak_rer = new_property(class_numeric,
+      validator = function(value) {
+        if (length(value) > 0 && !anyNA(value) && (value < 0.5 || value > 2.0)) {
+          return("peak_rer should be between 0.5 and 2.0")
+        }
+        NULL
+      }
+    ),
+    rer_met = class_logical,
+
+    # HR criterion
+    peak_hr = class_numeric | NULL,
+    predicted_hr_max = class_numeric | NULL,
+    hr_pct_predicted = class_numeric | NULL,
+    hr_met = class_logical | NULL,
+
+    # VO2 plateau criterion
+    vo2_plateau_detected = class_logical,
+    vo2_plateau_delta = class_numeric | NULL,
+    plateau_met = class_logical,
+
+    # RPE criterion (optional - user reported)
+    rpe_reported = new_property(class_numeric | NULL,
+      validator = function(value) {
+        if (!is.null(value) && length(value) > 0 && !anyNA(value) && (value < 6 || value > 20)) {
+          return("rpe_reported should be between 6 and 20 (Borg scale)")
+        }
+        NULL
+      }
+    ),
+    rpe_met = class_logical | NULL,
+
+    # Lactate criterion (optional - lab measured)
+    lactate_mmol = new_property(class_numeric | NULL,
+      validator = function(value) {
+        if (!is.null(value) && length(value) > 0 && !anyNA(value) && (value < 0 || value > 30)) {
+          return("lactate_mmol should be between 0 and 30 mmol/L")
+        }
+        NULL
+      }
+    ),
+    lactate_met = class_logical | NULL,
+
+    # Summary
+    criteria_met = class_integer,
+    criteria_available = class_integer,
+    is_maximal = class_logical,
+    determination = new_property(class_character,
+      validator = function(value) {
+        valid <- c("maximal", "likely_maximal", "submaximal", "indeterminate")
+        if (!value %in% valid) {
+          return(paste("determination must be one of:", paste(valid, collapse = ", ")))
+        }
+        NULL
+      }
+    )
+  )
+)
+
+
+# ProtocolQuality ----------------------------------------------------------
+
+#' Protocol Quality Class
+#'
+#' @description
+#' Assessment of exercise protocol quality based on the relationship between
+#' oxygen uptake and workload. Evaluates whether the observed VO2/workload
+#' relationship matches expected physiological responses.
+#'
+#' @param modality Exercise modality: "cycling" or "treadmill"
+#' @param expected_vo2_slope Expected VO2/workload slope (mL/min/W for cycling, mL/kg/min/kph for treadmill)
+#' @param actual_vo2_slope Observed VO2/workload slope from linear regression
+#' @param slope_deviation_pct Percentage deviation from expected slope
+#' @param slope_acceptable Logical indicating if slope is within acceptable range (+/- 15%)
+#' @param r_squared R-squared value from VO2 vs workload regression
+#' @param r_squared_acceptable Logical indicating if R² >= 0.90
+#' @param n_stages Number of exercise stages analyzed
+#' @param stage_cv Coefficient of variation of steady-state VO2 within stages (%)
+#' @param stage_cv_acceptable Logical indicating if CV <= 10%
+#' @param test_duration_s Total test duration in seconds
+#' @param exercise_duration_s Exercise phase duration in seconds
+#' @param duration_optimal Logical indicating if exercise duration is 8-12 minutes
+#' @param warmup_duration_s Warm-up phase duration in seconds
+#' @param warmup_adequate Logical indicating if warm-up >= 2 minutes
+#' @param overall_rating Overall protocol quality: "excellent", "good", "acceptable", "poor"
+#' @param overall_score Numeric score 0-100
+#' @param stage_details Data frame with expected vs actual VO2 per stage
+#'
+#' @return A ProtocolQuality S7 object
+#'
+#' @export
+ProtocolQuality <- new_class("ProtocolQuality",
+  properties = list(
+    modality = new_property(class_character,
+      validator = function(value) {
+        if (!value %in% c("cycling", "treadmill", "unknown")) {
+          return("modality must be 'cycling', 'treadmill', or 'unknown'")
+        }
+        NULL
+      }
+    ),
+
+    # VO2/workload relationship
+    expected_vo2_slope = class_numeric | NULL,
+    actual_vo2_slope = class_numeric | NULL,
+    slope_deviation_pct = class_numeric | NULL,
+    slope_acceptable = class_logical | NULL,
+    r_squared = new_property(class_numeric | NULL,
+      validator = function(value) {
+        if (!is.null(value) && length(value) > 0 && !anyNA(value) && (value < 0 || value > 1)) {
+          return("r_squared must be between 0 and 1")
+        }
+        NULL
+      }
+    ),
+    r_squared_acceptable = class_logical | NULL,
+
+    # Stage consistency
+    n_stages = class_integer | NULL,
+    stage_cv = class_numeric | NULL,
+    stage_cv_acceptable = class_logical | NULL,
+
+    # Duration metrics
+    test_duration_s = class_numeric,
+    exercise_duration_s = class_numeric | NULL,
+    duration_optimal = class_logical | NULL,
+    warmup_duration_s = class_numeric | NULL,
+    warmup_adequate = class_logical | NULL,
+
+    # Overall assessment
+    overall_rating = new_property(class_character,
+      validator = function(value) {
+        valid <- c("excellent", "good", "acceptable", "poor", "unable_to_assess")
+        if (!value %in% valid) {
+          return(paste("overall_rating must be one of:", paste(valid, collapse = ", ")))
+        }
+        NULL
+      }
+    ),
+    overall_score = new_property(class_numeric,
+      validator = function(value) {
+        if (length(value) > 0 && !anyNA(value) && (value < 0 || value > 100)) {
+          return("overall_score must be between 0 and 100")
+        }
+        NULL
+      }
+    ),
+
+    # Stage-by-stage details
+    stage_details = class_data.frame | NULL
+  )
+)
+
+
+# DataQualityReport --------------------------------------------------------
+
+#' Data Quality Report Class
+#'
+#' @description
+#' Comprehensive assessment of breath-by-breath data quality including signal
+#' quality, missing data, aberrant breaths, and equipment artifacts.
+#'
+#' @param n_breaths Total number of breaths in dataset
+#' @param n_aberrant Number of aberrant breaths detected
+#' @param pct_aberrant Percentage of aberrant breaths
+#' @param aberrant_acceptable Logical indicating if aberrant rate <= 5%
+#' @param n_missing_hr Number of missing HR values
+#' @param pct_missing_hr Percentage of missing HR data
+#' @param hr_acceptable Logical indicating if missing HR <= 10%
+#' @param n_missing_power Number of missing power values
+#' @param pct_missing_power Percentage of missing power data
+#' @param baseline_vo2_cv Coefficient of variation of resting VO2 (%)
+#' @param baseline_stable Logical indicating if baseline CV <= 10%
+#' @param signal_quality_score Signal quality score 0-100
+#' @param signal_quality_rating Signal quality: "excellent", "good", "acceptable", "poor"
+#' @param calibration_drift_detected Logical indicating potential calibration drift
+#' @param artifact_timestamps Vector of timestamps with detected artifacts
+#' @param overall_score Overall data quality score 0-100
+#' @param overall_rating Overall rating: "excellent", "good", "acceptable", "poor"
+#' @param recommendations List of recommendations for data interpretation
+#'
+#' @return A DataQualityReport S7 object
+#'
+#' @export
+DataQualityReport <- new_class("DataQualityReport",
+  properties = list(
+    # Breath counts
+    n_breaths = class_integer,
+    n_aberrant = class_integer,
+    pct_aberrant = class_numeric,
+    aberrant_acceptable = class_logical,
+
+    # Missing HR data
+    n_missing_hr = class_integer | NULL,
+    pct_missing_hr = class_numeric | NULL,
+    hr_acceptable = class_logical | NULL,
+
+    # Missing power data
+    n_missing_power = class_integer | NULL,
+    pct_missing_power = class_numeric | NULL,
+
+    # Baseline stability
+    baseline_vo2_cv = class_numeric | NULL,
+    baseline_stable = class_logical | NULL,
+
+    # Signal quality
+    signal_quality_score = new_property(class_numeric,
+      validator = function(value) {
+        if (length(value) > 0 && !anyNA(value) && (value < 0 || value > 100)) {
+          return("signal_quality_score must be between 0 and 100")
+        }
+        NULL
+      }
+    ),
+    signal_quality_rating = new_property(class_character,
+      validator = function(value) {
+        valid <- c("excellent", "good", "acceptable", "poor")
+        if (!value %in% valid) {
+          return(paste("signal_quality_rating must be one of:", paste(valid, collapse = ", ")))
+        }
+        NULL
+      }
+    ),
+
+    # Calibration
+    calibration_drift_detected = class_logical,
+    artifact_timestamps = class_numeric | NULL,
+
+    # Overall assessment
+    overall_score = new_property(class_numeric,
+      validator = function(value) {
+        if (length(value) > 0 && !anyNA(value) && (value < 0 || value > 100)) {
+          return("overall_score must be between 0 and 100")
+        }
+        NULL
+      }
+    ),
+    overall_rating = new_property(class_character,
+      validator = function(value) {
+        valid <- c("excellent", "good", "acceptable", "poor")
+        if (!value %in% valid) {
+          return(paste("overall_rating must be one of:", paste(valid, collapse = ", ")))
+        }
+        NULL
+      }
+    ),
+    recommendations = class_list
+  )
+)
+
+
+# QualityAssessment --------------------------------------------------------
+
+#' Quality Assessment Class
+#'
+#' @description
+#' Complete quality assessment combining exercise criteria, protocol quality,
+#' and data quality into a unified report.
+#'
+#' @param exercise_criteria ExerciseQualityCriteria S7 object
+#' @param protocol_quality ProtocolQuality S7 object
+#' @param data_quality DataQualityReport S7 object
+#' @param overall_grade Overall test grade: "A", "B", "C", "D", "F"
+#' @param overall_score Combined quality score 0-100
+#' @param test_interpretable Logical indicating if test results can be reliably interpreted
+#' @param summary_text Brief text summary of quality assessment
+#'
+#' @return A QualityAssessment S7 object
+#'
+#' @export
+QualityAssessment <- new_class("QualityAssessment",
+  properties = list(
+    exercise_criteria = ExerciseQualityCriteria | NULL,
+    protocol_quality = ProtocolQuality | NULL,
+    data_quality = DataQualityReport | NULL,
+    overall_grade = new_property(class_character,
+      validator = function(value) {
+        if (!value %in% c("A", "B", "C", "D", "F")) {
+          return("overall_grade must be 'A', 'B', 'C', 'D', or 'F'")
+        }
+        NULL
+      }
+    ),
+    overall_score = new_property(class_numeric,
+      validator = function(value) {
+        if (length(value) > 0 && !anyNA(value) && (value < 0 || value > 100)) {
+          return("overall_score must be between 0 and 100")
+        }
+        NULL
+      }
+    ),
+    test_interpretable = class_logical,
+    summary_text = class_character
+  )
+)

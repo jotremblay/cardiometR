@@ -214,3 +214,241 @@ method(print, ReportConfig) <- function(x, ...) {
   }
   invisible(x)
 }
+
+
+#' @rdname ExerciseQualityCriteria
+#' @export
+method(print, ExerciseQualityCriteria) <- function(x, ...) {
+  cli::cli_h3("Maximal Exercise Criteria (ACSM)")
+
+  # Determination header
+  det_style <- switch(x@determination,
+    "maximal" = "success",
+    "likely_maximal" = "info",
+    "submaximal" = "warning",
+    "indeterminate" = ""
+  )
+  det_text <- switch(x@determination,
+    "maximal" = "MAXIMAL TEST",
+    "likely_maximal" = "Likely Maximal",
+    "submaximal" = "Submaximal",
+    "indeterminate" = "Indeterminate"
+  )
+
+  if (det_style == "success") {
+    cli::cli_alert_success(det_text)
+  } else if (det_style == "warning") {
+    cli::cli_alert_warning(det_text)
+  } else {
+    cli::cli_alert_info(det_text)
+  }
+
+  cli::cli_text("")
+
+  # RER criterion
+  rer_icon <- if (x@rer_met) "\u2713" else "\u2717"
+  cli::cli_text("{rer_icon} RER >= 1.10: {round(x@peak_rer, 2)}")
+
+  # HR criterion
+  if (!is.null(x@hr_met)) {
+    hr_icon <- if (x@hr_met) "\u2713" else "\u2717"
+    cli::cli_text("{hr_icon} HR >= 85% predicted: {round(x@peak_hr, 0)} bpm ({round(x@hr_pct_predicted, 0)}%)")
+  } else {
+    cli::cli_text("\u25CB HR: Not available")
+  }
+
+  # Plateau criterion
+  plateau_icon <- if (x@plateau_met) "\u2713" else "\u2717"
+  if (x@vo2_plateau_detected) {
+    cli::cli_text("{plateau_icon} VO2 plateau: \u0394 = {round(x@vo2_plateau_delta, 0)} mL/min")
+  } else {
+    cli::cli_text("{plateau_icon} VO2 plateau: Not detected")
+  }
+
+  # Optional criteria
+  if (!is.null(x@rpe_met)) {
+    rpe_icon <- if (x@rpe_met) "\u2713" else "\u2717"
+    cli::cli_text("{rpe_icon} RPE >= 17: {x@rpe_reported}")
+  }
+
+  if (!is.null(x@lactate_met)) {
+    lac_icon <- if (x@lactate_met) "\u2713" else "\u2717"
+    cli::cli_text("{lac_icon} Lactate >= 8.0: {round(x@lactate_mmol, 1)} mmol/L")
+  }
+
+  cli::cli_text("")
+  cli::cli_text("Criteria met: {x@criteria_met}/{x@criteria_available}")
+
+  invisible(x)
+}
+
+
+#' @rdname ProtocolQuality
+#' @export
+method(print, ProtocolQuality) <- function(x, ...) {
+  cli::cli_h3("Protocol Quality Assessment")
+
+  # Overall rating
+  rating_style <- switch(x@overall_rating,
+    "excellent" = "success",
+    "good" = "info",
+    "acceptable" = "warning",
+    "poor" = "danger",
+    ""
+  )
+  rating_text <- paste0(toupper(x@overall_rating), " (", round(x@overall_score, 0), "/100)")
+
+  if (rating_style == "success") {
+    cli::cli_alert_success(rating_text)
+  } else if (rating_style == "warning") {
+    cli::cli_alert_warning(rating_text)
+  } else if (rating_style == "danger") {
+    cli::cli_alert_danger(rating_text)
+  } else {
+    cli::cli_alert_info(rating_text)
+  }
+
+  cli::cli_text("")
+  cli::cli_dl(c(
+    "Modality" = x@modality,
+    "Test duration" = paste(round(x@test_duration_s / 60, 1), "min")
+  ))
+
+  if (!is.null(x@exercise_duration_s)) {
+    duration_status <- if (!is.null(x@duration_optimal) && x@duration_optimal) "\u2713" else "\u2717"
+    cli::cli_text("Exercise duration: {round(x@exercise_duration_s / 60, 1)} min {duration_status}")
+  }
+
+  if (!is.null(x@actual_vo2_slope)) {
+    slope_status <- if (!is.null(x@slope_acceptable) && x@slope_acceptable) "\u2713" else "\u2717"
+    cli::cli_text("VO2/W slope: {round(x@actual_vo2_slope, 1)} mL/min/W {slope_status}")
+    if (!is.null(x@expected_vo2_slope)) {
+      cli::cli_text("  (expected: {x@expected_vo2_slope}, deviation: {sprintf('%+.1f', x@slope_deviation_pct)}%)")
+    }
+  }
+
+  if (!is.null(x@r_squared)) {
+    r2_status <- if (!is.null(x@r_squared_acceptable) && x@r_squared_acceptable) "\u2713" else "\u2717"
+    cli::cli_text("R\u00B2: {round(x@r_squared, 3)} {r2_status}")
+  }
+
+  invisible(x)
+}
+
+
+#' @rdname DataQualityReport
+#' @export
+method(print, DataQualityReport) <- function(x, ...) {
+  cli::cli_h3("Data Quality Report")
+
+  # Overall rating
+  rating_style <- switch(x@overall_rating,
+    "excellent" = "success",
+    "good" = "info",
+    "acceptable" = "warning",
+    "poor" = "danger"
+  )
+  rating_text <- paste0(toupper(x@overall_rating), " (", round(x@overall_score, 0), "/100)")
+
+  if (rating_style == "success") {
+    cli::cli_alert_success(rating_text)
+  } else if (rating_style == "warning") {
+    cli::cli_alert_warning(rating_text)
+  } else if (rating_style == "danger") {
+    cli::cli_alert_danger(rating_text)
+  } else {
+    cli::cli_alert_info(rating_text)
+  }
+
+  cli::cli_text("")
+  cli::cli_dl(c(
+    "Total breaths" = format(x@n_breaths, big.mark = ","),
+    "Aberrant breaths" = paste0(round(x@pct_aberrant, 1), "% (n=", x@n_aberrant, ")")
+  ))
+
+  if (!is.null(x@pct_missing_hr)) {
+    hr_status <- if (!is.null(x@hr_acceptable) && x@hr_acceptable) "\u2713" else "\u2717"
+    cli::cli_text("Missing HR: {round(x@pct_missing_hr, 1)}% {hr_status}")
+  }
+
+  if (!is.null(x@baseline_vo2_cv)) {
+    baseline_status <- if (!is.null(x@baseline_stable) && x@baseline_stable) "\u2713" else "\u2717"
+    cli::cli_text("Baseline CV: {round(x@baseline_vo2_cv, 1)}% {baseline_status}")
+  }
+
+  drift_status <- if (x@calibration_drift_detected) "\u2717 Detected" else "\u2713 Not detected"
+  cli::cli_text("Calibration drift: {drift_status}")
+
+  cli::cli_text("Signal quality: {x@signal_quality_rating} ({round(x@signal_quality_score, 0)}/100)")
+
+  # Recommendations
+  if (length(x@recommendations) > 0 && x@recommendations[[1]] != "Data quality is acceptable. No specific recommendations.") {
+    cli::cli_text("")
+    cli::cli_text("{.strong Recommendations:}")
+    purrr::walk(x@recommendations, ~ cli::cli_alert_warning(.x))
+  }
+
+  invisible(x)
+}
+
+
+#' @rdname QualityAssessment
+#' @export
+method(print, QualityAssessment) <- function(x, ...) {
+  cli::cli_h1("Quality Assessment")
+
+  # Overall grade
+  grade_style <- switch(x@overall_grade,
+    "A" = "success",
+    "B" = "info",
+    "C" = "warning",
+    "D" = "warning",
+    "F" = "danger"
+  )
+  grade_text <- paste0("Grade: ", x@overall_grade, " (", round(x@overall_score, 0), "/100)")
+
+  if (grade_style == "success") {
+    cli::cli_alert_success(grade_text)
+  } else if (grade_style == "warning") {
+    cli::cli_alert_warning(grade_text)
+  } else if (grade_style == "danger") {
+    cli::cli_alert_danger(grade_text)
+  } else {
+    cli::cli_alert_info(grade_text)
+  }
+
+  # Interpretability
+  if (x@test_interpretable) {
+    cli::cli_alert_success("Results are interpretable")
+  } else {
+    cli::cli_alert_warning("Results should be interpreted with caution")
+  }
+
+  cli::cli_text("")
+  cli::cli_text("{.emph {x@summary_text}}")
+
+  cli::cli_text("")
+  cli::cli_rule()
+
+  # Component summaries
+  if (!is.null(x@exercise_criteria)) {
+    det <- x@exercise_criteria@determination
+    det_text <- switch(det,
+      "maximal" = "Maximal",
+      "likely_maximal" = "Likely maximal",
+      "submaximal" = "Submaximal",
+      "indeterminate" = "Indeterminate"
+    )
+    cli::cli_text("Exercise: {det_text} ({x@exercise_criteria@criteria_met}/{x@exercise_criteria@criteria_available} criteria)")
+  }
+
+  if (!is.null(x@protocol_quality)) {
+    cli::cli_text("Protocol: {x@protocol_quality@overall_rating} ({round(x@protocol_quality@overall_score, 0)}/100)")
+  }
+
+  if (!is.null(x@data_quality)) {
+    cli::cli_text("Data: {x@data_quality@overall_rating} ({round(x@data_quality@overall_score, 0)}/100)")
+  }
+
+  invisible(x)
+}

@@ -20,10 +20,14 @@
 run_app <- function(language = c("en", "fr"), ...) {
   language <- match.arg(language)
 
-
   # Store initial language as option for app_ui to access
+  options(cardiometR.language = language)
 
-options(cardiometR.language = language)
+  # Add resource path for package assets (logos, etc.)
+  assets_dir <- system.file("assets", package = "cardiometR")
+  if (nzchar(assets_dir)) {
+    shiny::addResourcePath("cardiometR", assets_dir)
+  }
 
   shiny::shinyApp(
     ui = app_ui(),
