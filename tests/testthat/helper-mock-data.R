@@ -8,8 +8,14 @@ is_s7_class <- function(x, class_name) {
 }
 
 # Helper to check if S7 property is "empty" (NULL, NA, or zero-length)
+# Note: Use suppressWarnings to handle S7 objects where is.na() may warn
 is_empty_prop <- function(x) {
-  is.null(x) || length(x) == 0 || (length(x) == 1 && is.na(x))
+  if (is.null(x)) return(TRUE)
+  if (length(x) == 0) return(TRUE)
+  # For S7 objects, they're not "empty" in the NULL sense
+  if (inherits(x, "S7_object")) return(FALSE)
+  # For scalar values, check if NA
+  suppressWarnings(length(x) == 1 && is.na(x))
 }
 
 #' Create mock CPET breath-by-breath data for testing

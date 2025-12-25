@@ -1,6 +1,7 @@
 # English labels for cardiometR
 # Application UI
 app_title: "CPET Analysis"
+language_changed: "Language changed to English"
 upload_prompt: "Drop COSMED xlsx file here"
 no_file_selected: "No file selected"
 browse: "Browse"

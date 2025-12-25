@@ -15,6 +15,10 @@ app_server <- function(input, output, session) {
 language <- shiny::reactiveVal(getOption("cardiometR.language", "en"))
 
   # Language toggle handler
+  # Note: Static UI labels (nav tabs) don't update without page reload.
+
+  # To preserve form state, we update only dynamic content reactively
+  # and avoid session$reload(). Users can manually refresh if needed.
   shiny::observeEvent(input$lang_switch, {
     current <- language()
     new_lang <- if (current == "en") "fr" else "en"
@@ -27,9 +31,12 @@ language <- shiny::reactiveVal(getOption("cardiometR.language", "en"))
       label = if (new_lang == "en") "FR" else "EN"
     )
 
-    # Refresh the page to update all static labels
-    # This is simpler than updating every label reactively
-    session$reload()
+    # Show a notification about the language change
+    shiny::showNotification(
+      tr("language_changed", new_lang),
+      type = "message",
+      duration = 3
+    )
   })
 
   # ---- Module: Upload ----

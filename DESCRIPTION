@@ -2,7 +2,7 @@ Package: cardiometR
 Title: Cardiopulmonary Exercise Testing Analysis with S7 Classes
 Version: 0.1.0
 Authors@R:
-    person("First", "Last", email = "your.email@example.com", role = c("aut", "cre"))
+    person("Jonathan", "Tremblay", email = "jonathan.tremblay@umontreal.ca", role = c("aut", "cre"))
 Description: Import, process, and report cardiopulmonary exercise testing (CPET)
     data from COSMED Quark CPET metabolic carts. Uses S7 classes for type-safe
     data structures. Includes a Shiny application for interactive analysis and
@@ -43,6 +43,6 @@ Suggests:
     glue
 Config/testthat/edition: 3
 VignetteBuilder: quarto
-URL: https://github.com/youruser/cardiometR
-BugReports: https://github.com/youruser/cardiometR/issues
+URL: https://github.com/jotremblay/cardiometR
+BugReports: https://github.com/jotremblay/cardiometR/issues
 LazyData: true

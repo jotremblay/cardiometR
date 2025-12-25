@@ -10,7 +10,7 @@ app_ui()
 A Shiny UI definition.
 }
 \description{
-Builds the main Shiny UI using bslib page_navbar with four tabs:
-Upload, Configure, Results, and Report.
+Builds the main Shiny UI using bslib page_navbar with five tabs:
+Upload, Configure, Results, Quality, and Report.
 }
 \keyword{internal}

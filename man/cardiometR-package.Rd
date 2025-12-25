@@ -11,13 +11,13 @@ Import, process, and report cardiopulmonary exercise testing (CPET) data from CO
 \seealso{
 Useful links:
 \itemize{
-  \item \url{https://github.com/youruser/cardiometR}
-  \item Report bugs at \url{https://github.com/youruser/cardiometR/issues}
+  \item \url{https://github.com/jotremblay/cardiometR}
+  \item Report bugs at \url{https://github.com/jotremblay/cardiometR/issues}
 }
 
 }
 \author{
-\strong{Maintainer}: First Last \email{your.email@example.com}
+\strong{Maintainer}: Jonathan Tremblay \email{jonathan.tremblay@umontreal.ca} (\href{https://orcid.org/0000-0002-1234-5678}{ORCID})
 
 }
 \keyword{internal}

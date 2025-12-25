@@ -1,6 +1,7 @@
 # French labels for cardiometR
 # Application UI
 app_title: "Analyse CPET"
+language_changed: "Langue changée en français"
 upload_prompt: "Déposez le fichier xlsx COSMED ici"
 no_file_selected: "Aucun fichier sélectionné"
 browse: "Parcourir"
