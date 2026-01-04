@@ -220,3 +220,49 @@ actual_vo2: "Actual VO2"
 
 # Misc
 no_recommendations: "No specific recommendations"
+
+# Pre-Test Conditions
+section_pretest: "Pre-Test Conditions"
+nutritional_state: "Nutritional State"
+state_fed: "Fed"
+state_fasted: "Fasted"
+last_meal: "Last Meal"
+hours_ago: "h ago"
+fatigue_state: "Fatigue State"
+state_rested: "Rested"
+state_fatigued: "Fatigued"
+medications: "Medications"
+medications_none: "None"
+caffeine: "Caffeine"
+
+# Protocol Details
+section_protocol_details: "Protocol Details"
+starting_intensity: "Starting Intensity"
+intensity_increment: "Increment"
+stage_duration_label: "Stage Duration"
+starting_grade: "Starting Grade"
+grade_increment: "Grade Increment"
+equipment_model: "Equipment"
+analyzer_model: "Analyzer"
+modality_cycling: "Cycle Ergometer"
+modality_treadmill: "Treadmill"
+
+# Stage-by-Stage Results
+section_stage_table: "Stage-by-Stage Results"
+col_duration: "Duration"
+col_intensity: "Intensity"
+col_hr: "HR"
+col_ve: "VE"
+col_vo2: "VO2"
+col_vco2: "VCO2"
+col_rer: "RER"
+col_lactate: "Lactate"
+
+# Economy Metrics
+section_economy: "Movement Economy"
+gross_efficiency: "Gross Efficiency"
+running_economy: "Running Economy"
+unit_ml_kg_km: "mL/kg/km"
+at_stage: "at stage"
+reference_power: "Reference Power"
+reference_speed: "Reference Speed"

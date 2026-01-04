@@ -325,3 +325,259 @@ test_that("CpetAnalysis composes correctly", {
 
   expect_true(is_s7_class(full_analysis@peaks, "PeakValues"))
 })
+
+# ---- PreTestConditions class tests ----
+
+test_that("PreTestConditions class validates correctly", {
+  # Valid pre-test conditions
+  ptc <- PreTestConditions(
+    nutritional_state = "fed",
+    last_meal_hours = 2.5,
+    fatigue_state = "rested",
+    medications_taken = FALSE,
+    caffeine_intake = TRUE,
+    caffeine_mg = 150
+  )
+
+  expect_true(is_s7_class(ptc, "PreTestConditions"))
+  expect_equal(ptc@nutritional_state, "fed")
+  expect_equal(ptc@last_meal_hours, 2.5)
+  expect_equal(ptc@caffeine_mg, 150)
+  expect_false(ptc@medications_taken)
+})
+
+test_that("PreTestConditions validates nutritional_state", {
+  expect_error(
+    PreTestConditions(nutritional_state = "invalid"),
+    "nutritional_state must be"
+  )
+
+  expect_no_error(PreTestConditions(nutritional_state = "fed"))
+  expect_no_error(PreTestConditions(nutritional_state = "fasted"))
+})
+
+test_that("PreTestConditions validates fatigue_state", {
+  expect_error(
+    PreTestConditions(fatigue_state = "invalid"),
+    "fatigue_state must be"
+  )
+
+  expect_no_error(PreTestConditions(fatigue_state = "rested"))
+  expect_no_error(PreTestConditions(fatigue_state = "fatigued"))
+})
+
+test_that("PreTestConditions validates caffeine_mg range", {
+  expect_error(
+    PreTestConditions(caffeine_mg = -10),
+    "caffeine_mg should be between"
+  )
+
+  expect_error(
+    PreTestConditions(caffeine_mg = 1500),
+    "caffeine_mg should be between"
+  )
+
+  expect_no_error(PreTestConditions(caffeine_mg = 200))
+})
+
+test_that("PreTestConditions validates last_meal_hours range", {
+  expect_error(
+    PreTestConditions(last_meal_hours = -1),
+    "last_meal_hours should be between"
+  )
+
+  expect_error(
+    PreTestConditions(last_meal_hours = 50),
+    "last_meal_hours should be between"
+  )
+
+  expect_no_error(PreTestConditions(last_meal_hours = 3))
+})
+
+test_that("PreTestConditions allows NULL for optional properties", {
+  ptc <- PreTestConditions()
+  expect_true(is_empty_prop(ptc@nutritional_state))
+  expect_true(is_empty_prop(ptc@caffeine_mg))
+  expect_false(ptc@medications_taken)  # Default is FALSE
+})
+
+# ---- ProtocolConfig class tests ----
+
+test_that("ProtocolConfig class validates correctly", {
+  # Valid cycling protocol
+  pc <- ProtocolConfig(
+    modality = "cycling",
+    starting_intensity = 50,
+    increment_size = 25,
+    stage_duration_s = 180,
+    equipment_model = "Lode Excalibur",
+    analyzer_model = "COSMED Quark CPET"
+  )
+
+  expect_true(is_s7_class(pc, "ProtocolConfig"))
+  expect_equal(pc@modality, "cycling")
+  expect_equal(pc@starting_intensity, 50)
+  expect_equal(pc@increment_size, 25)
+  expect_equal(pc@stage_duration_s, 180)
+})
+
+test_that("ProtocolConfig validates modality", {
+  expect_error(
+    ProtocolConfig(modality = "rowing"),
+    "modality must be"
+  )
+
+  expect_no_error(ProtocolConfig(modality = "cycling"))
+  expect_no_error(ProtocolConfig(modality = "treadmill"))
+  expect_no_error(ProtocolConfig(modality = "other"))
+})
+
+test_that("ProtocolConfig validates stage_duration_s range", {
+  expect_error(
+    ProtocolConfig(stage_duration_s = 10),
+    "stage_duration_s should be between"
+  )
+
+  expect_error(
+    ProtocolConfig(stage_duration_s = 1000),
+    "stage_duration_s should be between"
+  )
+
+  expect_no_error(ProtocolConfig(stage_duration_s = 60))
+  expect_no_error(ProtocolConfig(stage_duration_s = 180))
+})
+
+test_that("ProtocolConfig for treadmill includes grade", {
+  pc <- ProtocolConfig(
+    modality = "treadmill",
+    starting_intensity = 6,  # km/h
+    increment_size = 1,
+    stage_duration_s = 180,
+    starting_grade = 0,
+    grade_increment = 2
+  )
+
+  expect_equal(pc@starting_grade, 0)
+  expect_equal(pc@grade_increment, 2)
+})
+
+# ---- EconomyMetrics class tests ----
+
+test_that("EconomyMetrics class validates correctly", {
+  # Cycling efficiency
+  em_cycling <- EconomyMetrics(
+    modality = "cycling",
+    gross_efficiency = 22.5,
+    reference_stage = 5,
+    reference_power = 200
+  )
+
+  expect_true(is_s7_class(em_cycling, "EconomyMetrics"))
+  expect_equal(em_cycling@modality, "cycling")
+  expect_equal(em_cycling@gross_efficiency, 22.5)
+  expect_equal(em_cycling@reference_power, 200)
+
+  # Running economy
+  em_running <- EconomyMetrics(
+    modality = "treadmill",
+    running_economy = 195,
+    reference_stage = 4,
+    reference_speed = 12
+  )
+
+  expect_equal(em_running@modality, "treadmill")
+  expect_equal(em_running@running_economy, 195)
+  expect_equal(em_running@reference_speed, 12)
+})
+
+test_that("EconomyMetrics validates modality", {
+  expect_error(
+    EconomyMetrics(modality = "rowing"),
+    "modality must be"
+  )
+
+  expect_no_error(EconomyMetrics(modality = "cycling"))
+  expect_no_error(EconomyMetrics(modality = "treadmill"))
+})
+
+test_that("EconomyMetrics validates gross_efficiency range", {
+  expect_error(
+    EconomyMetrics(modality = "cycling", gross_efficiency = 5),
+    "gross_efficiency should be between"
+  )
+
+  expect_error(
+    EconomyMetrics(modality = "cycling", gross_efficiency = 40),
+    "gross_efficiency should be between"
+  )
+
+  expect_no_error(EconomyMetrics(modality = "cycling", gross_efficiency = 22))
+})
+
+test_that("EconomyMetrics validates running_economy range", {
+  expect_error(
+    EconomyMetrics(modality = "treadmill", running_economy = 50),
+    "running_economy should be between"
+  )
+
+  expect_error(
+    EconomyMetrics(modality = "treadmill", running_economy = 400),
+    "running_economy should be between"
+  )
+
+  expect_no_error(EconomyMetrics(modality = "treadmill", running_economy = 200))
+})
+
+# ---- CpetAnalysis with new properties tests ----
+
+test_that("CpetAnalysis accepts new optional properties", {
+  participant <- Participant(
+    id = "P001", name = "Test", age = 30, sex = "M",
+    height_cm = 175, weight_kg = 70
+  )
+  metadata <- CpetMetadata(
+    test_date = Sys.Date(), device = "Test", protocol = "Test"
+  )
+  breaths <- create_minimal_breaths(10)
+  cpet_data <- CpetData(
+    participant = participant,
+    metadata = metadata,
+    breaths = breaths,
+    is_averaged = FALSE
+  )
+
+  # With pre-test conditions
+  ptc <- PreTestConditions(
+    nutritional_state = "fed",
+    fatigue_state = "rested"
+  )
+
+  # With protocol config
+  pc <- ProtocolConfig(
+    modality = "cycling",
+    starting_intensity = 50,
+    increment_size = 25
+  )
+
+  # With economy metrics
+  em <- EconomyMetrics(
+    modality = "cycling",
+    gross_efficiency = 22
+  )
+
+  analysis <- CpetAnalysis(
+    data = cpet_data,
+    pre_test_conditions = ptc,
+    protocol_config = pc,
+    economy_metrics = em
+  )
+
+  expect_true(is_s7_class(analysis, "CpetAnalysis"))
+  expect_true(is_s7_class(analysis@pre_test_conditions, "PreTestConditions"))
+  expect_true(is_s7_class(analysis@protocol_config, "ProtocolConfig"))
+  expect_true(is_s7_class(analysis@economy_metrics, "EconomyMetrics"))
+
+  expect_equal(analysis@pre_test_conditions@nutritional_state, "fed")
+  expect_equal(analysis@protocol_config@modality, "cycling")
+  expect_equal(analysis@economy_metrics@gross_efficiency, 22)
+})

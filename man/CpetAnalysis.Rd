@@ -22,7 +22,10 @@ CpetAnalysis(
       out
      }
  })(),
-  validation = ValidationReport()
+  validation = ValidationReport(),
+  pre_test_conditions = PreTestConditions(),
+  protocol_config = ProtocolConfig(),
+  economy_metrics = EconomyMetrics()
 )
 }
 \arguments{
@@ -35,6 +38,12 @@ CpetAnalysis(
 \item{stage_summary}{Optional data.frame summarizing values by stage}
 
 \item{validation}{Optional ValidationReport S7 object}
+
+\item{pre_test_conditions}{Optional PreTestConditions S7 object}
+
+\item{protocol_config}{Optional ProtocolConfig S7 object}
+
+\item{economy_metrics}{Optional EconomyMetrics S7 object}
 }
 \value{
 A CpetAnalysis S7 object

@@ -160,7 +160,7 @@ plot_cpet_panel <- function(x,
   } else {
     p1 <- ggplot2::ggplot() +
       ggplot2::annotate("text", x = 0.5, y = 0.5,
-                        label = if (language == "fr") "Données non disponibles" else "Data not available") +
+                        label = if (language == "fr") "Donn\u00e9es non disponibles" else "Data not available") +
       ggplot2::theme_void()
   }
 
@@ -311,7 +311,7 @@ plot_cpet_panel <- function(x,
     } else {
       p7 <- ggplot2::ggplot() +
         ggplot2::annotate("text", x = 0.5, y = 0.5,
-                          label = if (language == "fr") "Données non disponibles" else "Data not available") +
+                          label = if (language == "fr") "Donn\u00e9es non disponibles" else "Data not available") +
         ggplot2::theme_void()
     }
   }
@@ -336,7 +336,7 @@ plot_cpet_panel <- function(x,
       ggplot2::geom_point(size = 2.5, alpha = 0.9, color = "#1B998B") +
       ggplot2::geom_line(color = "#1B998B", linewidth = 0.8, alpha = 0.6) +
       ggplot2::labs(
-        title = if (language == "fr") "Fréquence cardiaque" else "Heart Rate",
+        title = if (language == "fr") "Fr\u00e9quence cardiaque" else "Heart Rate",
         x = time_label,
         y = if (language == "fr") "FC (bpm)" else "HR (bpm)"
       ) +
@@ -344,7 +344,7 @@ plot_cpet_panel <- function(x,
   } else {
     p8 <- ggplot2::ggplot() +
       ggplot2::annotate("text", x = 0.5, y = 0.5,
-                        label = if (language == "fr") "Données non disponibles" else "Data not available") +
+                        label = if (language == "fr") "Donn\u00e9es non disponibles" else "Data not available") +
       ggplot2::theme_void()
   }
 
@@ -847,13 +847,13 @@ plot_predicted_comparison <- function(x,
   if (!is.null(sport) && sport == "cycling" && !is.null(peaks@power_peak)) {
     # Calculate gross efficiency for cycling
     efficiency_measured <- calculate_gross_efficiency(
-      peaks@vo2_peak,
-      peaks@power_peak,
-      peaks@rer_peak
+      vo2_ml = peaks@vo2_peak,
+      power_w = peaks@power_peak,
+      rer = peaks@rer_peak
     )
     efficiency_norm <- norms$efficiency_typical
     efficiency_label <- if (language == "fr") {
-      "Efficacité\n(%)"
+      "Efficacit\u00e9\n(%)"
     } else {
       "Efficiency\n(GE%)"
     }
@@ -863,7 +863,7 @@ plot_predicted_comparison <- function(x,
     # Running economy not directly measured in CPET - use normative reference only
     efficiency_norm <- norms$economy_typical
     efficiency_label <- if (language == "fr") {
-      "Économie\n(mL/kg/km)"
+      "\u00c9conomie\n(mL/kg/km)"
     } else {
       "Economy\n(mL/kg/km)"
     }
@@ -907,7 +907,7 @@ plot_predicted_comparison <- function(x,
         type = factor(type,
                       levels = c("predicted", "norm_typical", "measured"),
                       labels = if (language == "fr") {
-                        c("Prédit\n(population)", "Norme\nathlètes", "Mesuré")
+                        c("Pr\u00e9dit\n(population)", "Norme\nathl\u00e8tes", "Mesur\u00e9")
                       } else {
                         c("Predicted\n(population)", "Athlete\nnorm", "Measured")
                       })
@@ -917,9 +917,9 @@ plot_predicted_comparison <- function(x,
       "Predicted\n(population)" = "#E0E0E0",
       "Athlete\nnorm" = "#F77F00",
       "Measured" = "#2E86AB",
-      "Prédit\n(population)" = "#E0E0E0",
-      "Norme\nathlètes" = "#F77F00",
-      "Mesuré" = "#2E86AB"
+      "Pr\u00e9dit\n(population)" = "#E0E0E0",
+      "Norme\nathl\u00e8tes" = "#F77F00",
+      "Mesur\u00e9" = "#2E86AB"
     )
   } else {
     plot_long <- plot_data |>
@@ -932,12 +932,12 @@ plot_predicted_comparison <- function(x,
       dplyr::mutate(
         type = factor(type,
                       levels = c("predicted", "measured"),
-                      labels = if (language == "fr") c("Prédit", "Mesuré") else c("Predicted", "Measured"))
+                      labels = if (language == "fr") c("Pr\u00e9dit", "Mesur\u00e9") else c("Predicted", "Measured"))
       )
 
     fill_values <- c(
       "Predicted" = "#CCCCCC", "Measured" = "#2E86AB",
-      "Prédit" = "#CCCCCC", "Mesuré" = "#2E86AB"
+      "Pr\u00e9dit" = "#CCCCCC", "Mesur\u00e9" = "#2E86AB"
     )
   }
 
@@ -966,7 +966,7 @@ plot_predicted_comparison <- function(x,
         type = factor(type,
                       levels = c("norm_typical", "measured"),
                       labels = if (language == "fr") {
-                        c("Norme\nathlètes", "Mesuré")
+                        c("Norme\nathl\u00e8tes", "Mesur\u00e9")
                       } else {
                         c("Athlete\nnorm", "Measured")
                       })
@@ -991,7 +991,7 @@ plot_predicted_comparison <- function(x,
     }
   } else {
     subtitle_text <- if (language == "fr") {
-      sprintf("Valeurs prédites pour %s, %d ans (%s)",
+      sprintf("Valeurs pr\u00e9dites pour %s, %d ans (%s)",
               if (participant@sex == "M") "homme" else "femme",
               participant@age,
               predicted$citation_short)
@@ -1023,7 +1023,7 @@ plot_predicted_comparison <- function(x,
     ggplot2::facet_wrap(~ parameter, scales = "free", nrow = 1) +
     ggplot2::scale_fill_manual(values = fill_values, name = "") +
     ggplot2::labs(
-      title = if (language == "fr") "Valeurs Mesurées vs Références" else "Measured vs Reference Values",
+      title = if (language == "fr") "Valeurs Mesur\u00e9es vs R\u00e9f\u00e9rences" else "Measured vs Reference Values",
       subtitle = subtitle_text,
       x = "",
       y = if (language == "fr") "Valeur" else "Value",

@@ -24,16 +24,28 @@ utils::globalVariables(c(
   # Stage-related
   "stage",
   "stage_name",
+  "stage_power",
   "breath_group",
   "phase",
   "power_diff",
   "power_rounded",
+  "n_breaths",
+  "n",
+  "mean_vo2",
+  "sd_vo2",
+  "actual_vo2",
+  "expected_vo2",
+  "deviation_pct",
 
   # Plotting variables
   ".data",
   "variable",
   "value",
   "type",
+  "p",
+
+  # Data.table operator
+  ":=",
 
   # Comparison variables
   "measured",

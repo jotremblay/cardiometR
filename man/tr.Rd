@@ -16,6 +16,7 @@ The translated string, or the key itself if not found
 }
 \description{
 Retrieves a translated label from the package translation files.
+Translations are cached on first load for performance.
 }
 \examples{
 tr("app_title", "en")

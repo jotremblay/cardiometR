@@ -220,3 +220,49 @@ actual_vo2: "VO2 réel"
 
 # Misc
 no_recommendations: "Aucune recommandation spécifique"
+
+# Pre-Test Conditions
+section_pretest: "Conditions pré-test"
+nutritional_state: "État nutritionnel"
+state_fed: "Nourri"
+state_fasted: "À jeun"
+last_meal: "Dernier repas"
+hours_ago: "h"
+fatigue_state: "État de fatigue"
+state_rested: "Reposé"
+state_fatigued: "Fatigué"
+medications: "Médicaments"
+medications_none: "Aucun"
+caffeine: "Caféine"
+
+# Protocol Details
+section_protocol_details: "Détails du protocole"
+starting_intensity: "Intensité initiale"
+intensity_increment: "Incrément"
+stage_duration_label: "Durée du palier"
+starting_grade: "Pente initiale"
+grade_increment: "Incrément de pente"
+equipment_model: "Équipement"
+analyzer_model: "Analyseur"
+modality_cycling: "Ergocycle"
+modality_treadmill: "Tapis roulant"
+
+# Stage-by-Stage Results
+section_stage_table: "Résultats par palier"
+col_duration: "Durée"
+col_intensity: "Intensité"
+col_hr: "FC"
+col_ve: "VE"
+col_vo2: "VO2"
+col_vco2: "VCO2"
+col_rer: "QR"
+col_lactate: "Lactate"
+
+# Economy Metrics
+section_economy: "Économie de mouvement"
+gross_efficiency: "Efficacité brute"
+running_economy: "Économie de course"
+unit_ml_kg_km: "mL/kg/km"
+at_stage: "au palier"
+reference_power: "Puissance de référence"
+reference_speed: "Vitesse de référence"

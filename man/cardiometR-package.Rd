@@ -17,7 +17,7 @@ Useful links:
 
 }
 \author{
-\strong{Maintainer}: Jonathan Tremblay \email{jonathan.tremblay@umontreal.ca} (\href{https://orcid.org/0000-0002-1234-5678}{ORCID})
+\strong{Maintainer}: Jonathan Tremblay \email{jonathan.tremblay@umontreal.ca}
 
 }
 \keyword{internal}

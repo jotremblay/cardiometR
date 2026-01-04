@@ -14,5 +14,6 @@ A named list of all translation labels
 }
 \description{
 Loads all translation labels for the specified language.
+Uses cached translations if available.
 }
 \keyword{internal}

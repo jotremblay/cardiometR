@@ -14,8 +14,8 @@ Character string with the full path to the logo file
 }
 \description{
 Returns the path to a built-in institution logo for use in reports.
-Available logos: "udem" (Université de Montréal - École de kinésiologie et des sciences de l'activité physique),
-"epic" (Centre EPIC - Institut de Cardiologie de Montréal).
+Available logos: "udem" (UdeM - Ecole de kinesiologie),
+"epic" (Centre EPIC - Institut de Cardiologie de Montreal).
 }
 \examples{
 # Get UdeM logo

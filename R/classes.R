@@ -133,6 +133,219 @@ CpetMetadata <- new_class("CpetMetadata",
 )
 
 
+# PreTestConditions ----------------------------------------------------------
+
+#' Pre-Test Conditions Class
+#'
+#' @description
+#' Stores pre-test physiological state and preparation details for contextualizing
+#' CPET results. Includes nutritional state, fatigue level, medication use, and
+#' caffeine intake.
+#'
+#' @param nutritional_state Nutritional state: "fed" or "fasted" (NULL if unknown)
+#' @param last_meal_hours Hours since last meal (NULL if not recorded)
+#' @param fatigue_state Fatigue state: "rested" or "fatigued" (NULL if unknown)
+#' @param medications_taken Logical indicating if medications were taken (default FALSE)
+#' @param medication_names Character vector of medication names (NULL if none)
+#' @param caffeine_intake Logical indicating caffeine/stimulant intake (NULL if unknown)
+#' @param caffeine_mg Caffeine amount in mg (NULL if not recorded)
+#' @param notes Optional free-text notes about pre-test conditions
+#'
+#' @return A PreTestConditions S7 object
+#'
+#' @examples
+#' conditions <- PreTestConditions(
+#'   nutritional_state = "fasted",
+#'   last_meal_hours = 3,
+#'   fatigue_state = "rested",
+#'   caffeine_intake = TRUE,
+#'   caffeine_mg = 200
+#' )
+#'
+#' @export
+PreTestConditions <- new_class("PreTestConditions",
+  properties = list(
+    nutritional_state = new_property(class_character | NULL,
+      validator = function(value) {
+        if (!is.null(value) && length(value) > 0 && !value %in% c("fed", "fasted")) {
+          return("nutritional_state must be 'fed' or 'fasted'")
+        }
+        NULL
+      }
+    ),
+    last_meal_hours = new_property(class_numeric | NULL,
+      validator = function(value) {
+        if (!is.null(value) && length(value) > 0 && !anyNA(value) && (value < 0 || value > 48)) {
+          return("last_meal_hours should be between 0 and 48 hours")
+        }
+        NULL
+      }
+    ),
+    fatigue_state = new_property(class_character | NULL,
+      validator = function(value) {
+        if (!is.null(value) && length(value) > 0 && !value %in% c("rested", "fatigued")) {
+          return("fatigue_state must be 'rested' or 'fatigued'")
+        }
+        NULL
+      }
+    ),
+    medications_taken = new_property(class_logical, default = FALSE),
+    medication_names = class_character | NULL,
+    caffeine_intake = class_logical | NULL,
+    caffeine_mg = new_property(class_numeric | NULL,
+      validator = function(value) {
+        if (!is.null(value) && length(value) > 0 && !anyNA(value) && (value < 0 || value > 1000)) {
+          return("caffeine_mg should be between 0 and 1000 mg")
+        }
+        NULL
+      }
+    ),
+    notes = class_character | NULL
+  )
+)
+
+
+# ProtocolConfig -------------------------------------------------------------
+
+#' Protocol Configuration Class
+#'
+#' @description
+#' Detailed exercise protocol parameters including intensity progression,
+#' stage timing, and equipment information.
+#'
+#' @param modality Exercise modality: "cycling", "treadmill", or "other"
+#' @param starting_intensity Starting intensity (watts for cycling, km/h for treadmill)
+#' @param increment_size Intensity increment per stage
+#' @param stage_duration_s Duration of each stage in seconds
+#' @param starting_grade Starting grade/slope percentage (treadmill only)
+#' @param grade_increment Grade increment per stage in percentage points (treadmill only)
+#' @param equipment_model Ergometer/treadmill model name
+#' @param analyzer_model Metabolic analyzer model name
+#'
+#' @return A ProtocolConfig S7 object
+#'
+#' @examples
+#' # Cycling protocol
+#' protocol <- ProtocolConfig(
+#'   modality = "cycling",
+#'   starting_intensity = 50,
+#'   increment_size = 25,
+#'   stage_duration_s = 180,
+#'   equipment_model = "Lode Excalibur Sport",
+#'   analyzer_model = "COSMED Quark CPET"
+#' )
+#'
+#' # Treadmill protocol
+#' protocol <- ProtocolConfig(
+#'   modality = "treadmill",
+#'   starting_intensity = 8,
+#'   increment_size = 1,
+#'   stage_duration_s = 120,
+#'   starting_grade = 0.5,
+#'   grade_increment = 0,
+#'   equipment_model = "HP Cosmos Pulsar"
+#' )
+#'
+#' @export
+ProtocolConfig <- new_class("ProtocolConfig",
+  properties = list(
+    modality = new_property(class_character,
+      default = "cycling",
+      validator = function(value) {
+        if (!value %in% c("cycling", "treadmill", "other")) {
+          return("modality must be 'cycling', 'treadmill', or 'other'")
+        }
+        NULL
+      }
+    ),
+    starting_intensity = class_numeric | NULL,
+    increment_size = class_numeric | NULL,
+    stage_duration_s = new_property(class_numeric | NULL,
+      validator = function(value) {
+        if (!is.null(value) && length(value) > 0 && !anyNA(value) && (value < 30 || value > 600)) {
+          return("stage_duration_s should be between 30 and 600 seconds")
+        }
+        NULL
+      }
+    ),
+    starting_grade = class_numeric | NULL,
+    grade_increment = class_numeric | NULL,
+    equipment_model = class_character | NULL,
+    analyzer_model = class_character | NULL
+  )
+)
+
+
+# EconomyMetrics -------------------------------------------------------------
+
+#' Economy and Efficiency Metrics Class
+#'
+#' @description
+#' Container for running economy and cycling efficiency calculations.
+#' Stores the calculated metric along with the reference conditions (stage, speed, or power)
+#' at which it was measured.
+#'
+#' @param modality Exercise modality: "cycling" or "treadmill"
+#' @param gross_efficiency Cycling gross efficiency as percentage (typical range 18-25%)
+#' @param running_economy Running economy in mL O2/kg/km (typical range 150-250)
+#' @param reference_stage Stage number at which economy was calculated
+#' @param reference_speed Speed at which economy was calculated in km/h (treadmill)
+#' @param reference_power Power at which efficiency was calculated in watts (cycling)
+#'
+#' @return An EconomyMetrics S7 object
+#'
+#' @examples
+#' # Cycling efficiency
+#' economy <- EconomyMetrics(
+#'   modality = "cycling",
+#'   gross_efficiency = 22.5,
+#'   reference_stage = 4,
+#'   reference_power = 200
+#' )
+#'
+#' # Running economy
+#' economy <- EconomyMetrics(
+#'   modality = "treadmill",
+#'   running_economy = 195,
+#'   reference_stage = 3,
+#'   reference_speed = 12
+#' )
+#'
+#' @export
+EconomyMetrics <- new_class("EconomyMetrics",
+  properties = list(
+    modality = new_property(class_character,
+      default = "cycling",
+      validator = function(value) {
+        if (length(value) > 0 && !value %in% c("cycling", "treadmill")) {
+          return("modality must be 'cycling' or 'treadmill'")
+        }
+        NULL
+      }
+    ),
+    gross_efficiency = new_property(class_numeric | NULL,
+      validator = function(value) {
+        if (!is.null(value) && length(value) > 0 && !anyNA(value) && (value < 10 || value > 35)) {
+          return("gross_efficiency should be between 10 and 35%")
+        }
+        NULL
+      }
+    ),
+    running_economy = new_property(class_numeric | NULL,
+      validator = function(value) {
+        if (!is.null(value) && length(value) > 0 && !anyNA(value) && (value < 100 || value > 350)) {
+          return("running_economy should be between 100 and 350 mL/kg/km")
+        }
+        NULL
+      }
+    ),
+    reference_stage = class_numeric | NULL,
+    reference_speed = class_numeric | NULL,
+    reference_power = class_numeric | NULL
+  )
+)
+
+
 # CpetData -------------------------------------------------------------------
 
 #' CPET Data Class
@@ -372,6 +585,9 @@ ValidationReport <- new_class("ValidationReport",
 #' @param thresholds Optional Thresholds S7 object
 #' @param stage_summary Optional data.frame summarizing values by stage
 #' @param validation Optional ValidationReport S7 object
+#' @param pre_test_conditions Optional PreTestConditions S7 object
+#' @param protocol_config Optional ProtocolConfig S7 object
+#' @param economy_metrics Optional EconomyMetrics S7 object
 #'
 #' @return A CpetAnalysis S7 object
 #'
@@ -382,7 +598,11 @@ CpetAnalysis <- new_class("CpetAnalysis",
     peaks = PeakValues | NULL,
     thresholds = Thresholds | NULL,
     stage_summary = class_data.frame | NULL,
-    validation = ValidationReport | NULL
+    validation = ValidationReport | NULL,
+    # Additional context and metrics (optional)
+    pre_test_conditions = PreTestConditions | NULL,
+    protocol_config = ProtocolConfig | NULL,
+    economy_metrics = EconomyMetrics | NULL
   )
 )
 
@@ -415,7 +635,7 @@ CpetAnalysis <- new_class("CpetAnalysis",
 ReportConfig <- new_class("ReportConfig",
   properties = list(
     language = new_property(class_character,
-      default = "en",
+      default = "fr",
       validator = function(value) {
         if (!value %in% c("en", "fr")) {
           return("language must be 'en' (English) or 'fr' (French)")

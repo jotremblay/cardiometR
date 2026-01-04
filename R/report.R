@@ -82,6 +82,7 @@ generate_report <- function(analysis,
     graph_files <- generate_report_graphs(analysis, language, athlete_sport, athlete_level)
     template_data <- c(template_data, graph_files)
   }
+  template_data$has_graphs <- include_graphs
 
   # Get template path
   template_path <- get_template_path(config@template)
@@ -189,27 +190,54 @@ get_report_labels <- function(language = "en") {
     # Messages
     message_no_thresholds = "Ventilatory thresholds could not be reliably determined.",
     footer_left = "Confidential Medical Document",
-    footer_disclaimer = "This report is generated automatically and should be reviewed by a qualified healthcare professional."
+    footer_disclaimer = "This report is generated automatically and should be reviewed by a qualified healthcare professional.",
+
+    # Pre-test conditions
+    section_pretest = "Pre-Test Conditions",
+    label_nutritional_state = "Nutritional State",
+    label_hours_ago = "h ago",
+    label_fatigue_state = "Fatigue State",
+    label_medications = "Medications",
+    label_caffeine = "Caffeine",
+
+    # Protocol details
+    section_protocol_details = "Protocol Details",
+    label_modality = "Modality",
+    label_starting_intensity = "Starting Intensity",
+    label_increment = "Increment",
+    label_stage_duration = "Stage Duration",
+    label_equipment = "Equipment",
+    label_analyzer = "Analyzer",
+
+    # Stage table
+    section_stage_table = "Stage-by-Stage Results",
+
+    # Economy metrics
+    section_economy = "Movement Economy",
+    label_gross_efficiency = "Gross Efficiency",
+    label_running_economy = "Running Economy",
+    label_at_stage = "at stage",
+    unit_ml_kg_km = "mL/kg/km"
   )
 
   labels_fr <- list(
     # Title and headers
-    title = "Rapport d'\u00c9preuve d'Effort Cardiorespiratoire",
-    subtitle = "\u00c9valuation Clinique",
+    title = "Rapport d'\u00e9preuve d'effort cardiorespiratoire",
+    subtitle = "\u00c9valuation clinique",
 
     # Section titles
-    section_patient = "Informations du Patient",
-    section_test = "Informations du Test",
-    section_peak_values = "Valeurs Maximales",
-    section_detailed_results = "R\u00e9sultats D\u00e9taill\u00e9s",
-    section_thresholds = "Seuils Ventilatoires",
-    section_graphs = "Analyse Graphique",
+    section_patient = "Informations du patient",
+    section_test = "Informations du test",
+    section_peak_values = "Valeurs maximales",
+    section_detailed_results = "R\u00e9sultats d\u00e9taill\u00e9s",
+    section_thresholds = "Seuils ventilatoires",
+    section_graphs = "Analyse graphique",
     section_interpretation = "Interpr\u00e9tation",
-    section_aerobic_capacity = "Capacit\u00e9 A\u00e9robie",
-    section_cardiovascular = "R\u00e9ponse Cardiovasculaire",
-    section_ventilatory = "R\u00e9ponse Ventilatoire",
-    section_clinical_notes = "Notes Cliniques",
-    section_references = "Références",
+    section_aerobic_capacity = "Capacit\u00e9 a\u00e9robie",
+    section_cardiovascular = "R\u00e9ponse cardiovasculaire",
+    section_ventilatory = "R\u00e9ponse ventilatoire",
+    section_clinical_notes = "Notes cliniques",
+    section_references = "R\u00e9f\u00e9rences",
 
     # Patient labels
     label_name = "Nom",
@@ -234,17 +262,17 @@ get_report_labels <- function(language = "en") {
     label_reason = "Indication",
 
     # Results labels
-    label_parameter = "Paramètre",
+    label_parameter = "Param\u00e8tre",
     label_value = "Valeur",
-    label_predicted = "Prédit",
+    label_predicted = "Pr\u00e9dit",
     label_vo2_peak = "VO#sub[2] pic (mL/kg/min)",
     label_hr_peak = "FC pic (bpm)",
     label_power_peak = "Puissance pic (W)",
     label_power = "Puissance",
     label_threshold = "Seuil",
-    label_aerobic = "Seuil Aérobie",
-    label_anaerobic = "Point de Compensation Respiratoire",
-    label_detection_method = "Méthode de détection",
+    label_aerobic = "Seuil a\u00e9robie",
+    label_anaerobic = "Point de compensation respiratoire",
+    label_detection_method = "M\u00e9thode de d\u00e9tection",
     label_confidence = "Confiance",
 
     # Table row labels (detailed results) - French translations
@@ -258,18 +286,45 @@ get_report_labels <- function(language = "en") {
     label_hr_unit = "FC (bpm)",
 
     # Signatures
-    label_technician_signature = "Signature du Technicien",
-    label_physician_signature = "Signature du Médecin",
+    label_technician_signature = "Signature du technicien",
+    label_physician_signature = "Signature du m\u00e9decin",
 
     # Captions
-    caption_panel = "Affichage CPET 9 Panneaux",
-    caption_vslope = "Analyse V-Slope pour Détection des Seuils",
-    caption_predicted = "Valeurs Mesurées vs Prédites pour Âge/Sexe",
+    caption_panel = "Affichage CPET 9 panneaux",
+    caption_vslope = "Analyse V-slope pour d\u00e9tection des seuils",
+    caption_predicted = "Valeurs mesur\u00e9es vs pr\u00e9dites pour \u00e2ge/sexe",
 
     # Messages
-    message_no_thresholds = "Les seuils ventilatoires n'ont pas pu être déterminés de manière fiable.",
-    footer_left = "Document Médical Confidentiel",
-    footer_disclaimer = "Ce rapport est généré automatiquement et doit être revu par un professionnel de santé qualifié."
+    message_no_thresholds = "Les seuils ventilatoires n'ont pas pu \u00eatre d\u00e9termin\u00e9s de mani\u00e8re fiable.",
+    footer_left = "Document m\u00e9dical confidentiel",
+    footer_disclaimer = "Ce rapport est g\u00e9n\u00e9r\u00e9 automatiquement et doit \u00eatre revu par un professionnel de sant\u00e9 qualifi\u00e9.",
+
+    # Pre-test conditions
+    section_pretest = "Conditions pr\u00e9-test",
+    label_nutritional_state = "\u00c9tat nutritionnel",
+    label_hours_ago = "h",
+    label_fatigue_state = "\u00c9tat de fatigue",
+    label_medications = "M\u00e9dicaments",
+    label_caffeine = "Caf\u00e9ine",
+
+    # Protocol details
+    section_protocol_details = "D\u00e9tails du protocole",
+    label_modality = "Modalit\u00e9",
+    label_starting_intensity = "Intensit\u00e9 initiale",
+    label_increment = "Incr\u00e9ment",
+    label_stage_duration = "Dur\u00e9e du palier",
+    label_equipment = "\u00c9quipement",
+    label_analyzer = "Analyseur",
+
+    # Stage table
+    section_stage_table = "R\u00e9sultats par palier",
+
+    # Economy metrics
+    section_economy = "\u00c9conomie de mouvement",
+    label_gross_efficiency = "Efficacit\u00e9 brute",
+    label_running_economy = "\u00c9conomie de course",
+    label_at_stage = "au palier",
+    unit_ml_kg_km = "mL/kg/km"
   )
 
   if (language == "fr") labels_fr else labels_en
@@ -292,6 +347,7 @@ get_report_labels <- function(language = "en") {
 #' @keywords internal
 build_template_data <- function(analysis, config, labels, clinical_notes, interpretation,
                                 athlete_sport = NULL, athlete_level = "recreational") {
+  language <- config@language
   data <- analysis@data
   participant <- data@participant
   metadata <- data@metadata
@@ -416,12 +472,90 @@ build_template_data <- function(analysis, config, labels, clinical_notes, interp
     ))
   }
 
+  # Pre-test conditions if available
+  if (!is.null(analysis@pre_test_conditions)) {
+    ptc <- analysis@pre_test_conditions
+    template_data <- c(template_data, list(
+      has_pretest_conditions = TRUE,
+      nutritional_state = format_nutritional_state(ptc@nutritional_state, language),
+      last_meal_hours = ptc@last_meal_hours,
+      fatigue_state = format_fatigue_state(ptc@fatigue_state, language),
+      medications_taken = ptc@medications_taken,
+      medication_list = if (!is.null(ptc@medication_names) && length(ptc@medication_names) > 0) {
+        paste(ptc@medication_names, collapse = ", ")
+      } else {
+        if (language == "fr") "Aucun" else "None"
+      },
+      caffeine_intake = ptc@caffeine_intake %||% FALSE,
+      caffeine_mg = ptc@caffeine_mg
+    ))
+  } else {
+    template_data$has_pretest_conditions <- FALSE
+  }
+
+  # Protocol details if available
+  if (!is.null(analysis@protocol_config)) {
+    pc <- analysis@protocol_config
+    intensity_unit <- if (pc@modality == "treadmill") "km/h" else "W"
+    template_data <- c(template_data, list(
+      has_protocol_details = TRUE,
+      protocol_modality = pc@modality,
+      protocol_modality_label = format_modality(pc@modality, language),
+      starting_intensity = pc@starting_intensity,
+      intensity_unit = intensity_unit,
+      increment_size = pc@increment_size,
+      stage_duration_s = pc@stage_duration_s,
+      starting_grade = pc@starting_grade,
+      grade_increment = pc@grade_increment,
+      equipment_model = pc@equipment_model %||% "-",
+      analyzer_model = pc@analyzer_model %||% "-"
+    ))
+  } else {
+    template_data$has_protocol_details <- FALSE
+  }
+
+  # Stage-by-stage summary table
+  if (!is.null(analysis@stage_summary) && nrow(analysis@stage_summary) > 0) {
+    template_data$has_stage_table <- TRUE
+    template_data$stage_table <- format_stage_table_typst(
+      analysis@stage_summary,
+      language
+    )
+  } else {
+    template_data$has_stage_table <- FALSE
+  }
+
+  # Economy/efficiency metrics
+  if (!is.null(analysis@economy_metrics)) {
+    em <- analysis@economy_metrics
+    # Set section title based on modality
+    economy_title <- if (em@modality == "cycling") {
+      if (language == "fr") "Efficacit\u00e9 m\u00e9canique" else "Cycling Efficiency"
+    } else {
+      if (language == "fr") "\u00c9conomie de course" else "Running Economy"
+    }
+    template_data <- c(template_data, list(
+      has_economy_metrics = TRUE,
+      section_economy = economy_title,
+      economy_modality = em@modality,
+      gross_efficiency = em@gross_efficiency,
+      running_economy = em@running_economy,
+      economy_reference_stage = em@reference_stage,
+      economy_reference_power = em@reference_power,
+      economy_reference_speed = em@reference_speed
+    ))
+  } else {
+    template_data$has_economy_metrics <- FALSE
+  }
+
   # Add visual interpretation data
   visual_interp <- generate_visual_interpretation(analysis, config@language)
   template_data <- c(template_data, visual_interp)
 
   # Add clinical notes
+  # Add clinical notes if provided
   template_data$clinical_notes <- clinical_notes %||% ""
+  template_data$has_clinical_notes <- !is.null(clinical_notes) && nchar(clinical_notes) > 0
 
   # Build bibliography from cited sources
   bibliography_entries <- list()
@@ -514,40 +648,6 @@ calculate_predicted_values <- function(participant) {
 }
 
 
-#' Calculate Gross Efficiency for Cycling
-#'
-#' @description
-#' Calculates gross efficiency (GE%) from VO2 and power output.
-#' GE = (Power output / Energy expenditure) * 100
-#'
-#' @param vo2 Oxygen consumption in mL/min
-#' @param power Power output in watts
-#' @param rer Respiratory exchange ratio (default 1.0 for high intensity)
-#' @return Gross efficiency as percentage
-#' @keywords internal
-calculate_gross_efficiency <- function(vo2, power, rer = 1.0) {
-
-  # Energy equivalent of O2 depends on RER (kcal/L O2)
-  # RER 0.70 = 4.69 kcal/L, RER 1.00 = 5.05 kcal/L
-  energy_eq <- 4.69 + (rer - 0.70) * (5.05 - 4.69) / 0.30
-  energy_eq <- min(max(energy_eq, 4.69), 5.05)
-
-  # Convert VO2 from mL/min to L/min
-  vo2_l <- vo2 / 1000
-
-  # Energy expenditure in kcal/min
-  energy_kcal <- vo2_l * energy_eq
-
-  # Convert to watts: 1 kcal/min = 69.78 watts
-  energy_watts <- energy_kcal * 69.78
-
-  # Gross efficiency
-  ge <- (power / energy_watts) * 100
-
-  ge
-}
-
-
 #' Generate Visual Interpretation Data
 #'
 #' @description
@@ -567,14 +667,14 @@ generate_visual_interpretation <- function(analysis, language = "en") {
   default_result <- list(
     aerobic_color = 'rgb("#9CA3AF")',
     aerobic_percent = 0,
-    aerobic_rating = if (language == "fr") "Données insuffisantes" else "Insufficient data",
+    aerobic_rating = if (language == "fr") "Donn\u00e9es insuffisantes" else "Insufficient data",
     cardiovascular_color = 'rgb("#9CA3AF")',
     cardiovascular_percent = 0,
-    cardiovascular_rating = if (language == "fr") "Données insuffisantes" else "Insufficient data",
+    cardiovascular_rating = if (language == "fr") "Donn\u00e9es insuffisantes" else "Insufficient data",
     ventilatory_color = 'rgb("#9CA3AF")',
     ventilatory_percent = 0,
-    ventilatory_rating = if (language == "fr") "Données insuffisantes" else "Insufficient data",
-    interpretation_summary = if (language == "fr") "Données insuffisantes pour l'interprétation." else "Insufficient data for interpretation."
+    ventilatory_rating = if (language == "fr") "Donn\u00e9es insuffisantes" else "Insufficient data",
+    interpretation_summary = if (language == "fr") "Donn\u00e9es insuffisantes pour l'interpr\u00e9tation." else "Insufficient data for interpretation."
   )
 
  if (is.null(peaks) || length(peaks@vo2_peak) == 0) {
@@ -607,9 +707,9 @@ generate_visual_interpretation <- function(analysis, language = "en") {
   aerobic_rating <- if (language == "fr") {
     if (vo2_pct >= 100) "Excellente"
     else if (vo2_pct >= 85) "Normale"
-    else if (vo2_pct >= 70) "Légèrement réduite"
-    else if (vo2_pct >= 50) "Modérément réduite"
-    else "Sévèrement réduite"
+    else if (vo2_pct >= 70) "L\u00e9g\u00e8rement r\u00e9duite"
+    else if (vo2_pct >= 50) "Mod\u00e9r\u00e9ment r\u00e9duite"
+    else "S\u00e9v\u00e8rement r\u00e9duite"
   } else {
     if (vo2_pct >= 100) "Excellent"
     else if (vo2_pct >= 85) "Normal"
@@ -631,7 +731,7 @@ generate_visual_interpretation <- function(analysis, language = "en") {
 
     cardiovascular_rating <- if (language == "fr") {
       if (hr_pct >= 95) "Maximale"
-      else if (hr_pct >= 85) "Adéquate"
+      else if (hr_pct >= 85) "Ad\u00e9quate"
       else "Sous-maximale"
     } else {
       if (hr_pct >= 95) "Maximal"
@@ -662,12 +762,12 @@ generate_visual_interpretation <- function(analysis, language = "en") {
   summary_parts <- c()
 
   if (language == "fr") {
-    summary_parts <- c(summary_parts, sprintf("VO2max à %d%% du prédit", vo2_pct))
+    summary_parts <- c(summary_parts, sprintf("VO2max \u00e0 %d%% du pr\u00e9dit", vo2_pct))
     if (hr_pct > 0) {
-      summary_parts <- c(summary_parts, sprintf("FC max à %d%% du prédit", hr_pct))
+      summary_parts <- c(summary_parts, sprintf("FC max \u00e0 %d%% du pr\u00e9dit", hr_pct))
     }
     if (rer_val >= 1.10) {
-      summary_parts <- c(summary_parts, "effort maximal atteint (RER ≥ 1.10)")
+      summary_parts <- c(summary_parts, "effort maximal atteint (RER \u2265 1.10)")
     } else {
       summary_parts <- c(summary_parts, sprintf("RER pic = %.2f", rer_val))
     }
@@ -677,7 +777,7 @@ generate_visual_interpretation <- function(analysis, language = "en") {
       summary_parts <- c(summary_parts, sprintf("HR max at %d%% of predicted", hr_pct))
     }
     if (rer_val >= 1.10) {
-      summary_parts <- c(summary_parts, "maximal effort achieved (RER ≥ 1.10)")
+      summary_parts <- c(summary_parts, "maximal effort achieved (RER \u2265 1.10)")
     } else {
       summary_parts <- c(summary_parts, sprintf("peak RER = %.2f", rer_val))
     }
@@ -874,6 +974,87 @@ get_template_path <- function(custom_template = NULL) {
 }
 
 
+#' Process Template Conditionals
+#'
+#' @description
+#' Recursively processes mustache-style conditionals in template content.
+#' Handles nested conditionals correctly by finding matching pairs.
+#'
+#' @param content Template content string
+#' @param data Named list of template data
+#' @return Processed template content
+#' @keywords internal
+process_conditionals <- function(content, data) {
+  # Find the first {{#if ...}} tag
+  if_start <- regexpr("\\{\\{#if ([^}]+)\\}\\}", content, perl = TRUE)
+  if (if_start == -1) return(content)
+
+  # Extract variable name
+  match_len <- attr(if_start, "match.length")
+  tag <- substr(content, if_start, if_start + match_len - 1)
+  var_name <- trimws(sub("\\{\\{#if ([^}]+)\\}\\}", "\\1", tag))
+
+
+  # Find the matching {{/if}} by counting nesting levels
+  pos <- if_start + match_len
+  depth <- 1
+  else_pos <- NA
+  end_pos <- NA
+
+  while (pos <= nchar(content) && depth > 0) {
+    # Check for {{#if at current position
+    if (substr(content, pos, pos + 5) == "{{#if ") {
+      depth <- depth + 1
+      pos <- pos + 6
+    # Check for {{/if}} at current position
+    } else if (substr(content, pos, pos + 6) == "{{/if}}") {
+      depth <- depth - 1
+      if (depth == 0) {
+        end_pos <- pos
+      }
+      pos <- pos + 7
+    # Check for {{else}} at current position (only at depth 1)
+    } else if (depth == 1 && substr(content, pos, pos + 7) == "{{else}}") {
+      else_pos <- pos
+      pos <- pos + 8
+    } else {
+      pos <- pos + 1
+    }
+  }
+
+  # If no matching end found, return content unchanged
+
+  if (is.na(end_pos)) return(content)
+
+  # Extract if-content and else-content
+  if_content_start <- if_start + match_len
+  if (!is.na(else_pos)) {
+    if_content <- substr(content, if_content_start, else_pos - 1)
+    else_content <- substr(content, else_pos + 8, end_pos - 1)
+  } else {
+    if_content <- substr(content, if_content_start, end_pos - 1)
+    else_content <- ""
+  }
+
+  # Check if variable is truthy
+  var_value <- data[[var_name]]
+  is_truthy <- !is.null(var_value) && length(var_value) > 0 &&
+    !identical(var_value, FALSE) && !identical(var_value, "")
+
+  # Choose replacement and recursively process it
+  replacement <- if (is_truthy) if_content else else_content
+  replacement <- process_conditionals(replacement, data)
+
+  # Build result
+  before <- if (if_start > 1) substr(content, 1, if_start - 1) else ""
+  after <- if (end_pos + 7 <= nchar(content)) substr(content, end_pos + 7, nchar(content)) else ""
+
+  # Recursively process the rest
+  result <- paste0(before, replacement, after)
+  process_conditionals(result, data)
+}
+
+
 #' Render Typst Report
 #'
 #' @description
@@ -887,45 +1068,8 @@ render_typst_report <- function(template_path, data, output_file) {
   # Read template
   template_content <- paste(readLines(template_path, warn = FALSE), collapse = "\n")
 
-  # Process conditionals: {{#if var}}...{{else}}...{{/if}} or {{#if var}}...{{/if}}
-  # Pattern for matching conditionals (DOTALL mode with (?s))
-  pattern <- "(?s)\\{\\{#if ([^}]+)\\}\\}(.*?)(?:\\{\\{else\\}\\}(.*?))?\\{\\{/if\\}\\}"
-
-  # Process one conditional at a time until none remain
-  max_iterations <- 20
-  iteration <- 0
-  while (grepl(pattern, template_content, perl = TRUE) && iteration < max_iterations) {
-    iteration <- iteration + 1
-    # Find the first match
-    match_info <- regexec(pattern, template_content, perl = TRUE)
-    match <- regmatches(template_content, match_info)[[1]]
-
-    if (length(match) == 0) break
-
-    # Get match positions
-    start_pos <- match_info[[1]][1]
-    match_length <- attr(match_info[[1]], "match.length")[1]
-
-    # Skip if no valid match found
-    if (start_pos < 1 || match_length < 1) break
-
-    var_name <- trimws(match[2])
-    if_content <- match[3]
-    else_content <- if (length(match) >= 4 && !is.na(match[4])) match[4] else ""
-
-    # Check if variable is truthy
-    var_value <- data[[var_name]]
-    is_truthy <- !is.null(var_value) && length(var_value) > 0 &&
-      !identical(var_value, FALSE) && !identical(var_value, "")
-
-    replacement <- if (is_truthy) if_content else else_content
-
-    # Replace just the first occurrence
-    end_pos <- start_pos + match_length - 1
-    before <- if (start_pos > 1) substr(template_content, 1, start_pos - 1) else ""
-    after <- if (end_pos < nchar(template_content)) substr(template_content, end_pos + 1, nchar(template_content)) else ""
-    template_content <- paste0(before, replacement, after)
-  }
+  # Process conditionals recursively to handle nesting properly
+  template_content <- process_conditionals(template_content, data)
 
   # Simple mustache-style variable interpolation
   for (name in names(data)) {
@@ -997,12 +1141,217 @@ format_duration <- function(seconds) {
 }
 
 
+#' Format Nutritional State
+#'
+#' @param state Character: "fed" or "fasted"
+#' @param language Language code ("en" or "fr")
+#' @return Formatted string
+#' @keywords internal
+format_nutritional_state <- function(state, language = "en") {
+  if (is.null(state) || length(state) == 0) return("-")
+  if (language == "fr") {
+    switch(state,
+      fed = "Nourri",
+      fasted = "\u00c0 jeun",
+      state
+    )
+  } else {
+    switch(state,
+      fed = "Fed",
+      fasted = "Fasted",
+      state
+    )
+  }
+}
+
+
+#' Format Fatigue State
+#'
+#' @param state Character: "rested" or "fatigued"
+#' @param language Language code ("en" or "fr")
+#' @return Formatted string
+#' @keywords internal
+format_fatigue_state <- function(state, language = "en") {
+  if (is.null(state) || length(state) == 0) return("-")
+  if (language == "fr") {
+    switch(state,
+      rested = "Repos\u00e9",
+      fatigued = "Fatigu\u00e9",
+      state
+    )
+  } else {
+    switch(state,
+      rested = "Rested",
+      fatigued = "Fatigued",
+      state
+    )
+  }
+}
+
+
+#' Format Modality
+#'
+#' @param modality Character: "cycling" or "treadmill"
+#' @param language Language code ("en" or "fr")
+#' @return Formatted string
+#' @keywords internal
+format_modality <- function(modality, language = "en") {
+  if (is.null(modality) || length(modality) == 0) return("-")
+  if (language == "fr") {
+    switch(modality,
+      cycling = "Ergocycle",
+      treadmill = "Tapis roulant",
+      other = "Autre",
+      modality
+    )
+  } else {
+    switch(modality,
+      cycling = "Cycle Ergometer",
+      treadmill = "Treadmill",
+      other = "Other",
+      modality
+    )
+  }
+}
+
+
+#' Format Stage Table for Typst
+#'
+#' @description
+#' Converts stage summary data frame to Typst table row syntax.
+#'
+#' @param stage_summary Data frame with stage summary data
+#' @param language Language code ("en" or "fr")
+#' @return Character string with complete Typst table
+#' @keywords internal
+format_stage_table_typst <- function(stage_summary, language = "en") {
+  n_stages <- nrow(stage_summary)
+
+
+  # Check if lactate data exists
+
+has_lactate <- "lactate_mmol" %in% names(stage_summary) &&
+    any(!is.na(stage_summary$lactate_mmol))
+
+  # Define headers based on language
+  if (language == "fr") {
+    headers <- c("Palier", "Dur\u00e9e", "Intensit\u00e9", "FC", "VE", "VO2", "RER")
+    if (has_lactate) headers <- c(headers, "Lactate")
+  } else {
+    headers <- c("Stage", "Duration", "Intensity", "HR", "VE", "VO2", "RER")
+    if (has_lactate) headers <- c(headers, "Lactate")
+  }
+
+  # Build header row
+  header_row <- paste0(
+    "[*", headers, "*]",
+    collapse = ", "
+  )
+
+  # Build data rows
+  rows <- purrr::map_chr(seq_len(n_stages), function(i) {
+    row <- stage_summary[i, ]
+
+    # Get stage number (use row index if not in data)
+    stage_num <- if ("stage" %in% names(row)) row$stage else i
+
+    # Get duration
+    duration_str <- if ("duration_s" %in% names(row) && !is.na(row$duration_s)) {
+      format_duration(row$duration_s)
+    } else {
+      "-"
+    }
+
+    # Get intensity (power for cycling, speed for treadmill)
+    intensity <- if ("power_w" %in% names(row) && !is.na(row$power_w) && row$power_w > 0) {
+      sprintf("%.0f W", row$power_w)
+    } else if ("speed_kmh" %in% names(row) && !is.na(row$speed_kmh)) {
+      sprintf("%.1f km/h", row$speed_kmh)
+    } else {
+      "-"
+    }
+
+    # Get HR
+    hr <- if ("hr_bpm" %in% names(row) && !is.na(row$hr_bpm)) {
+      sprintf("%.0f", row$hr_bpm)
+    } else {
+      "-"
+    }
+
+    # Get VE
+    ve <- if ("ve_l" %in% names(row) && !is.na(row$ve_l)) {
+      sprintf("%.1f", row$ve_l)
+    } else {
+      "-"
+    }
+
+    # Get VO2
+    vo2 <- if ("vo2_ml" %in% names(row) && !is.na(row$vo2_ml)) {
+      sprintf("%.0f", row$vo2_ml)
+    } else {
+      "-"
+    }
+
+    # Get VCO2
+    vco2 <- if ("vco2_ml" %in% names(row) && !is.na(row$vco2_ml)) {
+      sprintf("%.0f", row$vco2_ml)
+    } else {
+      "-"
+    }
+
+    # Get RER
+    rer <- if ("rer" %in% names(row) && !is.na(row$rer)) {
+      sprintf("%.2f", row$rer)
+    } else {
+      "-"
+    }
+
+    # Build row - 7 columns standard, 8 with lactate
+    if (has_lactate) {
+      lactate <- if ("lactate_mmol" %in% names(row) && !is.na(row$lactate_mmol)) {
+        sprintf("%.1f", row$lactate_mmol)
+      } else {
+        "-"
+      }
+      sprintf(
+        "  [%s], [%s], [%s], [%s], [%s], [%s], [%s], [%s]",
+        stage_num, duration_str, intensity, hr, ve, vo2, rer, lactate
+      )
+    } else {
+      sprintf(
+        "  [%s], [%s], [%s], [%s], [%s], [%s], [%s]",
+        stage_num, duration_str, intensity, hr, ve, vo2, rer
+      )
+    }
+  })
+
+  # Build complete Typst table
+  n_cols <- if (has_lactate) 8 else 7
+  col_spec <- paste(rep("1fr", n_cols), collapse = ", ")
+
+  sprintf(
+    '#table(
+  columns: (%s),
+  align: center,
+  stroke: 0.5pt + luma(200),
+  inset: 6pt,
+  fill: (_, row) => if row == 0 { luma(240) } else { none },
+  %s,
+%s
+)',
+    col_spec,
+    header_row,
+    paste(rows, collapse = ",\n")
+  )
+}
+
+
 #' Get Institution Logo Path
 #'
 #' @description
 #' Returns the path to a built-in institution logo for use in reports.
-#' Available logos: "udem" (Université de Montréal - École de kinésiologie et des sciences de l'activité physique),
-#' "epic" (Centre EPIC - Institut de Cardiologie de Montréal).
+#' Available logos: "udem" (UdeM - Ecole de kinesiologie),
+#' "epic" (Centre EPIC - Institut de Cardiologie de Montreal).
 #'
 #' @param institution Institution identifier: "udem" or "epic"
 #'
