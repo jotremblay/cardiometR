@@ -12,7 +12,7 @@ format_stage_table_typst(stage_summary, language = "en")
 \item{language}{Language code ("en" or "fr")}
 }
 \value{
-Character string with Typst table rows
+Character string with complete Typst table
 }
 \description{
 Converts stage summary data frame to Typst table row syntax.

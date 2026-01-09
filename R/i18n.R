@@ -2,6 +2,19 @@
 # This environment persists across function calls within the session
 .translation_cache <- new.env(parent = emptyenv())
 
+#' Validate Language Code
+#'
+#' @param language Language code to validate
+#' @return Valid language code ("en" or "fr")
+#' @keywords internal
+validate_language <- function(language) {
+  if (!language %in% c("en", "fr")) {
+    cli::cli_warn("Unknown language '{language}', defaulting to 'en'")
+    return("en")
+  }
+  language
+}
+
 #' Get Translated Label
 #'
 #' Retrieves a translated label from the package translation files.
@@ -18,10 +31,7 @@
 #'
 #' @export
 tr <- function(key, language = "en") {
-  if (!language %in% c("en", "fr")) {
-    cli::cli_warn("Unknown language '{language}', defaulting to 'en'")
-    language <- "en"
-  }
+  language <- validate_language(language)
 
   # Check cache first
   cache_key <- paste0("labels_", language)
@@ -56,10 +66,7 @@ tr <- function(key, language = "en") {
 #'
 #' @keywords internal
 load_translations <- function(language = "en") {
-  if (!language %in% c("en", "fr")) {
-    cli::cli_warn("Unknown language '{language}', defaulting to 'en'")
-    language <- "en"
-  }
+  language <- validate_language(language)
 
   # Check cache first
   cache_key <- paste0("labels_", language)

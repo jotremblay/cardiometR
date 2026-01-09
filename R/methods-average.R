@@ -1,5 +1,17 @@
 # S7 Methods for Data Averaging
 
+#' Get Numeric Column Names
+#'
+#' @param df Data frame to inspect
+#' @param exclude Column names to exclude
+#' @return Character vector of numeric column names
+#' @keywords internal
+get_numeric_cols <- function(df, exclude = NULL) {
+
+  cols <- names(df)[vapply(df, is.numeric, logical(1))]
+  if (!is.null(exclude)) setdiff(cols, exclude) else cols
+}
+
 #' @name average
 #' @rdname average
 #' @export
@@ -46,12 +58,10 @@ average_by_time <- function(breaths, window) {
       time_bin = floor(time_s / window) * window + window / 2
     )
 
-  # Identify numeric columns to average
-  numeric_cols <- names(breaths)[sapply(breaths, is.numeric)]
-  numeric_cols <- setdiff(numeric_cols, c("time_s", "time_bin"))
+  numeric_cols <- get_numeric_cols(breaths, c("time_s", "time_bin"))
 
   # Group by time bin and calculate means
-  averaged <- breaths |>
+  breaths |>
     dplyr::group_by(time_bin) |>
     dplyr::summarise(
       time_s = mean(time_s, na.rm = TRUE),
@@ -69,8 +79,6 @@ average_by_time <- function(breaths, window) {
     ) |>
     dplyr::select(-time_bin) |>
     dplyr::arrange(time_s)
-
-  tibble::as_tibble(averaged)
 }
 
 
@@ -92,12 +100,10 @@ average_by_breath <- function(breaths, window) {
       breath_group = rep(1:n_groups, each = window, length.out = n_rows)
     )
 
-  # Identify numeric columns
-  numeric_cols <- names(breaths)[sapply(breaths, is.numeric)]
-  numeric_cols <- setdiff(numeric_cols, "breath_group")
+  numeric_cols <- get_numeric_cols(breaths, "breath_group")
 
   # Group and average
-  averaged <- breaths |>
+  breaths |>
     dplyr::group_by(breath_group) |>
     dplyr::summarise(
       dplyr::across(
@@ -113,8 +119,6 @@ average_by_breath <- function(breaths, window) {
     ) |>
     dplyr::select(-breath_group) |>
     dplyr::arrange(time_s)
-
-  tibble::as_tibble(averaged)
 }
 
 
@@ -135,11 +139,10 @@ average_rolling <- function(breaths, window) {
   avg_interval <- mean(diff(breaths$time_s), na.rm = TRUE)
   k <- max(1, round(window / avg_interval))
 
-  # Identify numeric columns
-  numeric_cols <- names(breaths)[sapply(breaths, is.numeric)]
+  numeric_cols <- get_numeric_cols(breaths)
 
   # Apply rolling mean to numeric columns
-  averaged <- breaths |>
+  breaths |>
     dplyr::mutate(
       dplyr::across(
         dplyr::all_of(numeric_cols),
@@ -148,6 +151,4 @@ average_rolling <- function(breaths, window) {
     ) |>
     # Remove rows with NA from rolling average edges
     dplyr::filter(!is.na(vo2_ml))
-
-  tibble::as_tibble(averaged)
 }

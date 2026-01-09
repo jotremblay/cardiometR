@@ -5,7 +5,7 @@
 \title{Report Configuration Class}
 \usage{
 ReportConfig(
-  language = "en",
+  language = "fr",
   institution = character(0),
   lab_name = character(0),
   logo_path = character(0),

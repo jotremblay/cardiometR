@@ -6,6 +6,19 @@
 #' @keywords internal
 NULL
 
+#' Get Quality Rating from Score
+#'
+#' @param score Numeric score (0-100)
+#' @param poor_label Label for poor rating (default "poor")
+#' @return Character rating
+#' @keywords internal
+get_rating <- function(score, poor_label = "poor") {
+  if (score >= 90) "excellent"
+  else if (score >= 75) "good"
+  else if (score >= 60) "acceptable"
+  else poor_label
+}
+
 # assess_maximal_criteria --------------------------------------------------
 
 #' @rdname assess_maximal_criteria
@@ -231,14 +244,8 @@ method(assess_protocol_quality, CpetData) <- function(x,
   overall_score <- sum(score_components)
 
   # --- Overall Rating ---
-  overall_rating <- if (overall_score >= 90) {
-    "excellent"
-  } else if (overall_score >= 75) {
-    "good"
-  } else if (overall_score >= 60) {
-    "acceptable"
-  } else if (overall_score >= 40) {
-    "poor"
+  overall_rating <- if (overall_score >= 40) {
+    get_rating(overall_score)
   } else {
     "unable_to_assess"
   }
@@ -535,30 +542,14 @@ method(assess_data_quality, CpetData) <- function(x,
     pct_aberrant, pct_missing_hr, baseline_vo2_cv
   )
 
-  signal_rating <- if (signal_score >= 90) {
-    "excellent"
-  } else if (signal_score >= 75) {
-    "good"
-  } else if (signal_score >= 60) {
-    "acceptable"
-  } else {
-    "poor"
-  }
+  signal_rating <- get_rating(signal_score)
 
   # --- Overall Score ---
   overall_score <- calculate_overall_data_quality_score(
     pct_aberrant, pct_missing_hr, pct_missing_power, baseline_vo2_cv, drift_detected
   )
 
-  overall_rating <- if (overall_score >= 90) {
-    "excellent"
-  } else if (overall_score >= 75) {
-    "good"
-  } else if (overall_score >= 60) {
-    "acceptable"
-  } else {
-    "poor"
-  }
+  overall_rating <- get_rating(overall_score)
 
   # --- Recommendations ---
   recommendations <- generate_data_quality_recommendations(
