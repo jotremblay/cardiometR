@@ -139,7 +139,11 @@ average_rolling <- function(breaths, window) {
   avg_interval <- mean(diff(breaths$time_s), na.rm = TRUE)
   k <- max(1, round(window / avg_interval))
 
-  numeric_cols <- get_numeric_cols(breaths)
+  # Avoid smoothing time or stage identifiers
+  numeric_cols <- get_numeric_cols(
+    breaths,
+    exclude = c("time_s", "stage", "stage_power", "power_rounded", "breath_group", "time_bin")
+  )
 
   # Apply rolling mean to numeric columns
   breaths |>

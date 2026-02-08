@@ -20,7 +20,7 @@ method(print, Participant) <- function(x, ...) {
 
 
 method(print, CpetMetadata) <- function(x, ...) {
- cli::cli_h3("CPET Metadata")
+  cli::cli_h3("CPET Metadata")
   cli::cli_dl(c(
     "Test date" = as.character(x@test_date),
     "Device" = x@device,
@@ -34,9 +34,15 @@ method(print, CpetMetadata) <- function(x, ...) {
   }
   # Environmental conditions
   env_info <- c()
-  if (!is.null(x@temperature_c)) env_info <- c(env_info, paste0(x@temperature_c, "\u00B0C"))
-  if (!is.null(x@pressure_mmhg)) env_info <- c(env_info, paste0(x@pressure_mmhg, " mmHg"))
-  if (!is.null(x@humidity_pct)) env_info <- c(env_info, paste0(x@humidity_pct, "% RH"))
+  if (!is.null(x@temperature_c) && !anyNA(x@temperature_c)) {
+    env_info <- c(env_info, paste0(x@temperature_c, "\u00B0C"))
+  }
+  if (!is.null(x@pressure_mmhg) && !anyNA(x@pressure_mmhg)) {
+    env_info <- c(env_info, paste0(x@pressure_mmhg, " mmHg"))
+  }
+  if (!is.null(x@humidity_pct) && !anyNA(x@humidity_pct)) {
+    env_info <- c(env_info, paste0(x@humidity_pct, "% RH"))
+  }
   if (length(env_info) > 0) {
     cli::cli_text("Environment: {paste(env_info, collapse = ', ')}")
   }
@@ -88,10 +94,10 @@ method(print, PeakValues) <- function(x, ...) {
     "VE peak" = paste(round(x@ve_peak, 1), "L/min"),
     "RER peak" = round(x@rer_peak, 2)
   ))
-  if (!is.null(x@hr_peak)) {
+  if (!is.null(x@hr_peak) && length(x@hr_peak) > 0 && !anyNA(x@hr_peak)) {
     cli::cli_text("HR peak: {round(x@hr_peak, 0)} bpm")
   }
-  if (!is.null(x@power_peak)) {
+  if (!is.null(x@power_peak) && length(x@power_peak) > 0 && !anyNA(x@power_peak)) {
     cli::cli_text("Power peak: {round(x@power_peak, 0)} W")
   }
   invisible(x)
@@ -102,31 +108,43 @@ method(print, Thresholds) <- function(x, ...) {
   cli::cli_h3("Ventilatory Thresholds")
 
   # VT1
-  if (!is.null(x@vt1_vo2)) {
+  if (!is.null(x@vt1_vo2) && length(x@vt1_vo2) > 0 && !anyNA(x@vt1_vo2)) {
     cli::cli_text("{.strong VT1 (Aerobic Threshold)}")
     vt1_info <- c("VO2" = paste(round(x@vt1_vo2, 0), "mL/min"))
-    if (!is.null(x@vt1_hr)) vt1_info <- c(vt1_info, "HR" = paste(round(x@vt1_hr, 0), "bpm"))
-    if (!is.null(x@vt1_power)) vt1_info <- c(vt1_info, "Power" = paste(round(x@vt1_power, 0), "W"))
-    if (!is.null(x@vt1_method)) vt1_info <- c(vt1_info, "Method" = x@vt1_method)
+    if (!is.null(x@vt1_hr) && !anyNA(x@vt1_hr)) {
+      vt1_info <- c(vt1_info, "HR" = paste(round(x@vt1_hr, 0), "bpm"))
+    }
+    if (!is.null(x@vt1_power) && !anyNA(x@vt1_power)) {
+      vt1_info <- c(vt1_info, "Power" = paste(round(x@vt1_power, 0), "W"))
+    }
+    if (!is.null(x@vt1_method) && length(x@vt1_method) > 0 && !anyNA(x@vt1_method)) {
+      vt1_info <- c(vt1_info, "Method" = x@vt1_method)
+    }
     cli::cli_dl(vt1_info)
   } else {
     cli::cli_text("VT1: {.emph Not detected}")
   }
 
   # VT2
-  if (!is.null(x@vt2_vo2)) {
+  if (!is.null(x@vt2_vo2) && length(x@vt2_vo2) > 0 && !anyNA(x@vt2_vo2)) {
     cli::cli_text("{.strong VT2 (Respiratory Compensation)}")
     vt2_info <- c("VO2" = paste(round(x@vt2_vo2, 0), "mL/min"))
-    if (!is.null(x@vt2_hr)) vt2_info <- c(vt2_info, "HR" = paste(round(x@vt2_hr, 0), "bpm"))
-    if (!is.null(x@vt2_power)) vt2_info <- c(vt2_info, "Power" = paste(round(x@vt2_power, 0), "W"))
-    if (!is.null(x@vt2_method)) vt2_info <- c(vt2_info, "Method" = x@vt2_method)
+    if (!is.null(x@vt2_hr) && !anyNA(x@vt2_hr)) {
+      vt2_info <- c(vt2_info, "HR" = paste(round(x@vt2_hr, 0), "bpm"))
+    }
+    if (!is.null(x@vt2_power) && !anyNA(x@vt2_power)) {
+      vt2_info <- c(vt2_info, "Power" = paste(round(x@vt2_power, 0), "W"))
+    }
+    if (!is.null(x@vt2_method) && length(x@vt2_method) > 0 && !anyNA(x@vt2_method)) {
+      vt2_info <- c(vt2_info, "Method" = x@vt2_method)
+    }
     cli::cli_dl(vt2_info)
   } else {
     cli::cli_text("VT2: {.emph Not detected}")
   }
 
   # Confidence
-  if (!is.null(x@confidence)) {
+  if (!is.null(x@confidence) && length(x@confidence) > 0 && !anyNA(x@confidence)) {
     cli::cli_text("Confidence: {x@confidence}")
   }
 

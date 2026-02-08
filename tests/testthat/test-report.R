@@ -72,7 +72,7 @@ test_that("get_report_labels returns French labels", {
 
   expect_type(labels, "list")
   expect_equal(labels$label_name, "Nom")
-  expect_true(grepl("Patient", labels$section_patient))
+  expect_true(grepl("patient", labels$section_patient, ignore.case = TRUE))
 })
 
 test_that("get_report_labels contains all required sections", {
@@ -231,7 +231,7 @@ test_that("create_summary_table supports French", {
 test_that("ReportConfig creates with defaults", {
   config <- ReportConfig()
 
-  expect_equal(config@language, "en")
+  expect_equal(config@language, "fr")
   expect_equal(config@output_format, "pdf")
 })
 
@@ -257,6 +257,102 @@ test_that("ReportConfig accepts optional fields", {
 
   expect_equal(config@institution, "Test Hospital")
   expect_equal(config@technician, "Dr. Smith")
+})
+
+
+# process_conditionals() tests --------------------------------------------
+
+test_that("process_conditionals includes block when truthy", {
+  content <- "before {{#if show}}SHOWN{{/if}} after"
+  result <- process_conditionals(content, list(show = TRUE))
+  expect_equal(result, "before SHOWN after")
+})
+
+test_that("process_conditionals removes block when falsy", {
+  content <- "before {{#if show}}SHOWN{{/if}} after"
+
+  expect_equal(
+    process_conditionals(content, list(show = FALSE)),
+    "before  after"
+  )
+  expect_equal(
+    process_conditionals(content, list(show = NULL)),
+    "before  after"
+  )
+  expect_equal(
+    process_conditionals(content, list(show = "")),
+    "before  after"
+  )
+  expect_equal(
+    process_conditionals(content, list()),
+    "before  after"
+  )
+})
+
+test_that("process_conditionals handles else branch", {
+  content <- "{{#if flag}}YES{{else}}NO{{/if}}"
+
+  expect_equal(process_conditionals(content, list(flag = TRUE)), "YES")
+  expect_equal(process_conditionals(content, list(flag = FALSE)), "NO")
+})
+
+test_that("process_conditionals handles nested blocks", {
+  content <- "{{#if outer}}O {{#if inner}}I{{/if}} E{{/if}}"
+
+  expect_equal(
+    process_conditionals(content, list(outer = TRUE, inner = TRUE)),
+    "O I E"
+  )
+  expect_equal(
+    process_conditionals(content, list(outer = TRUE, inner = FALSE)),
+    "O  E"
+  )
+  expect_equal(
+    process_conditionals(content, list(outer = FALSE)),
+    ""
+  )
+})
+
+test_that("process_conditionals handles multiple sequential blocks", {
+  content <- "{{#if a}}A{{/if}} {{#if b}}B{{/if}}"
+
+  expect_equal(
+    process_conditionals(content, list(a = TRUE, b = TRUE)),
+    "A B"
+  )
+  expect_equal(
+    process_conditionals(content, list(a = TRUE, b = FALSE)),
+    "A "
+  )
+  expect_equal(
+    process_conditionals(content, list(a = FALSE, b = TRUE)),
+    " B"
+  )
+})
+
+test_that("process_conditionals removes all patterns from actual template", {
+  template_path <- system.file("templates", "cpet_report.typ", package = "cardiometR")
+  skip_if(template_path == "", "Template not installed")
+
+  content <- paste(readLines(template_path, warn = FALSE), collapse = "\n")
+
+  # Minimal data to test conditional processing
+  data <- list(
+    logo_path = NULL, lab_name = "", has_pretest_conditions = FALSE,
+    has_protocol_details = FALSE, has_stage_table = FALSE,
+    has_economy_metrics = FALSE, thresholds_detected = FALSE,
+    has_graphs = FALSE, has_clinical_notes = FALSE,
+    last_meal_hours = NULL, caffeine_intake = FALSE,
+    equipment_model = NULL, analyzer_model = NULL,
+    graph_panel = NULL, graph_vslope = NULL, graph_predicted = NULL,
+    gross_efficiency = NULL, running_economy = NULL
+  )
+
+  result <- process_conditionals(content, data)
+
+  expect_false(grepl("\\{\\{#if", result))
+  expect_false(grepl("\\{\\{/if\\}\\}", result))
+  expect_false(grepl("\\{\\{else\\}\\}", result))
 })
 
 
@@ -299,6 +395,54 @@ test_that("Full report workflow creates expected data", {
   # Check peak values are numeric
   expect_true(is.numeric(as.numeric(template_data$vo2_peak_value)))
   expect_true(is.numeric(as.numeric(template_data$hr_peak_value)))
+})
+
+test_that("render_typst_report produces valid PDF", {
+  skip_if(
+    !requireNamespace("typr", quietly = TRUE) && !nzchar(Sys.which("typst")),
+    "Neither typr package nor typst CLI available"
+  )
+
+  analysis <- create_test_analysis()
+  config <- ReportConfig(language = "en", institution = "Test Hospital")
+  labels <- get_report_labels("en")
+  template_data <- build_template_data(analysis, config, labels, NULL, NULL)
+  template_data$has_graphs <- FALSE
+  template_path <- get_template_path()
+
+  output_file <- tempfile(fileext = ".pdf")
+  on.exit(unlink(output_file), add = TRUE)
+
+  expect_no_error(render_typst_report(template_path, template_data, output_file))
+  expect_true(file.exists(output_file))
+  expect_gt(file.info(output_file)$size, 0)
+
+  header <- rawToChar(readBin(output_file, what = "raw", n = 4))
+  expect_equal(header, "%PDF")
+})
+
+test_that("render_typst_report handles Shiny temp path without .pdf extension", {
+  skip_if(
+    !requireNamespace("typr", quietly = TRUE) && !nzchar(Sys.which("typst")),
+    "Neither typr package nor typst CLI available"
+  )
+
+  analysis <- create_test_analysis()
+  config <- ReportConfig(language = "en", institution = "Test Hospital")
+  labels <- get_report_labels("en")
+  template_data <- build_template_data(analysis, config, labels, NULL, NULL)
+  template_data$has_graphs <- FALSE
+  template_path <- get_template_path()
+
+  # Simulate Shiny downloadHandler temp file (no .pdf extension)
+  output_file <- tempfile()
+  on.exit(unlink(output_file), add = TRUE)
+
+  expect_no_error(render_typst_report(template_path, template_data, output_file))
+  expect_true(file.exists(output_file))
+
+  header <- rawToChar(readBin(output_file, what = "raw", n = 4))
+  expect_equal(header, "%PDF")
 })
 
 test_that("Report with real COSMED data works", {

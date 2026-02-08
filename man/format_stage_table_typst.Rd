@@ -4,7 +4,7 @@
 \alias{format_stage_table_typst}
 \title{Format Stage Table for Typst}
 \usage{
-format_stage_table_typst(stage_summary, language = "en")
+format_stage_table_typst(stage_summary, language = "en", modality = NULL)
 }
 \arguments{
 \item{stage_summary}{Data frame with stage summary data}

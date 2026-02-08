@@ -3,31 +3,6 @@
 \name{CpetAnalysis}
 \alias{CpetAnalysis}
 \title{CPET Analysis Class}
-\usage{
-CpetAnalysis(
-  data = CpetData(),
-  peaks = PeakValues(),
-  thresholds = Thresholds(),
-  stage_summary = (function (.data = list(), row.names = NULL) 
- {
-     if
-    (is.null(row.names)) {
-         list2DF(.data)
-     }
-     else {
-         out <-
-    list2DF(.data, length(row.names))
-         attr(out, "row.names") <- row.names
-      
-      out
-     }
- })(),
-  validation = ValidationReport(),
-  pre_test_conditions = PreTestConditions(),
-  protocol_config = ProtocolConfig(),
-  economy_metrics = EconomyMetrics()
-)
-}
 \arguments{
 \item{data}{A CpetData S7 object (processed/averaged)}
 

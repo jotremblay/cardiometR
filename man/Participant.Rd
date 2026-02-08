@@ -3,21 +3,6 @@
 \name{Participant}
 \alias{Participant}
 \title{Participant Class}
-\usage{
-Participant(
-  id = character(0),
-  name = character(0),
-  age = integer(0),
-  sex = character(0),
-  height_cm = integer(0),
-  weight_kg = integer(0),
-  sport = character(0),
-  date_of_birth = (function (.data = double()) 
- {
-     .Date(.data)
- })()
-)
-}
 \arguments{
 \item{id}{Unique participant identifier}
 

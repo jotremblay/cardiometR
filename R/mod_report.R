@@ -28,7 +28,14 @@ mod_report_ui <- function(id, language = "en") {
         shiny::textInput(
           ns("lab_name"),
           label = tr("lab_name", language),
+          value = "Laboratoire de physiologie de l'exercice et de bio\u00e9nerg\u00e9tique appliqu\u00e9e (LPEBA)",
           placeholder = "e.g., Exercise Physiology Lab"
+        ),
+        shiny::textInput(
+          ns("lab_url"),
+          label = "URL",
+          value = "https://bioenergeticslab.ca/",
+          placeholder = "https://..."
         ),
 
         # Logo selection
@@ -61,6 +68,12 @@ mod_report_ui <- function(id, language = "en") {
           ns("technician"),
           label = tr("technician", language)
         ),
+        shiny::dateInput(
+          ns("signature_date"),
+          label = tr("signature_date", language),
+          value = Sys.Date(),
+          language = if (language == "fr") "fr" else "en"
+        ),
         shiny::textAreaInput(
           ns("clinical_notes"),
           label = tr("clinical_notes", language),
@@ -69,12 +82,7 @@ mod_report_ui <- function(id, language = "en") {
         )
       ),
       bslib::card_footer(
-        shiny::downloadButton(
-          ns("generate_report"),
-          label = tr("generate_report", language),
-          class = "btn-primary w-100",
-          icon = shiny::icon("file-pdf")
-        )
+        shiny::uiOutput(ns("generate_report_btn"))
       )
     ),
 
@@ -98,7 +106,7 @@ mod_report_ui <- function(id, language = "en") {
 #' @param analysis Reactive CpetAnalysis object from results module.
 #'
 #' @keywords internal
-mod_report_server <- function(id, language, analysis) {
+mod_report_server <- function(id, language, analysis, settings = shiny::reactive(list())) {
   shiny::moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
@@ -117,6 +125,22 @@ mod_report_server <- function(id, language, analysis) {
       }
     })
 
+    # Validate custom logo upload (PNG/JPEG magic bytes)
+    shiny::observeEvent(input$logo_custom, {
+      file_info <- input$logo_custom
+      shiny::req(file_info)
+      raw_bytes <- readBin(file_info$datapath, "raw", n = 8)
+      is_png <- identical(raw_bytes[1:4], as.raw(c(0x89, 0x50, 0x4E, 0x47)))
+      is_jpeg <- identical(raw_bytes[1:2], as.raw(c(0xFF, 0xD8)))
+      if (!is_png && !is_jpeg) {
+        shiny::showNotification(
+          tr("file_invalid", language()),
+          type = "warning",
+          duration = 5
+        )
+      }
+    })
+
     # Render logo preview
     output$logo_preview <- shiny::renderUI({
       path <- logo_path()
@@ -125,21 +149,56 @@ mod_report_server <- function(id, language, analysis) {
         return(NULL)
       }
 
+      if (input$logo_choice %in% c("udem", "epic")) {
+        src <- paste0("cardiometR/", basename(path))
+      } else {
+        # Encode custom upload as base64 data URI
+        img_bytes <- readBin(path, "raw", file.info(path)$size)
+        img_b64 <- jsonlite::base64_enc(img_bytes)
+        ext <- tolower(tools::file_ext(input$logo_custom$name))
+        mime <- switch(ext,
+          png = "image/png",
+          jpg = "image/jpeg",
+          jpeg = "image/jpeg",
+          "image/png"
+        )
+        src <- paste0("data:", mime, ";base64,", img_b64)
+      }
+
       shiny::div(
         class = "mt-2 mb-3 p-2 bg-light rounded text-center",
         shiny::img(
-          src = if (input$logo_choice %in% c("udem", "epic")) {
-            # Use the www path for package assets
-            paste0("cardiometR/", basename(path))
-          } else {
-            # For custom uploads, use datapath
-            path
-          },
+          src = src,
           alt = "Logo preview",
           style = "max-height: 60px; max-width: 100%;",
           class = "img-fluid"
         )
       )
+    })
+
+    output$generate_report_btn <- shiny::renderUI({
+      if (is_typst_available()) {
+        shiny::downloadButton(
+          ns("generate_report"),
+          label = tr("generate_report", language()),
+          class = "btn-primary w-100",
+          icon = shiny::icon("file-pdf")
+        )
+      } else {
+        shiny::tagList(
+          shiny::tags$button(
+            type = "button",
+            class = "btn btn-secondary w-100",
+            disabled = "disabled",
+            shiny::icon("file-pdf"),
+            tr("generate_report", language())
+          ),
+          shiny::tags$small(
+            class = "text-muted d-block mt-2",
+            tr("report_pdf_unavailable", language())
+          )
+        )
+      }
     })
 
     # Build ReportConfig from inputs
@@ -148,6 +207,7 @@ mod_report_server <- function(id, language, analysis) {
         language = language(),
         institution = if (nchar(input$institution %||% "") > 0) input$institution else NULL,
         lab_name = if (nchar(input$lab_name %||% "") > 0) input$lab_name else NULL,
+        lab_url = if (nchar(input$lab_url %||% "") > 0) input$lab_url else NULL,
         logo_path = logo_path(),
         technician = if (nchar(input$technician %||% "") > 0) input$technician else NULL
       )
@@ -224,14 +284,20 @@ mod_report_server <- function(id, language, analysis) {
           shiny::tags$strong(tr("peak_values", lang)),
           shiny::tags$ul(
             class = "mb-0 mt-2",
-            shiny::tags$li(sprintf("VO2 peak: %.1f mL/kg/min", peaks@vo2_kg_peak)),
-            if (!is.null(peaks@hr_peak)) {
-              shiny::tags$li(sprintf("%s: %d bpm", tr("hr", lang), round(peaks@hr_peak)))
-            },
-            if (!is.null(peaks@power_peak)) {
-              shiny::tags$li(sprintf("%s: %d W", tr("power", lang), round(peaks@power_peak)))
-            },
-            shiny::tags$li(sprintf("RER: %.2f", peaks@rer_peak))
+            if (!is.null(peaks)) {
+              shiny::tagList(
+                shiny::tags$li(sprintf("VO2 peak: %.1f mL/kg/min", peaks@vo2_kg_peak)),
+                if (!is.null(peaks@hr_peak)) {
+                  shiny::tags$li(sprintf("%s: %d bpm", tr("hr", lang), round(peaks@hr_peak)))
+                },
+                if (!is.null(peaks@power_peak)) {
+                  shiny::tags$li(sprintf("%s: %d W", tr("power", lang), round(peaks@power_peak)))
+                },
+                shiny::tags$li(sprintf("RER: %.2f", peaks@rer_peak))
+              )
+            } else {
+              shiny::tags$li(tr("message_no_data", lang))
+            }
           )
         ),
 
@@ -274,9 +340,18 @@ mod_report_server <- function(id, language, analysis) {
           format(Sys.Date(), "%Y%m%d")
         )
       },
+      contentType = "application/pdf",
       content = function(file) {
         a <- analysis()
         shiny::req(a)
+        if (!is_typst_available()) {
+          shiny::showNotification(
+            tr("report_error", language()),
+            type = "error",
+            duration = 6
+          )
+          stop("Typst/typr not available to render PDF")
+        }
 
         shiny::withProgress(
           message = tr("generating_report", language()),
@@ -284,13 +359,34 @@ mod_report_server <- function(id, language, analysis) {
           {
             shiny::incProgress(0.2, detail = tr("generating_graphs", language()))
 
-            generate_report(
-              analysis = a,
-              output_file = file,
-              config = report_config(),
-              include_graphs = TRUE,
-              clinical_notes = input$clinical_notes
-            )
+            tryCatch({
+              s <- settings()
+              generate_report(
+                analysis = a,
+                output_file = file,
+                config = report_config(),
+                include_graphs = TRUE,
+                athlete_sport = s$athlete_sport,
+                athlete_level = s$athlete_level %||% "recreational",
+                clinical_notes = input$clinical_notes,
+                report_sections = s$report_sections,
+                signature_date = input$signature_date
+              )
+            }, error = function(e) {
+              err_msg <- conditionMessage(e)
+              shiny::showNotification(
+                shiny::tags$div(
+                  shiny::tags$strong(tr("report_error", language())),
+                  shiny::tags$pre(
+                    style = "white-space: pre-wrap; font-size: 0.85em; max-height: 200px; overflow-y: auto;",
+                    err_msg
+                  )
+                ),
+                type = "error",
+                duration = 10
+              )
+              stop(e)
+            })
 
             shiny::incProgress(0.5, detail = tr("report_generated", language()))
           }
@@ -298,4 +394,13 @@ mod_report_server <- function(id, language, analysis) {
       }
     )
   })
+}
+
+is_typst_available <- function() {
+  tryCatch({
+    if (requireNamespace("typr", quietly = TRUE)) {
+      return(typr::typr_has_typst())
+    }
+    nzchar(Sys.which("typst"))
+  }, error = function(e) FALSE)
 }

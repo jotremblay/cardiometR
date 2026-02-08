@@ -4,7 +4,7 @@
 \alias{mod_plots_server}
 \title{Plots Module Server}
 \usage{
-mod_plots_server(id, language, analysis)
+mod_plots_server(id, language, analysis, settings = NULL)
 }
 \arguments{
 \item{id}{Module namespace ID.}
@@ -12,6 +12,8 @@ mod_plots_server(id, language, analysis)
 \item{language}{Reactive language value.}
 
 \item{analysis}{Reactive CpetAnalysis object from results module.}
+
+\item{settings}{Reactive settings list from settings module (optional).}
 }
 \description{
 Plots Module Server

@@ -8,7 +8,7 @@
 #'
 #' @keywords internal
 app_ui <- function() {
-  lang <- getOption("cardiometR.language", "en")
+  lang <- getOption("cardiometR.language", "fr")
 
   bslib::page_navbar(
     id = "main_navbar",
@@ -30,13 +30,45 @@ app_ui <- function() {
     fillable = TRUE,
 
     # Header with language toggle
-    header = shiny::div(
-      class = "container-fluid d-flex justify-content-end py-2",
-      shiny::actionButton(
-        "lang_switch",
-        label = if (lang == "en") "FR" else "EN",
-        class = "btn-outline-secondary btn-sm"
-      )
+    header = shiny::tagList(
+      shiny::div(
+        class = "container-fluid d-flex justify-content-end py-2",
+        shiny::actionButton(
+          "lang_switch",
+          label = if (lang == "en") "FR" else "EN",
+          class = "btn-outline-secondary btn-sm"
+        )
+      ),
+      shiny::tags$script(shiny::HTML("
+        Shiny.addCustomMessageHandler('update_nav_labels', function(labels) {
+          document.querySelectorAll('.nav-link[data-value]').forEach(function(el) {
+            var val = el.getAttribute('data-value');
+            if (labels[val]) {
+              var icon = el.querySelector('i, svg');
+              el.textContent = ' ' + labels[val];
+              if (icon) el.prepend(icon);
+            }
+          });
+        });
+        Shiny.addCustomMessageHandler('update_settings_badges', function(changed) {
+          Object.keys(changed).forEach(function(key) {
+            var btn = document.querySelector('.accordion-button[aria-controls*=\"' + key + '\"]');
+            if (!btn) return;
+            var badge = btn.querySelector('.settings-badge');
+            if (changed[key]) {
+              if (!badge) {
+                badge = document.createElement('span');
+                badge.className = 'settings-badge badge bg-primary ms-2';
+                badge.style.fontSize = '0.65em';
+                badge.textContent = '\\u2022';
+                btn.appendChild(badge);
+              }
+            } else if (badge) {
+              badge.remove();
+            }
+          });
+        });
+      "))
     ),
 
     # Tab: Upload
@@ -52,6 +84,12 @@ app_ui <- function() {
       title = tr("nav_configure", lang),
       value = "configure",
       icon = shiny::icon("sliders"),
+      shiny::actionButton(
+        "back_to_upload",
+        label = tr("back_to_upload", lang),
+        icon = shiny::icon("arrow-left"),
+        class = "btn-outline-secondary btn-sm mb-3"
+      ),
       bslib::layout_columns(
         col_widths = c(5, 7),
         mod_participant_ui("participant", lang),

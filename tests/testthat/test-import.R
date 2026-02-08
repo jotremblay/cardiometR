@@ -33,8 +33,9 @@ test_that("read_cosmed imports valid xlsx file", {
   required_cols <- c("time_s", "vo2_ml", "vco2_ml", "ve_l", "rer")
   expect_true(all(required_cols %in% names(data@breaths)))
 
-  # Check is_averaged is FALSE for raw import
-  expect_false(data@is_averaged)
+  # Example data has regular 10s intervals → detected as time-averaged
+  expect_true(data@is_averaged)
+  expect_equal(data@averaging_window, 10)
 })
 
 

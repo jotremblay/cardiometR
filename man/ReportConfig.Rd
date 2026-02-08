@@ -8,6 +8,7 @@ ReportConfig(
   language = "fr",
   institution = character(0),
   lab_name = character(0),
+  lab_url = character(0),
   logo_path = character(0),
   technician = character(0),
   output_format = "pdf",
@@ -20,6 +21,8 @@ ReportConfig(
 \item{institution}{Optional institution name for report header}
 
 \item{lab_name}{Optional laboratory name}
+
+\item{lab_url}{Optional URL for the laboratory website}
 
 \item{logo_path}{Optional path to logo image file}
 

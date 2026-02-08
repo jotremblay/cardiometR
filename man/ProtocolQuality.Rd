@@ -3,41 +3,6 @@
 \name{ProtocolQuality}
 \alias{ProtocolQuality}
 \title{Protocol Quality Class}
-\usage{
-ProtocolQuality(
-  modality = character(0),
-  expected_vo2_slope = integer(0),
-  actual_vo2_slope = integer(0),
-  slope_deviation_pct = integer(0),
-  slope_acceptable = logical(0),
-  r_squared = integer(0),
-  r_squared_acceptable = logical(0),
-  n_stages = integer(0),
-  stage_cv = integer(0),
-  stage_cv_acceptable = logical(0),
-  test_duration_s = integer(0),
-  exercise_duration_s = integer(0),
-  duration_optimal = logical(0),
-  warmup_duration_s = integer(0),
-  warmup_adequate = logical(0),
-  overall_rating = character(0),
-  overall_score = integer(0),
-  stage_details = (function (.data = list(), row.names = NULL) 
- {
-     if
-    (is.null(row.names)) {
-         list2DF(.data)
-     }
-     else {
-         out <-
-    list2DF(.data, length(row.names))
-         attr(out, "row.names") <- row.names
-      
-      out
-     }
- })()
-)
-}
 \arguments{
 \item{modality}{Exercise modality: "cycling" or "treadmill"}
 

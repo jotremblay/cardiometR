@@ -3,24 +3,6 @@
 \name{CpetMetadata}
 \alias{CpetMetadata}
 \title{CPET Metadata Class}
-\usage{
-CpetMetadata(
-  test_date = (function (.data = double()) 
- {
-     .Date(.data)
- })(),
-  device = character(0),
-  protocol = character(0),
-  calibration_date = (function (.data = double()) 
- {
-     .Date(.data)
- })(),
-  temperature_c = integer(0),
-  pressure_mmhg = integer(0),
-  humidity_pct = integer(0),
-  technician = character(0)
-)
-}
 \arguments{
 \item{test_date}{Date of the CPET test}
 

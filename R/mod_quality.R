@@ -568,9 +568,16 @@ metric_row <- function(label, value, status = "secondary", bold = FALSE) {
   value_class <- paste0("text-", status)
   if (bold) value_class <- paste(value_class, "fw-bold")
 
+  icon_tag <- switch(status,
+    success = shiny::icon("check-circle", class = "text-success me-1"),
+    warning = shiny::icon("exclamation-triangle", class = "text-warning me-1"),
+    danger = shiny::icon("times-circle", class = "text-danger me-1"),
+    NULL
+  )
+
   shiny::div(
     class = "d-flex justify-content-between py-1",
     shiny::span(label),
-    shiny::span(class = value_class, value)
+    shiny::span(class = value_class, icon_tag, value)
   )
 }

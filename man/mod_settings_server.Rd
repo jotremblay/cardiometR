@@ -4,7 +4,7 @@
 \alias{mod_settings_server}
 \title{Settings Module Server}
 \usage{
-mod_settings_server(id, language)
+mod_settings_server(id, language, cpet_data = shiny::reactive(NULL))
 }
 \arguments{
 \item{id}{Module namespace ID.}

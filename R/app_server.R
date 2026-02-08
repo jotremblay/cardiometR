@@ -12,13 +12,11 @@
 app_server <- function(input, output, session) {
 
   # Reactive language state
-language <- shiny::reactiveVal(getOption("cardiometR.language", "en"))
+language <- shiny::reactiveVal(getOption("cardiometR.language", "fr"))
 
   # Language toggle handler
-  # Note: Static UI labels (nav tabs) don't update without page reload.
-
-  # To preserve form state, we update only dynamic content reactively
-  # and avoid session$reload(). Users can manually refresh if needed.
+  # Nav tabs updated via JS custom message handler; dropdowns updated
+  # via updateSelectInput/updateRadioButtons in each module server.
   shiny::observeEvent(input$lang_switch, {
     current <- language()
     new_lang <- if (current == "en") "fr" else "en"
@@ -30,6 +28,16 @@ language <- shiny::reactiveVal(getOption("cardiometR.language", "en"))
       "lang_switch",
       label = if (new_lang == "en") "FR" else "EN"
     )
+
+    # Update nav tab labels dynamically via JS
+    tab_labels <- list(
+      upload = tr("nav_upload", new_lang),
+      configure = tr("nav_configure", new_lang),
+      results = tr("nav_results", new_lang),
+      quality = tr("nav_quality", new_lang),
+      report = tr("nav_report", new_lang)
+    )
+    session$sendCustomMessage("update_nav_labels", tab_labels)
 
     # Show a notification about the language change
     shiny::showNotification(
@@ -53,7 +61,8 @@ language <- shiny::reactiveVal(getOption("cardiometR.language", "en"))
 
   # ---- Module: Settings ----
   # Returns: list(settings = reactive())
-  settings_result <- mod_settings_server("settings", language)
+  settings_result <- mod_settings_server("settings", language,
+                                         cpet_data = upload_result$cpet_data)
 
   # ---- Module: Results ----
   # Returns: list(analysis = reactive())
@@ -70,7 +79,8 @@ language <- shiny::reactiveVal(getOption("cardiometR.language", "en"))
   mod_plots_server(
     "plots",
     language,
-    analysis = results_result$analysis
+    analysis = results_result$analysis,
+    settings = settings_result$settings
   )
 
   # ---- Module: Quality ----
@@ -87,8 +97,14 @@ language <- shiny::reactiveVal(getOption("cardiometR.language", "en"))
   mod_report_server(
     "report",
     language,
-    analysis = results_result$analysis
+    analysis = results_result$analysis,
+    settings = settings_result$settings
   )
+
+  # Back to Upload button handler
+  shiny::observeEvent(input$back_to_upload, {
+    bslib::nav_select("main_navbar", "upload")
+  })
 
   # Auto-navigate to Configure tab after successful upload
   shiny::observeEvent(upload_result$cpet_data(), {

@@ -4,10 +4,10 @@
 \alias{run_app}
 \title{Launch CPET Analysis Shiny Application}
 \usage{
-run_app(language = c("en", "fr"), ...)
+run_app(language = c("fr", "en"), ...)
 }
 \arguments{
-\item{language}{Initial language for the app ("en" or "fr"). Default is "en".}
+\item{language}{Initial language for the app ("fr" or "en"). Default is "fr".}
 
 \item{...}{Additional arguments passed to \code{\link[shiny:shinyApp]{shiny::shinyApp()}}.}
 }

@@ -9,11 +9,11 @@ assess_quality(x, ...)
 \arguments{
 \item{x}{A CpetData or CpetAnalysis object}
 
-\item{...}{Additional arguments passed to methods}
-
+\item{...}{Additional arguments passed to methods, including:
+\describe{
 \item{rpe}{Optional RPE value for maximal criteria assessment}
-
 \item{lactate}{Optional lactate value for maximal criteria assessment}
+}}
 }
 \value{
 A QualityAssessment S7 object

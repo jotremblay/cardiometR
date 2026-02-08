@@ -44,6 +44,13 @@ method(find_peaks, CpetData) <- function(x, averaging = 30, ...) {
     power_peak <- max(power_smooth, na.rm = TRUE)
   }
 
+  # Optional speed peak (treadmill tests)
+  speed_peak <- NULL
+  if ("speed_kmh" %in% names(breaths) && !all(is.na(breaths$speed_kmh))) {
+    speed_smooth <- zoo::rollmean(breaths$speed_kmh, k = k, fill = NA, align = "center")
+    speed_peak <- max(speed_smooth, na.rm = TRUE)
+  }
+
   PeakValues(
     vo2_peak = vo2_peak,
     vo2_kg_peak = vo2_kg_peak,
@@ -51,7 +58,8 @@ method(find_peaks, CpetData) <- function(x, averaging = 30, ...) {
     rer_peak = rer_peak,
     averaging_s = averaging,
     hr_peak = hr_peak,
-    power_peak = power_peak
+    power_peak = power_peak,
+    speed_peak = speed_peak
   )
 }
 
@@ -105,9 +113,33 @@ check_vo2_plateau <- function(x, threshold = 150) {
   breaths <- x@breaths
   stages <- x@stages
 
+  # Attach stage info robustly
+  if (!"stage" %in% names(breaths)) {
+    if (!is.null(stages) && "stage" %in% names(stages)) {
+      if (nrow(stages) == nrow(breaths)) {
+        breaths$stage <- stages$stage
+      } else if ("time_s" %in% names(stages)) {
+        stage_times <- stages$time_s
+        stage_order <- order(stage_times)
+        stage_times <- stage_times[stage_order]
+        stage_values <- stages$stage[stage_order]
+        idx <- findInterval(breaths$time_s, stage_times)
+        idx[idx == 0] <- 1
+        idx[idx > length(stage_times)] <- length(stage_times)
+        breaths$stage <- stage_values[idx]
+      }
+    }
+  }
+
+  if (!"stage" %in% names(breaths)) {
+    return(list(
+      plateau = NA,
+      message = "Insufficient stage data to assess plateau"
+    ))
+  }
+
   # Get last two stages
   stage_summary <- breaths |>
-    dplyr::left_join(stages, by = "time_s") |>
     dplyr::group_by(stage) |>
     dplyr::summarise(
       mean_vo2 = mean(vo2_ml, na.rm = TRUE),

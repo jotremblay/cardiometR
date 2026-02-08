@@ -11,7 +11,9 @@ build_template_data(
   clinical_notes,
   interpretation,
   athlete_sport = NULL,
-  athlete_level = "recreational"
+  athlete_level = "recreational",
+  report_sections = NULL,
+  signature_date = NULL
 )
 }
 \arguments{

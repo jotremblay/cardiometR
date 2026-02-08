@@ -20,7 +20,8 @@ mod_participant_ui <- function(id, language = "en") {
         ns("edit_toggle"),
         label = NULL,
         icon = shiny::icon("edit"),
-        class = "btn-sm btn-outline-secondary"
+        class = "btn-sm btn-outline-secondary",
+        title = tr("submit", language)
       )
     ),
     bslib::card_body(

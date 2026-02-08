@@ -110,13 +110,6 @@ extract_stages_from_power <- function(breaths, protocol, stage_duration) {
     return(extract_stages_by_time(breaths, stage_duration))
   }
 
-  # Detect power changes
-  power_changes <- power_data |>
-    dplyr::mutate(
-      power_diff = power_w - dplyr::lag(power_w, default = 0),
-      power_change = abs(power_diff) > 10  # Threshold for detecting new stage
-    )
-
   # For step protocol, group by power level
   if (protocol %in% c("step", "auto")) {
     # Round power to nearest increment (e.g., 25W or 30W stages)
@@ -124,18 +117,68 @@ extract_stages_from_power <- function(breaths, protocol, stage_duration) {
 
     stages <- breaths |>
       dplyr::mutate(
-        power_rounded = round(power_w / power_increment) * power_increment,
-        stage = dplyr::dense_rank(power_rounded)
+        power_rounded = ifelse(is.na(power_w), NA_real_,
+                               round(power_w / power_increment) * power_increment)
       ) |>
       dplyr::mutate(
-        stage = dplyr::if_else(is.na(stage), 0L, as.integer(stage)),
+        stage = dplyr::if_else(
+          !is.na(power_rounded) & power_rounded > 0,
+          as.integer(match(power_rounded, sort(unique(power_rounded[power_rounded > 0])))),
+          0L
+        ),
         stage_name = dplyr::if_else(stage == 0, "Rest", paste("Stage", stage))
       ) |>
       dplyr::select(time_s, stage, stage_name, power_rounded)
 
   } else {
-    # Ramp - use time windows
-    stages <- extract_stages_by_time(breaths, stage_duration)
+    # Ramp - smooth power and detect increments
+    avg_interval <- mean(diff(power_data$time_s), na.rm = TRUE)
+    if (is.na(avg_interval) || avg_interval <= 0) {
+      avg_interval <- 1
+    }
+
+    smooth_window_s <- min(30, max(10, stage_duration / 6))
+    k <- max(5, round(smooth_window_s / avg_interval))
+    k <- min(k, nrow(power_data))
+
+    power_smooth <- if (k >= 5) {
+      zoo::rollmean(power_data$power_w, k = k, fill = NA, align = "center")
+    } else {
+      power_data$power_w
+    }
+
+    power_used <- ifelse(is.na(power_smooth), power_data$power_w, power_smooth)
+    power_increment <- detect_power_increment(power_used)
+
+    if (is.null(power_increment) || is.na(power_increment) || power_increment <= 0) {
+      stages <- extract_stages_by_time(breaths, stage_duration)
+    } else {
+      # Merge smoothed power back to full breaths by time
+      power_smoothed <- tibble::tibble(
+        time_s = power_data$time_s,
+        power_used = power_used
+      )
+
+      breaths_with_power <- breaths |>
+        dplyr::left_join(power_smoothed, by = "time_s") |>
+        dplyr::mutate(
+          power_used = ifelse(is.na(power_used), power_w, power_used),
+          power_rounded = ifelse(
+            is.na(power_used),
+            NA_real_,
+            round(power_used / power_increment) * power_increment
+          ),
+          stage = dplyr::if_else(
+            !is.na(power_rounded) & power_rounded > 0,
+            as.integer(match(power_rounded, sort(unique(power_rounded[power_rounded > 0])))),
+            0L
+          ),
+          stage_name = dplyr::if_else(stage == 0, "Rest", paste("Stage", stage))
+        ) |>
+        dplyr::select(time_s, stage, stage_name, power_rounded)
+
+      stages <- breaths_with_power
+    }
   }
 
   stages
@@ -161,6 +204,114 @@ extract_stages_by_time <- function(breaths, stage_duration) {
     dplyr::select(time_s, stage, stage_name)
 
   stages
+}
+
+
+#' Detect Protocol Configuration from CPET Data
+#'
+#' Automatically detect exercise protocol parameters (modality, stage duration,
+#' intensity increment, starting intensity) from breath-by-breath CPET data.
+#'
+#' @param data A CpetData S7 object containing breath-by-breath measurements
+#'
+#' @return A ProtocolConfig S7 object with detected parameters
+#'
+#' @details
+#' The detection algorithm:
+#' 1. Determines modality from available columns (speed for treadmill, power for cycling)
+#' 2. Rounds the intensity signal to detect plateaus (5W for cycling, 0.5 km/h for treadmill)
+#' 3. Uses run-length encoding on the exercise portion to find stage boundaries
+#' 4. Estimates stage duration from the median plateau length (rounded to nearest 30s)
+#' 5. Estimates increment from the median positive difference between consecutive levels
+#'
+#' @examples
+#' \dontrun{
+#' config <- detect_protocol_config(cpet_data)
+#' config@modality
+#' config@stage_duration_s
+#' }
+#'
+#' @export
+detect_protocol_config <- function(data) {
+  breaths <- data@breaths
+
+  # Determine modality
+
+  has_speed <- "speed_kmh" %in% names(breaths) &&
+    any(!is.na(breaths$speed_kmh) & breaths$speed_kmh > 0)
+  has_power <- "power_w" %in% names(breaths) &&
+    any(!is.na(breaths$power_w) & breaths$power_w > 0)
+
+  modality <- if (has_speed) "treadmill" else if (has_power) "cycling" else "other"
+
+  # Get intensity signal and rounding unit
+  if (modality == "treadmill") {
+    intensity <- breaths$speed_kmh
+    round_unit <- 0.5
+  } else if (modality == "cycling") {
+    intensity <- breaths$power_w
+    round_unit <- 5
+  } else {
+    return(ProtocolConfig(modality = "other"))
+  }
+
+  # Round intensity to detect plateaus
+  intensity_rounded <- round(intensity / round_unit) * round_unit
+
+  # Get exercise portion only (intensity > 0)
+  exercise_mask <- !is.na(intensity_rounded) & intensity_rounded > 0
+  time_ex <- breaths$time_s[exercise_mask]
+  intensity_ex <- intensity_rounded[exercise_mask]
+
+  if (length(intensity_ex) < 10) {
+    return(ProtocolConfig(modality = modality))
+  }
+
+  # Detect level changes using run-length encoding
+  rle_result <- rle(intensity_ex)
+  levels <- rle_result$values
+
+  # Calculate duration of each plateau using time differences
+  cum_lengths <- cumsum(rle_result$lengths)
+  start_indices <- c(1, cum_lengths[-length(cum_lengths)] + 1)
+
+  plateau_durations <- purrr::map2_dbl(start_indices, cum_lengths, function(s, e) {
+    time_ex[e] - time_ex[s]
+  })
+
+  # Filter out very short plateaus (noise) - keep plateaus > 30s
+  valid <- plateau_durations > 30
+  levels <- levels[valid]
+  plateau_durations <- plateau_durations[valid]
+
+  if (length(levels) < 2) {
+    return(ProtocolConfig(modality = modality))
+  }
+
+  # Detect stage duration: median of plateau durations, rounded to nearest 30s
+  stage_duration <- round(stats::median(plateau_durations) / 30) * 30
+  stage_duration <- max(stage_duration, 60)
+
+  # Detect increment: median difference between consecutive levels
+  level_diffs <- diff(levels)
+  positive_diffs <- level_diffs[level_diffs > 0]
+
+  increment <- if (length(positive_diffs) == 0) {
+    round_unit
+  } else {
+    inc <- round(stats::median(positive_diffs) / round_unit) * round_unit
+    max(inc, round_unit)
+  }
+
+  # Starting intensity: first level
+  starting_intensity <- levels[1]
+
+  ProtocolConfig(
+    modality = modality,
+    starting_intensity = starting_intensity,
+    increment_size = increment,
+    stage_duration_s = stage_duration
+  )
 }
 
 

@@ -13,3 +13,5 @@
 ^pkgdown$
 ^\.lintr$
 ^codecov\.yml$
+^cpet_report_fr\.pdf$
+^todo_next\.md$

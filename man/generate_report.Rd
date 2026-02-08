@@ -12,7 +12,9 @@ generate_report(
   athlete_sport = NULL,
   athlete_level = "recreational",
   clinical_notes = NULL,
-  interpretation = NULL
+  interpretation = NULL,
+  report_sections = NULL,
+  signature_date = NULL
 )
 }
 \arguments{
@@ -33,6 +35,10 @@ generate_report(
 \item{clinical_notes}{Optional character string with clinical notes}
 
 \item{interpretation}{Optional list with interpretation sections}
+
+\item{report_sections}{Optional character vector of sections to include
+(e.g., c("protocol_details", "stage_table", "thresholds", "graphs")).
+When NULL, all sections with data are included.}
 }
 \value{
 Invisibly returns the output file path

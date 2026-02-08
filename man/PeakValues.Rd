@@ -3,17 +3,6 @@
 \name{PeakValues}
 \alias{PeakValues}
 \title{Peak Values Class}
-\usage{
-PeakValues(
-  vo2_peak = integer(0),
-  vo2_kg_peak = integer(0),
-  ve_peak = integer(0),
-  rer_peak = integer(0),
-  averaging_s = integer(0),
-  hr_peak = integer(0),
-  power_peak = integer(0)
-)
-}
 \arguments{
 \item{vo2_peak}{Peak oxygen uptake in mL/min}
 
@@ -28,6 +17,8 @@ PeakValues(
 \item{hr_peak}{Optional peak heart rate in bpm}
 
 \item{power_peak}{Optional peak power output in watts}
+
+\item{speed_peak}{Optional peak speed in km/h (treadmill tests)}
 }
 \value{
 A PeakValues S7 object

@@ -32,7 +32,12 @@ read_cosmed <- function(file, sheet = "Data") {
   }
 
   # Read raw data without column names
-  raw <- readxl::read_excel(file, sheet = sheet, col_names = FALSE)
+  raw <- readxl::read_excel(
+    file,
+    sheet = sheet,
+    col_names = FALSE,
+    .name_repair = "minimal"
+  )
 
   # Parse participant information
   participant <- parse_cosmed_participant(raw)
@@ -43,14 +48,17 @@ read_cosmed <- function(file, sheet = "Data") {
   # Parse breath-by-breath data
   breaths <- parse_cosmed_breaths(raw)
 
+  # Detect if data is breath-by-breath or time-averaged
+  bxb_detection <- detect_data_type(breaths)
+
   # Create and return CpetData object
   CpetData(
     participant = participant,
     metadata = metadata,
     breaths = breaths,
     stages = NULL,
-    is_averaged = FALSE,
-    averaging_window = NULL
+    is_averaged = bxb_detection$is_averaged,
+    averaging_window = bxb_detection$averaging_window
   )
 }
 
@@ -209,6 +217,7 @@ parse_cosmed_breaths <- function(raw) {
     "PeO2" = "peto2_mmhg",
     "PeCO2" = "petco2_mmhg",
     "SpO2" = "spo2_pct",
+    "Speed" = "speed_kmh",
     "Revolution" = "rpm",
     "Phase" = "phase",
     "Marker" = "marker",
@@ -227,7 +236,7 @@ parse_cosmed_breaths <- function(raw) {
   # Select and order standard columns (keeping only what exists)
   standard_cols <- c(
     "time_s", "vo2_ml", "vco2_ml", "ve_l", "rer",
-    "hr_bpm", "power_w", "bf", "vt_l",
+    "hr_bpm", "power_w", "speed_kmh", "bf", "vt_l",
     "ve_vo2", "ve_vco2", "vo2_kg",
     "peto2_mmhg", "petco2_mmhg", "spo2_pct",
     "phase", "marker", "mets", "vo2_hr", "rpm"
@@ -237,17 +246,38 @@ parse_cosmed_breaths <- function(raw) {
   breaths <- breath_data |>
     dplyr::select(dplyr::any_of(available_cols))
 
+  # Validate required columns
+  required_cols <- c("time_s", "vo2_ml", "vco2_ml", "ve_l", "rer")
+  missing_required <- setdiff(required_cols, names(breaths))
+  if (length(missing_required) > 0) {
+    cli::cli_abort("COSMED file missing required columns: {paste(missing_required, collapse = ', ')}")
+  }
+
   # Remove rows with NA in required columns
   breaths <- breaths |>
-    dplyr::filter(!is.na(time_s), !is.na(vo2_ml))
+    dplyr::filter(
+      !is.na(.data[["time_s"]]),
+      !is.na(.data[["vo2_ml"]]),
+      !is.na(.data[["vco2_ml"]]),
+      !is.na(.data[["ve_l"]]),
+      !is.na(.data[["rer"]])
+    )
 
-  # Convert time from Excel day fraction to seconds
-
+  # Convert time from Excel day fraction to seconds when needed
   # Excel stores time as fraction of a day (1 = 24 hours = 86400 seconds)
-  # The time column 't' in COSMED is cumulative test time in day fractions
   if ("time_s" %in% names(breaths)) {
-    breaths <- breaths |>
-      dplyr::mutate(time_s = time_s * 86400)
+    max_time <- suppressWarnings(max(breaths$time_s, na.rm = TRUE))
+    if (is.finite(max_time) && max_time <= 2) {
+      breaths <- breaths |>
+        dplyr::mutate(time_s = time_s * 86400)
+    }
+  }
+
+  # Ensure required columns have non-missing data
+  for (col in required_cols) {
+    if (all(is.na(breaths[[col]]))) {
+      cli::cli_abort("Required column {col} contains only missing values")
+    }
   }
 
   # Convert phase to character if present
@@ -313,7 +343,12 @@ detect_cpet_format <- function(file) {
     # Try to detect from content
     tryCatch({
       # Read first few rows
-      preview <- readxl::read_excel(file, n_max = 5, col_names = FALSE)
+      preview <- readxl::read_excel(
+        file,
+        n_max = 5,
+        col_names = FALSE,
+        .name_repair = "minimal"
+      )
 
       # Check for COSMED-specific patterns
       # COSMED has "ID1" in first cell, metadata in specific layout
@@ -331,4 +366,36 @@ detect_cpet_format <- function(file) {
   }
 
   cli::cli_abort("Cannot detect format for file: {file}")
+}
+
+
+#' Detect if CPET data is breath-by-breath or time-averaged
+#'
+#' @param breaths Data frame with breath-by-breath data
+#' @return List with is_averaged (logical) and averaging_window (numeric or NULL)
+#' @keywords internal
+detect_data_type <- function(breaths) {
+  if (nrow(breaths) < 10 || !"time_s" %in% names(breaths)) {
+    return(list(is_averaged = FALSE, averaging_window = NULL))
+  }
+
+  intervals <- diff(breaths$time_s)
+  intervals <- intervals[intervals > 0 & intervals < 60]
+
+  if (length(intervals) < 5) {
+    return(list(is_averaged = FALSE, averaging_window = NULL))
+  }
+
+  median_interval <- stats::median(intervals)
+  cv <- stats::sd(intervals) / mean(intervals)
+
+  # Regular intervals (CV < 5%) with window >= 3s suggest time-averaged
+  common_windows <- c(5, 10, 15, 20, 30)
+  matched_window <- common_windows[which.min(abs(common_windows - median_interval))]
+
+  if (cv < 0.05 && abs(median_interval - matched_window) < 1) {
+    list(is_averaged = TRUE, averaging_window = matched_window)
+  } else {
+    list(is_averaged = FALSE, averaging_window = NULL)
+  }
 }

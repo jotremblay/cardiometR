@@ -9,17 +9,14 @@ assess_maximal_criteria(x, ...)
 \arguments{
 \item{x}{A CpetData object or CpetAnalysis object}
 
-\item{...}{Additional arguments passed to methods}
-
+\item{...}{Additional arguments passed to methods, including:
+\describe{
 \item{rpe}{Optional RPE value reported by participant (6-20 Borg scale)}
-
 \item{lactate}{Optional blood lactate concentration in mmol/L}
-
 \item{rer_threshold}{RER threshold for maximal effort (default 1.10)}
-
 \item{hr_threshold_pct}{HR threshold as percentage of predicted max (default 85)}
-
 \item{plateau_threshold}{Maximum VO2 increase to indicate plateau (default 150 mL/min)}
+}}
 }
 \value{
 An ExerciseQualityCriteria S7 object

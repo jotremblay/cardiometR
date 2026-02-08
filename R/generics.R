@@ -91,6 +91,7 @@ validate <- new_generic("validate", "x")
 #' print(thresholds@vt1_vo2)
 #' }
 #'
+#' @importFrom stats complete.cases
 #' @export
 detect_thresholds <- new_generic("detect_thresholds", "x")
 
@@ -173,12 +174,14 @@ summarize_stages <- new_generic("summarize_stages", "x")
 #' Evaluate ACSM criteria for determining if a CPET test achieved maximal effort.
 #'
 #' @param x A CpetData object or CpetAnalysis object
-#' @param rpe Optional RPE value reported by participant (6-20 Borg scale)
-#' @param lactate Optional blood lactate concentration in mmol/L
-#' @param rer_threshold RER threshold for maximal effort (default 1.10)
-#' @param hr_threshold_pct HR threshold as percentage of predicted max (default 85)
-#' @param plateau_threshold Maximum VO2 increase to indicate plateau (default 150 mL/min)
-#' @param ... Additional arguments passed to methods
+#' @param ... Additional arguments passed to methods, including:
+#'   \describe{
+#'     \item{rpe}{Optional RPE value reported by participant (6-20 Borg scale)}
+#'     \item{lactate}{Optional blood lactate concentration in mmol/L}
+#'     \item{rer_threshold}{RER threshold for maximal effort (default 1.10)}
+#'     \item{hr_threshold_pct}{HR threshold as percentage of predicted max (default 85)}
+#'     \item{plateau_threshold}{Maximum VO2 increase to indicate plateau (default 150 mL/min)}
+#'   }
 #'
 #' @return An ExerciseQualityCriteria S7 object
 #'
@@ -213,9 +216,11 @@ assess_maximal_criteria <- new_generic("assess_maximal_criteria", "x")
 #' relationship and test parameters.
 #'
 #' @param x A CpetData object with stages defined
-#' @param modality Exercise modality: "cycling", "treadmill", or "auto" (default)
-#' @param expected_slope Expected VO2/W slope (NULL = use default for modality)
-#' @param ... Additional arguments passed to methods
+#' @param ... Additional arguments passed to methods, including:
+#'   \describe{
+#'     \item{modality}{Exercise modality: "cycling", "treadmill", or "auto" (default)}
+#'     \item{expected_slope}{Expected VO2/W slope (NULL = use default for modality)}
+#'   }
 #'
 #' @return A ProtocolQuality S7 object
 #'
@@ -249,8 +254,10 @@ assess_protocol_quality <- new_generic("assess_protocol_quality", "x")
 #' missing data, and aberrant breaths.
 #'
 #' @param x A CpetData object
-#' @param aberrant_threshold SD threshold for aberrant breath detection (default 3)
-#' @param ... Additional arguments passed to methods
+#' @param ... Additional arguments passed to methods, including:
+#'   \describe{
+#'     \item{aberrant_threshold}{SD threshold for aberrant breath detection (default 3)}
+#'   }
 #'
 #' @return A DataQualityReport S7 object
 #'
@@ -286,9 +293,11 @@ assess_data_quality <- new_generic("assess_data_quality", "x")
 #' a comprehensive quality assessment.
 #'
 #' @param x A CpetData or CpetAnalysis object
-#' @param rpe Optional RPE value for maximal criteria assessment
-#' @param lactate Optional lactate value for maximal criteria assessment
-#' @param ... Additional arguments passed to methods
+#' @param ... Additional arguments passed to methods, including:
+#'   \describe{
+#'     \item{rpe}{Optional RPE value for maximal criteria assessment}
+#'     \item{lactate}{Optional lactate value for maximal criteria assessment}
+#'   }
 #'
 #' @return A QualityAssessment S7 object
 #'

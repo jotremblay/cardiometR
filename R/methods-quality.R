@@ -128,8 +128,14 @@ detect_vo2_plateau <- function(breaths, threshold = 150, window_s = 30) {
     return(list(detected = FALSE, delta = NA_real_))
   }
 
-  # Use rolling average to smooth data
-  k <- min(30, n %/% 4)  # Window for rolling average
+  # Use rolling average to smooth data based on window_s
+  avg_interval <- mean(diff(breaths$time_s), na.rm = TRUE)
+  if (is.na(avg_interval) || avg_interval <= 0) {
+    avg_interval <- 1
+  }
+
+  k <- max(5, round(window_s / avg_interval))
+  k <- min(k, n %/% 2)
 
   if (k < 5) {
     return(list(detected = FALSE, delta = NA_real_))
@@ -392,7 +398,16 @@ analyze_vo2_workload_relationship <- function(breaths, expected_slope, modality)
   }
 
   result$actual_slope <- coef(fit)[2]
-  result$r_squared <- summary(fit)$r.squared
+
+  # Avoid summary.lm on very small samples or near-perfect fits
+  n_fit <- length(exercise_vo2)
+  if (n_fit >= 5) {
+    sst <- sum((exercise_vo2 - mean(exercise_vo2, na.rm = TRUE))^2, na.rm = TRUE)
+    if (sst > 0) {
+      sse <- sum(stats::resid(fit)^2, na.rm = TRUE)
+      result$r_squared <- 1 - sse / sst
+    }
+  }
 
   if (!is.null(expected_slope)) {
     result$deviation_pct <- 100 * (result$actual_slope - expected_slope) / expected_slope
@@ -417,10 +432,11 @@ calculate_stage_expected_vo2 <- function(breaths, expected_slope) {
     return(NULL)
   }
 
-  # Group by power levels (rounded to nearest 25W)
+  # Group by power levels (rounded to detected increment)
+  power_increment <- detect_power_increment(breaths$power_w)
   breaths_with_stage <- breaths |>
     dplyr::filter(!is.na(power_w), power_w > 0) |>
-    dplyr::mutate(stage_power = round(power_w / 25) * 25) |>
+    dplyr::mutate(stage_power = round(power_w / power_increment) * power_increment) |>
     dplyr::filter(stage_power > 0)
 
   if (nrow(breaths_with_stage) == 0) {
@@ -459,10 +475,11 @@ analyze_stage_consistency <- function(breaths) {
     return(result)
   }
 
-  # Group by power levels
+  # Group by power levels using detected increment
+  power_increment <- detect_power_increment(breaths$power_w)
   breaths_with_stage <- breaths |>
     dplyr::filter(!is.na(power_w), power_w > 0) |>
-    dplyr::mutate(stage_power = round(power_w / 25) * 25) |>
+    dplyr::mutate(stage_power = round(power_w / power_increment) * power_increment) |>
     dplyr::filter(stage_power > 0)
 
   if (nrow(breaths_with_stage) == 0) {

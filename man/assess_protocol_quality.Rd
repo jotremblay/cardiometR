@@ -9,11 +9,11 @@ assess_protocol_quality(x, ...)
 \arguments{
 \item{x}{A CpetData object with stages defined}
 
-\item{...}{Additional arguments passed to methods}
-
+\item{...}{Additional arguments passed to methods, including:
+\describe{
 \item{modality}{Exercise modality: "cycling", "treadmill", or "auto" (default)}
-
 \item{expected_slope}{Expected VO2/W slope (NULL = use default for modality)}
+}}
 }
 \value{
 A ProtocolQuality S7 object

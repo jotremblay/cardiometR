@@ -18,6 +18,7 @@
 #' @param date_of_birth Optional date of birth (NULL if not specified)
 #'
 #' @return A Participant S7 object
+#' @usage NULL
 #'
 #' @examples
 #' participant <- Participant(
@@ -89,6 +90,7 @@ Participant <- new_class("Participant",
 #' @param technician Optional name of technician who conducted the test
 #'
 #' @return A CpetMetadata S7 object
+#' @usage NULL
 #'
 #' @examples
 #' metadata <- CpetMetadata(
@@ -364,6 +366,7 @@ EconomyMetrics <- new_class("EconomyMetrics",
 #' @param averaging_window Numeric window size in seconds (if averaged)
 #'
 #' @return A CpetData S7 object
+#' @usage NULL
 #'
 #' @examples
 #' \dontrun{
@@ -433,8 +436,10 @@ CpetData <- new_class("CpetData",
 #' @param averaging_s Averaging window used to determine peaks (seconds)
 #' @param hr_peak Optional peak heart rate in bpm
 #' @param power_peak Optional peak power output in watts
+#' @param speed_peak Optional peak speed in km/h (treadmill tests)
 #'
 #' @return A PeakValues S7 object
+#' @usage NULL
 #'
 #' @export
 PeakValues <- new_class("PeakValues",
@@ -484,6 +489,14 @@ PeakValues <- new_class("PeakValues",
       validator = function(value) {
         if (!is.null(value) && length(value) > 0 && !anyNA(value) && (value < 0 || value > 600)) {
           return("power_peak should be between 0 and 600 W")
+        }
+        NULL
+      }
+    ),
+    speed_peak = new_property(class_numeric | NULL,
+      validator = function(value) {
+        if (!is.null(value) && length(value) > 0 && !anyNA(value) && (value < 0 || value > 40)) {
+          return("speed_peak should be between 0 and 40 km/h")
         }
         NULL
       }
@@ -590,6 +603,7 @@ ValidationReport <- new_class("ValidationReport",
 #' @param economy_metrics Optional EconomyMetrics S7 object
 #'
 #' @return A CpetAnalysis S7 object
+#' @usage NULL
 #'
 #' @export
 CpetAnalysis <- new_class("CpetAnalysis",
@@ -617,6 +631,7 @@ CpetAnalysis <- new_class("CpetAnalysis",
 #' @param language Report language: "en" (English) or "fr" (French)
 #' @param institution Optional institution name for report header
 #' @param lab_name Optional laboratory name
+#' @param lab_url Optional URL for the laboratory website
 #' @param logo_path Optional path to logo image file
 #' @param technician Optional technician name
 #' @param output_format Output format (default "pdf")
@@ -645,6 +660,7 @@ ReportConfig <- new_class("ReportConfig",
     ),
     institution = class_character | NULL,
     lab_name = class_character | NULL,
+    lab_url = class_character | NULL,
     logo_path = class_character | NULL,
     technician = class_character | NULL,
     output_format = new_property(class_character, default = "pdf"),
@@ -775,6 +791,7 @@ ExerciseQualityCriteria <- new_class("ExerciseQualityCriteria",
 #' @param stage_details Data frame with expected vs actual VO2 per stage
 #'
 #' @return A ProtocolQuality S7 object
+#' @usage NULL
 #'
 #' @export
 ProtocolQuality <- new_class("ProtocolQuality",

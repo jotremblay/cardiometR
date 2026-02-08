@@ -14,43 +14,75 @@
 #'
 #' @keywords internal
 calculate_stage_averages <- function(breaths, window_seconds = 30) {
-  # Identify unique power stages
- power_stages <- unique(breaths$power_w)
-  power_stages <- sort(power_stages[!is.na(power_stages)])
+  if (nrow(breaths) == 0 || !"time_s" %in% names(breaths)) {
+    return(tibble::tibble())
+  }
 
-  # For each stage, get the last 30 seconds of data
-  stage_data <- lapply(power_stages, function(pwr) {
-    stage_breaths <- breaths |>
-      dplyr::filter(power_w == pwr)
+  breaths <- breaths |>
+    dplyr::arrange(time_s)
 
-    if (nrow(stage_breaths) == 0) return(NULL)
+  group_col <- NULL
 
-    # Get max time for this stage and filter to last 30 seconds
-    max_time <- max(stage_breaths$time_s, na.rm = TRUE)
-    min_time_window <- max_time - window_seconds
-
-    stage_end <- stage_breaths |>
-      dplyr::filter(time_s >= min_time_window)
-
-    if (nrow(stage_end) == 0) stage_end <- stage_breaths
-
-    # Calculate means for all numeric columns
-    numeric_cols <- names(stage_end)[sapply(stage_end, is.numeric)]
-
-    averages <- stage_end |>
-      dplyr::summarise(
-        dplyr::across(dplyr::all_of(numeric_cols), ~ mean(.x, na.rm = TRUE))
-      ) |>
+  # Prefer explicit stage annotations if present
+  if ("stage" %in% names(breaths) && any(!is.na(breaths$stage))) {
+    breaths <- breaths |>
+      dplyr::mutate(.stage_group = stage)
+    group_col <- ".stage_group"
+  } else if ("power_w" %in% names(breaths) && any(!is.na(breaths$power_w))) {
+    # Use rounded power stages when repeated levels exist
+    power_increment <- detect_power_increment(breaths$power_w[!is.na(breaths$power_w)])
+    breaths <- breaths |>
       dplyr::mutate(
-        power_w = pwr,
-        n_breaths = nrow(stage_end)
+        .stage_power = ifelse(is.na(power_w), NA_real_,
+                              round(power_w / power_increment) * power_increment)
       )
 
-    averages
-  })
+    unique_stage_power <- sort(unique(breaths$.stage_power[!is.na(breaths$.stage_power)]))
+    avg_breaths_per_stage <- if (length(unique_stage_power) > 0) {
+      nrow(breaths) / length(unique_stage_power)
+    } else {
+      0
+    }
 
-  # Combine all stages
-  dplyr::bind_rows(stage_data) |>
+    if (length(unique_stage_power) <= 20 || avg_breaths_per_stage >= 5) {
+      breaths <- breaths |>
+        dplyr::mutate(.stage_group = .stage_power)
+      group_col <- ".stage_group"
+    }
+  }
+
+  # Fallback to time-based bins for ramp/no-power data
+  if (is.null(group_col)) {
+    breaths <- breaths |>
+      dplyr::mutate(
+        .stage_group = floor(time_s / window_seconds)
+      )
+    group_col <- ".stage_group"
+  }
+
+  # Summarize each group using the last window_seconds
+  stage_avg <- breaths |>
+    dplyr::group_by(.data[[group_col]]) |>
+    dplyr::group_modify(function(df, ...) {
+      max_time <- max(df$time_s, na.rm = TRUE)
+      min_time_window <- max_time - window_seconds
+      stage_end <- df |>
+        dplyr::filter(time_s >= min_time_window)
+      if (nrow(stage_end) == 0) stage_end <- df
+
+      numeric_cols <- names(stage_end)[sapply(stage_end, is.numeric)]
+      numeric_cols <- setdiff(numeric_cols, c(".stage_group", ".stage_power", "stage"))
+
+      stage_end |>
+        dplyr::summarise(
+          dplyr::across(dplyr::all_of(numeric_cols), ~ mean(.x, na.rm = TRUE)),
+          n_breaths = nrow(stage_end),
+          .groups = "drop"
+        )
+    }) |>
+    dplyr::ungroup()
+
+  stage_avg |>
     dplyr::filter(!is.na(vo2_ml))
 }
 
@@ -84,6 +116,12 @@ plot_cpet_panel <- function(x,
                             time_axis = "auto",
                             language = "en",
                             averaging_window = 30) {
+  if (!requireNamespace("patchwork", quietly = TRUE)) {
+    cli::cli_abort(c(
+      "The {.pkg patchwork} package is required for the 9-panel plot",
+      "i" = "Install it with {.code install.packages('patchwork')}"
+    ))
+  }
   # Extract data from CpetAnalysis if needed
   if (inherits(x, "CpetAnalysis") || grepl("CpetAnalysis$", class(x)[1])) {
     data <- x@data
@@ -113,6 +151,32 @@ plot_cpet_panel <- function(x,
     stage_avg <- stage_avg |>
       dplyr::mutate(time_plot = time_s)
     time_label <- if (language == "fr") "Temps (s)" else "Time (s)"
+  }
+
+  peak_point <- NULL
+  if (show_peaks) {
+    peaks <- NULL
+    if (inherits(x, "CpetAnalysis") || grepl("CpetAnalysis$", class(x)[1])) {
+      peaks <- x@peaks
+    }
+    if (is.null(peaks)) {
+      peaks <- tryCatch(find_peaks(data), error = function(e) NULL)
+    }
+
+    if (!is.null(peaks) && length(peaks@vo2_peak) > 0 && !anyNA(peaks@vo2_peak)) {
+      peak_idx <- which.min(abs(breaths$vo2_ml - peaks@vo2_peak))
+      peak_time_s <- breaths$time_s[peak_idx]
+      peak_power <- if ("power_w" %in% names(breaths)) breaths$power_w[peak_idx] else NA_real_
+      peak_hr <- if (!is.null(peaks@hr_peak)) peaks@hr_peak else NA_real_
+
+      peak_point <- list(
+        time_s = peak_time_s,
+        time_plot = if (time_axis == "minutes") peak_time_s / 60 else peak_time_s,
+        power_w = peak_power,
+        vo2_peak = peaks@vo2_peak,
+        hr_peak = peak_hr
+      )
+    }
   }
 
   # Common theme - clean and professional
@@ -178,6 +242,26 @@ plot_cpet_panel <- function(x,
         y = expression(VO[2]~(mL/min))
       ) +
       theme_cpet
+    if (!is.null(peak_point) && length(peak_point$power_w) > 0 &&
+        !anyNA(peak_point$power_w)) {
+      p2 <- p2 +
+        ggplot2::geom_point(
+          ggplot2::aes(x = peak_point$power_w, y = peak_point$vo2_peak),
+          color = "#C0392B",
+          size = 3
+        ) +
+        ggplot2::annotate(
+          "text",
+          x = peak_point$power_w,
+          y = peak_point$vo2_peak,
+          label = if (language == "fr") "VO[2]~pic" else "VO[2]*peak",
+          parse = TRUE,
+          hjust = -0.1,
+          vjust = -0.8,
+          size = 3,
+          color = "#C0392B"
+        )
+    }
   } else {
     p2 <- ggplot2::ggplot(stage_avg, ggplot2::aes(x = time_plot, y = vo2_ml)) +
       ggplot2::geom_point(size = 2.5, alpha = 0.9, color = "#E94F37") +
@@ -188,6 +272,26 @@ plot_cpet_panel <- function(x,
         y = expression(VO[2]~(mL/min))
       ) +
       theme_cpet
+    if (!is.null(peak_point) && length(peak_point$time_plot) > 0 &&
+        !anyNA(peak_point$time_plot)) {
+      p2 <- p2 +
+        ggplot2::geom_point(
+          ggplot2::aes(x = peak_point$time_plot, y = peak_point$vo2_peak),
+          color = "#C0392B",
+          size = 3
+        ) +
+        ggplot2::annotate(
+          "text",
+          x = peak_point$time_plot,
+          y = peak_point$vo2_peak,
+          label = if (language == "fr") "VO[2]~pic" else "VO[2]*peak",
+          parse = TRUE,
+          hjust = -0.1,
+          vjust = -0.8,
+          size = 3,
+          color = "#C0392B"
+        )
+    }
   }
 
   # Panel 3: VE vs VCO2 - LINEAR RELATIONSHIP (VE/VCO2 slope)
@@ -331,6 +435,26 @@ plot_cpet_panel <- function(x,
         y = if (language == "fr") "FC (bpm)" else "HR (bpm)"
       ) +
       theme_cpet
+    if (!is.null(peak_point) && length(peak_point$power_w) > 0 &&
+        !anyNA(peak_point$power_w) && length(peak_point$hr_peak) > 0 &&
+        !anyNA(peak_point$hr_peak)) {
+      p8 <- p8 +
+        ggplot2::geom_point(
+          ggplot2::aes(x = peak_point$power_w, y = peak_point$hr_peak),
+          color = "#0F766E",
+          size = 3
+        ) +
+        ggplot2::annotate(
+          "text",
+          x = peak_point$power_w,
+          y = peak_point$hr_peak,
+          label = if (language == "fr") "FC max" else "HRpeak",
+          hjust = -0.1,
+          vjust = -0.8,
+          size = 3,
+          color = "#0F766E"
+        )
+    }
   } else if ("hr_bpm" %in% names(stage_avg) && !all(is.na(stage_avg$hr_bpm))) {
     p8 <- ggplot2::ggplot(stage_avg, ggplot2::aes(x = time_plot, y = hr_bpm)) +
       ggplot2::geom_point(size = 2.5, alpha = 0.9, color = "#1B998B") +
@@ -341,6 +465,26 @@ plot_cpet_panel <- function(x,
         y = if (language == "fr") "FC (bpm)" else "HR (bpm)"
       ) +
       theme_cpet
+    if (!is.null(peak_point) && length(peak_point$hr_peak) > 0 &&
+        !anyNA(peak_point$hr_peak) && length(peak_point$time_plot) > 0 &&
+        !anyNA(peak_point$time_plot)) {
+      p8 <- p8 +
+        ggplot2::geom_point(
+          ggplot2::aes(x = peak_point$time_plot, y = peak_point$hr_peak),
+          color = "#0F766E",
+          size = 3
+        ) +
+        ggplot2::annotate(
+          "text",
+          x = peak_point$time_plot,
+          y = peak_point$hr_peak,
+          label = if (language == "fr") "FC max" else "HRpeak",
+          hjust = -0.1,
+          vjust = -0.8,
+          size = 3,
+          color = "#0F766E"
+        )
+    }
   } else {
     p8 <- ggplot2::ggplot() +
       ggplot2::annotate("text", x = 0.5, y = 0.5,

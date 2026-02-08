@@ -4,7 +4,7 @@
 \alias{mod_report_server}
 \title{Report Module Server}
 \usage{
-mod_report_server(id, language, analysis)
+mod_report_server(id, language, analysis, settings = shiny::reactive(list()))
 }
 \arguments{
 \item{id}{Module namespace ID.}

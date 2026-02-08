@@ -26,7 +26,8 @@ Imports:
     typr,
     shiny (>= 1.7.0),
     bslib,
-    DT
+    DT,
+    plotly
 Suggests:
     testthat (>= 3.0.0),
     shinytest2,
@@ -34,13 +35,13 @@ Suggests:
     knitr,
     rmarkdown,
     quarto,
-    plotly,
     patchwork,
     tibble,
     lintr,
     pkgdown,
     scales,
-    glue
+    glue,
+    jsonlite
 Config/testthat/edition: 3
 VignetteBuilder: quarto
 URL: https://github.com/jotremblay/cardiometR

@@ -1,6 +1,8 @@
 # Report Generation Functions for cardiometR
 # Generates bilingual PDF reports using Typst
 
+report_graph_cache <- new.env(parent = emptyenv())
+
 #' Generate CPET Report
 #'
 #' @description
@@ -18,6 +20,9 @@
 #'   (default "recreational")
 #' @param clinical_notes Optional character string with clinical notes
 #' @param interpretation Optional list with interpretation sections
+#' @param report_sections Optional character vector of sections to include
+#'   (e.g., c("protocol_details", "stage_table", "thresholds", "graphs")).
+#'   When NULL, all sections with data are included.
 #'
 #' @return Invisibly returns the output file path
 #'
@@ -46,7 +51,9 @@ generate_report <- function(analysis,
                             athlete_sport = NULL,
                             athlete_level = "recreational",
                             clinical_notes = NULL,
-                            interpretation = NULL) {
+                            interpretation = NULL,
+                            report_sections = NULL,
+                            signature_date = NULL) {
 
   # Validate inputs
   if (!inherits(analysis, "CpetAnalysis") && !grepl("CpetAnalysis$", class(analysis)[1])) {
@@ -73,16 +80,33 @@ generate_report <- function(analysis,
     clinical_notes = clinical_notes,
     interpretation = interpretation,
     athlete_sport = athlete_sport,
-    athlete_level = athlete_level
+    athlete_level = athlete_level,
+    report_sections = report_sections,
+    signature_date = signature_date
   )
 
-  # Generate graphs if requested
+  # Generate graphs if requested (and section is enabled)
   graph_files <- list()
-  if (include_graphs) {
-    graph_files <- generate_report_graphs(analysis, language, athlete_sport, athlete_level)
-    template_data <- c(template_data, graph_files)
+  has_graphs <- FALSE
+  graphs_enabled <- is.null(report_sections) || "graphs" %in% report_sections
+  if (include_graphs && graphs_enabled) {
+    graph_files <- tryCatch(
+      generate_report_graphs(analysis, language, athlete_sport, athlete_level),
+      error = function(e) {
+        cli::cli_warn(c(
+          "Graph generation failed; continuing without graphs.",
+          "i" = e$message
+        ))
+        list()
+      }
+    )
+    if (length(graph_files) > 0) {
+      on.exit(cleanup_temp_files(graph_files), add = TRUE)
+      template_data <- c(template_data, graph_files)
+      has_graphs <- TRUE
+    }
   }
-  template_data$has_graphs <- include_graphs
+  template_data$has_graphs <- has_graphs
 
   # Get template path
   template_path <- get_template_path(config@template)
@@ -94,10 +118,7 @@ generate_report <- function(analysis,
     output_file = output_file
   )
 
-  # Clean up temporary graph files
-  if (include_graphs) {
-    cleanup_temp_files(graph_files)
-  }
+  # Temporary graph files are cleaned via on.exit
 
   cli::cli_alert_success("Report generated: {.file {output_file}}")
   invisible(output_file)
@@ -346,7 +367,8 @@ get_report_labels <- function(language = "en") {
 #' @return Named list for template
 #' @keywords internal
 build_template_data <- function(analysis, config, labels, clinical_notes, interpretation,
-                                athlete_sport = NULL, athlete_level = "recreational") {
+                                athlete_sport = NULL, athlete_level = "recreational",
+                                report_sections = NULL, signature_date = NULL) {
   language <- config@language
   data <- analysis@data
   participant <- data@participant
@@ -376,12 +398,22 @@ build_template_data <- function(analysis, config, labels, clinical_notes, interp
       # Header info
       institution = config@institution %||% "",
       lab_name = config@lab_name %||% "",
+      lab_url = config@lab_url %||% "",
       report_date = format(Sys.Date(), "%Y-%m-%d"),
+      signature_date = format(signature_date %||% Sys.Date(), "%Y-%m-%d"),
       logo_path = config@logo_path,
+      lab_logo_path = {
+        ln <- config@lab_name %||% ""
+        if (length(ln) > 0 && nchar(ln) > 0 && grepl("LPEBA", ln, ignore.case = TRUE)) {
+          system.file("assets", "lpeba_logo.svg", package = "cardiometR")
+        } else {
+          NULL
+        }
+      },
 
-      # Patient info
-      patient_name = participant@name,
-      patient_id = participant@id,
+      # Patient info (escape user data for Typst safety)
+      patient_name = escape_typst(participant@name),
+      patient_id = escape_typst(participant@id),
       patient_dob = if (!is.null(participant@date_of_birth) && length(participant@date_of_birth) > 0) {
         format(participant@date_of_birth, "%Y-%m-%d")
       } else "",
@@ -390,13 +422,22 @@ build_template_data <- function(analysis, config, labels, clinical_notes, interp
       patient_height = participant@height_cm,
       patient_weight = participant@weight_kg,
       patient_bmi = round(bmi, 1),
-      patient_sport = participant@sport %||% "-",
+      patient_sport = escape_typst({
+        sport <- participant@sport %||% ""
+        if (length(sport) > 0 && nchar(sport) > 0) {
+          sport
+        } else if (!is.null(analysis@protocol_config)) {
+          format_modality(analysis@protocol_config@modality, language)
+        } else {
+          "-"
+        }
+      }),
 
       # Test info
       test_date = format(metadata@test_date, "%Y-%m-%d"),
-      test_protocol = metadata@protocol,
-      test_device = metadata@device,
-      test_technician = config@technician %||% metadata@technician %||% "-",
+      test_protocol = escape_typst(gsub("^_+", "", metadata@protocol)),
+      test_device = escape_typst(metadata@device),
+      test_technician = escape_typst(config@technician %||% metadata@technician %||% "-"),
       test_duration = format_duration(max(data@breaths$time_s)),
       test_reason = "-"
     )
@@ -409,15 +450,38 @@ build_template_data <- function(analysis, config, labels, clinical_notes, interp
       round(100 * peaks@hr_peak / predicted$hr_max, 0)
     } else NA
 
+    # Determine modality for labels
+    is_treadmill <- !is.null(analysis@protocol_config) &&
+      analysis@protocol_config@modality == "treadmill"
+
+    # Modality-aware peak card values
+    if (is_treadmill && !is.null(peaks@speed_peak) && length(peaks@speed_peak) > 0) {
+      power_card_value <- round(peaks@speed_peak, 1)
+      power_card_wkg <- ""
+      template_data$label_power_peak <- if (language == "fr") {
+        "Vitesse pic (km/h)"
+      } else {
+        "Peak Velocity (km/h)"
+      }
+      template_data$label_power_peak_row <- if (language == "fr") {
+        "Vitesse pic (km/h)"
+      } else {
+        "Speed peak (km/h)"
+      }
+    } else {
+      power_card_value <- if (!is.null(peaks@power_peak)) round(peaks@power_peak, 0) else "-"
+      power_card_wkg <- if (!is.null(peaks@power_peak)) {
+        paste0(round(peaks@power_peak / participant@weight_kg, 1), " W/kg")
+      } else "-"
+    }
+
     template_data <- c(template_data, list(
       vo2_peak_value = round(peaks@vo2_kg_peak, 1),
       vo2_peak_percent = paste0(vo2_percent, "%"),
       hr_peak_value = if (!is.null(peaks@hr_peak)) round(peaks@hr_peak, 0) else "-",
       hr_peak_percent = if (!is.na(hr_percent)) paste0(hr_percent, "%") else "-",
-      power_peak_value = if (!is.null(peaks@power_peak)) round(peaks@power_peak, 0) else "-",
-      power_peak_wkg = if (!is.null(peaks@power_peak)) {
-        round(peaks@power_peak / participant@weight_kg, 1)
-      } else "-",
+      power_peak_value = power_card_value,
+      power_peak_wkg = power_card_wkg,
 
       # Detailed results
       vo2_peak_abs = round(peaks@vo2_peak, 0),
@@ -433,9 +497,15 @@ build_template_data <- function(analysis, config, labels, clinical_notes, interp
       hr_predicted = round(predicted$hr_max, 0),
       hr_percent = if (!is.na(hr_percent)) hr_percent else "-",
       rer_peak = round(peaks@rer_peak, 2),
-      power_peak = if (!is.null(peaks@power_peak)) round(peaks@power_peak, 0) else "-",
-      power_predicted = round(predicted$power_max, 0),
-      power_percent = if (!is.null(peaks@power_peak)) {
+      power_peak = if (is_treadmill && !is.null(peaks@speed_peak) && length(peaks@speed_peak) > 0) {
+        round(peaks@speed_peak, 1)
+      } else if (!is.null(peaks@power_peak)) {
+        round(peaks@power_peak, 0)
+      } else "-",
+      power_predicted = if (is_treadmill) "-" else round(predicted$power_max, 0),
+      power_percent = if (is_treadmill) {
+        "-"
+      } else if (!is.null(peaks@power_peak)) {
         round(100 * peaks@power_peak / predicted$power_max, 0)
       } else "-",
       o2_pulse = if (!is.null(peaks@hr_peak) && peaks@hr_peak > 0) {
@@ -481,11 +551,11 @@ build_template_data <- function(analysis, config, labels, clinical_notes, interp
       last_meal_hours = ptc@last_meal_hours,
       fatigue_state = format_fatigue_state(ptc@fatigue_state, language),
       medications_taken = ptc@medications_taken,
-      medication_list = if (!is.null(ptc@medication_names) && length(ptc@medication_names) > 0) {
+      medication_list = escape_typst(if (!is.null(ptc@medication_names) && length(ptc@medication_names) > 0) {
         paste(ptc@medication_names, collapse = ", ")
       } else {
         if (language == "fr") "Aucun" else "None"
-      },
+      }),
       caffeine_intake = ptc@caffeine_intake %||% FALSE,
       caffeine_mg = ptc@caffeine_mg
     ))
@@ -497,18 +567,33 @@ build_template_data <- function(analysis, config, labels, clinical_notes, interp
   if (!is.null(analysis@protocol_config)) {
     pc <- analysis@protocol_config
     intensity_unit <- if (pc@modality == "treadmill") "km/h" else "W"
+
+    # Modality-aware intensity labels
+    label_start <- if (pc@modality == "treadmill") {
+      tr("starting_speed", language)
+    } else {
+      tr("starting_power", language)
+    }
+    label_incr <- if (pc@modality == "treadmill") {
+      tr("speed_increment", language)
+    } else {
+      tr("power_increment", language)
+    }
+
     template_data <- c(template_data, list(
       has_protocol_details = TRUE,
       protocol_modality = pc@modality,
       protocol_modality_label = format_modality(pc@modality, language),
+      label_starting_intensity = label_start,
+      label_increment = label_incr,
       starting_intensity = pc@starting_intensity,
       intensity_unit = intensity_unit,
       increment_size = pc@increment_size,
       stage_duration_s = pc@stage_duration_s,
       starting_grade = pc@starting_grade,
       grade_increment = pc@grade_increment,
-      equipment_model = pc@equipment_model %||% "-",
-      analyzer_model = pc@analyzer_model %||% "-"
+      equipment_model = escape_typst(pc@equipment_model %||% "-"),
+      analyzer_model = escape_typst(pc@analyzer_model %||% "-")
     ))
   } else {
     template_data$has_protocol_details <- FALSE
@@ -517,9 +602,15 @@ build_template_data <- function(analysis, config, labels, clinical_notes, interp
   # Stage-by-stage summary table
   if (!is.null(analysis@stage_summary) && nrow(analysis@stage_summary) > 0) {
     template_data$has_stage_table <- TRUE
+    modality <- if (!is.null(analysis@protocol_config)) {
+      analysis@protocol_config@modality
+    } else {
+      NULL
+    }
     template_data$stage_table <- format_stage_table_typst(
       analysis@stage_summary,
-      language
+      language,
+      modality = modality
     )
   } else {
     template_data$has_stage_table <- FALSE
@@ -548,13 +639,63 @@ build_template_data <- function(analysis, config, labels, clinical_notes, interp
     template_data$has_economy_metrics <- FALSE
   }
 
+  # Data type (breath-by-breath vs time-averaged)
+  data <- analysis@data
+  if (data@is_averaged && !is.null(data@averaging_window)) {
+    template_data$data_type <- sprintf("%s (%ds)",
+      tr("time_averaged", language), data@averaging_window)
+  } else {
+    template_data$data_type <- tr("breath_by_breath", language)
+  }
+  template_data$label_data_type <- tr("data_type", language)
+
+  # Predicted values citation note with population description
+  sex_desc <- if (participant@sex == "M") {
+    if (language == "fr") "hommes" else "males"
+  } else {
+    if (language == "fr") "femmes" else "females"
+  }
+  if (language == "fr") {
+    template_data$predicted_values_note <- sprintf(
+      "Valeurs pr\u00e9dites pour %s, %d ans (population g\u00e9n\u00e9rale en sant\u00e9, s\u00e9dentaire \u00e0 mod\u00e9r\u00e9ment actif). R\u00e9f. : Jones et al., 1997 ; Tanaka et al., 2001.",
+      sex_desc, participant@age
+    )
+  } else {
+    template_data$predicted_values_note <- sprintf(
+      "Predicted values for %s, age %d (healthy general population, sedentary to moderately active). Ref: Jones et al., 1997; Tanaka et al., 2001.",
+      sex_desc, participant@age
+    )
+  }
+
+  # Section toggle flags (override data-based detection when report_sections is specified)
+  if (!is.null(report_sections)) {
+    if (!"pretest" %in% report_sections) {
+      template_data$has_pretest_conditions <- FALSE
+    }
+    if (!"protocol_details" %in% report_sections) {
+      template_data$has_protocol_details <- FALSE
+    }
+    if (!"stage_table" %in% report_sections) {
+      template_data$has_stage_table <- FALSE
+    }
+    if (!"economy" %in% report_sections) {
+      template_data$has_economy_metrics <- FALSE
+    }
+    if (!"thresholds" %in% report_sections) {
+      template_data$thresholds_detected <- FALSE
+    }
+    if (!"clinical_notes" %in% report_sections) {
+      template_data$has_clinical_notes <- FALSE
+    }
+  }
+
   # Add visual interpretation data
   visual_interp <- generate_visual_interpretation(analysis, config@language)
   template_data <- c(template_data, visual_interp)
 
   # Add clinical notes
   # Add clinical notes if provided
-  template_data$clinical_notes <- clinical_notes %||% ""
+  template_data$clinical_notes <- escape_typst(clinical_notes %||% "")
   template_data$has_clinical_notes <- !is.null(clinical_notes) && nchar(clinical_notes) > 0
 
   # Build bibliography from cited sources
@@ -916,33 +1057,81 @@ generate_auto_interpretation <- function(analysis, language = "en") {
 #' @keywords internal
 generate_report_graphs <- function(analysis, language = "en",
                                    athlete_sport = NULL, athlete_level = "recreational") {
-  temp_dir <- tempdir()
+  if (!requireNamespace("patchwork", quietly = TRUE)) {
+    cli::cli_abort(c(
+      "The {.pkg patchwork} package is required to generate the 9-panel report plot",
+      "i" = "Install it with {.code install.packages('patchwork')}"
+    ))
+  }
+
+  cache_key <- build_report_graph_cache_key(
+    analysis,
+    language,
+    athlete_sport,
+    athlete_level
+  )
+
+  cached <- !is.null(report_graph_cache$key) &&
+    identical(report_graph_cache$key, cache_key) &&
+    is.list(report_graph_cache$plots)
+
+  if (!cached) {
+    p_panel <- plot_cpet_panel(analysis, language = language)
+    p_vslope <- plot_v_slope(analysis, language = language)
+    p_predicted <- plot_predicted_comparison(
+      analysis,
+      sport = athlete_sport,
+      level = athlete_level,
+      language = language,
+      show_citation = TRUE
+    )
+
+    report_graph_cache$key <- cache_key
+    report_graph_cache$plots <- list(
+      panel = p_panel,
+      vslope = p_vslope,
+      predicted = p_predicted
+    )
+  }
+
+  plots <- report_graph_cache$plots
 
   # Generate 9-panel plot
-  panel_file <- file.path(temp_dir, "cpet_panel.png")
-  p_panel <- plot_cpet_panel(analysis, language = language)
-  ggplot2::ggsave(panel_file, p_panel, width = 10, height = 10, dpi = 150)
+  panel_file <- tempfile("cpet_panel_", fileext = ".png")
+  ggplot2::ggsave(panel_file, plots$panel, width = 10, height = 10, dpi = 150)
 
   # Generate V-slope plot
-  vslope_file <- file.path(temp_dir, "vslope.png")
-  p_vslope <- plot_v_slope(analysis, language = language)
-  ggplot2::ggsave(vslope_file, p_vslope, width = 6, height = 5, dpi = 150)
+  vslope_file <- tempfile("vslope_", fileext = ".png")
+  ggplot2::ggsave(vslope_file, plots$vslope, width = 6, height = 5, dpi = 150)
 
   # Generate predicted comparison plot (with optional athlete norms)
-  predicted_file <- file.path(temp_dir, "predicted_comparison.png")
-  p_predicted <- plot_predicted_comparison(
-    analysis,
-    sport = athlete_sport,
-    level = athlete_level,
-    language = language,
-    show_citation = TRUE
-  )
-  ggplot2::ggsave(predicted_file, p_predicted, width = 10, height = 5, dpi = 150)
+  predicted_file <- tempfile("predicted_comparison_", fileext = ".png")
+  ggplot2::ggsave(predicted_file, plots$predicted, width = 10, height = 5, dpi = 150)
 
   list(
     graph_panel = panel_file,
     graph_vslope = vslope_file,
     graph_predicted = predicted_file
+  )
+}
+
+build_report_graph_cache_key <- function(analysis, language, athlete_sport, athlete_level) {
+  breaths <- analysis@data@breaths
+  peaks <- analysis@peaks
+  thresholds <- analysis@thresholds
+
+  paste(
+    analysis@data@participant@id %||% "",
+    as.character(analysis@data@metadata@test_date) %||% "",
+    nrow(breaths),
+    round(max(breaths$time_s, na.rm = TRUE), 1),
+    if (!is.null(peaks) && length(peaks@vo2_peak) > 0) round(peaks@vo2_peak, 1) else NA_real_,
+    if (!is.null(thresholds) && length(thresholds@vt1_vo2) > 0) round(thresholds@vt1_vo2, 1) else NA_real_,
+    if (!is.null(thresholds) && length(thresholds@vt2_vo2) > 0) round(thresholds@vt2_vo2, 1) else NA_real_,
+    language,
+    athlete_sport %||% "",
+    athlete_level %||% "",
+    sep = "|"
   )
 }
 
@@ -1080,15 +1269,26 @@ render_typst_report <- function(template_path, data, output_file) {
       # Skip logical values (used for conditionals)
       next
     } else {
-      value <- as.character(value)
+      value <- as.character(value[[1]])
+      # Replace NA strings with empty or dash
+      if (is.na(value) || identical(value, "NA")) {
+        value <- "-"
+      }
     }
-    pattern <- paste0("\\{\\{", name, "\\}\\}")
-    template_content <- gsub(pattern, value, template_content)
+    pattern <- paste0("{{", name, "}}")
+    template_content <- gsub(pattern, value, template_content, fixed = TRUE)
   }
+
+  # Remove any remaining unresolved mustache patterns to prevent Typst errors
+  template_content <- gsub("\\{\\{#if [^}]+\\}\\}", "", template_content)
+  template_content <- gsub("\\{\\{/if\\}\\}", "", template_content)
+  template_content <- gsub("\\{\\{else\\}\\}", "", template_content)
+  template_content <- gsub("\\{\\{[a-zA-Z_][a-zA-Z0-9_]*\\}\\}", "", template_content)
 
   # Create temp directory for template and images
   temp_dir <- tempfile(pattern = "typst_")
   dir.create(temp_dir)
+  on.exit(unlink(temp_dir, recursive = TRUE), add = TRUE)
 
   # Copy any image files to the temp directory and update paths
   image_vars <- c("graph_panel", "graph_vslope", "graph_predicted", "logo_path")
@@ -1108,14 +1308,38 @@ render_typst_report <- function(template_path, data, output_file) {
   temp_typ <- file.path(temp_dir, "report.typ")
   writeLines(template_content, temp_typ)
 
+  # Typst requires the output file to have a .pdf extension.
+  # Shiny downloadHandler passes a temp path without one, so compile to a
+
+  # properly-named temp file and copy back when needed.
+  needs_rename <- !grepl("[.]pdf$", output_file, ignore.case = TRUE)
+  compile_target <- if (needs_rename) {
+    file.path(temp_dir, "report.pdf")
+  } else {
+    output_file
+  }
+
   # Render with typr
   if (requireNamespace("typr", quietly = TRUE)) {
-    typr::typr_compile(input = temp_typ, output_file = output_file, output_format = "pdf")
+    tryCatch(
+      typr::typr_compile(input = temp_typ, output_file = compile_target, output_format = "pdf"),
+      error = function(e) {
+        # Try system typst as fallback for better error messages
+        result <- system2("typst", args = c("compile", temp_typ, compile_target),
+                          stdout = TRUE, stderr = TRUE)
+        if (!file.exists(compile_target)) {
+          cli::cli_abort(c(
+            "Typst compilation failed",
+            "x" = paste(result, collapse = "\n")
+          ))
+        }
+      }
+    )
   } else {
     # Fallback: try system typst
-    result <- system2("typst", args = c("compile", temp_typ, output_file),
+    result <- system2("typst", args = c("compile", temp_typ, compile_target),
                       stdout = TRUE, stderr = TRUE)
-    if (!file.exists(output_file)) {
+    if (!file.exists(compile_target)) {
       cli::cli_abort(c(
         "Failed to render Typst template",
         "i" = "Install the {.pkg typr} package or ensure Typst is installed",
@@ -1124,8 +1348,60 @@ render_typst_report <- function(template_path, data, output_file) {
     }
   }
 
-  # Clean up temp directory
-  unlink(temp_dir, recursive = TRUE)
+  if (needs_rename) {
+    file.copy(compile_target, output_file, overwrite = TRUE)
+  }
+
+  validate_pdf_output(output_file)
+
+  # temp_dir cleaned up via on.exit
+}
+
+validate_pdf_output <- function(path) {
+  if (!file.exists(path)) {
+    cli::cli_abort("Report output file was not created: {.file {path}}")
+  }
+
+  size <- file.info(path)$size
+  if (is.na(size) || size == 0) {
+    cli::cli_abort("Report output file is empty: {.file {path}}")
+  }
+
+  header <- tryCatch(
+    rawToChar(readBin(path, what = "raw", n = 4)),
+    error = function(e) ""
+  )
+
+  if (!identical(header, "%PDF")) {
+    cli::cli_abort(c(
+      "Report output is not a valid PDF",
+      "i" = "Ensure Typst/typr can render PDFs on this system"
+    ))
+  }
+}
+
+
+#' Escape Typst Special Characters
+#'
+#' @param x Character string to escape
+#' @return Escaped string safe for Typst content blocks
+#' @keywords internal
+escape_typst <- function(x) {
+  if (is.null(x) || length(x) == 0 || is.na(x[1])) return(x)
+  x <- as.character(x)
+  x <- gsub("\\", "\\\\", x, fixed = TRUE)
+  x <- gsub("#", "\\#", x, fixed = TRUE)
+  x <- gsub("[", "\\[", x, fixed = TRUE)
+  x <- gsub("]", "\\]", x, fixed = TRUE)
+  x <- gsub("_", "\\_", x, fixed = TRUE)
+  x <- gsub("*", "\\*", x, fixed = TRUE)
+  x <- gsub("$", "\\$", x, fixed = TRUE)
+  x <- gsub("@", "\\@", x, fixed = TRUE)
+  x <- gsub("<", "\\<", x, fixed = TRUE)
+  x <- gsub(">", "\\>", x, fixed = TRUE)
+  x <- gsub("~", "\\~", x, fixed = TRUE)
+  x <- gsub("`", "\\`", x, fixed = TRUE)
+  x
 }
 
 
@@ -1224,7 +1500,7 @@ format_modality <- function(modality, language = "en") {
 #' @param language Language code ("en" or "fr")
 #' @return Character string with complete Typst table
 #' @keywords internal
-format_stage_table_typst <- function(stage_summary, language = "en") {
+format_stage_table_typst <- function(stage_summary, language = "en", modality = NULL) {
   n_stages <- nrow(stage_summary)
 
 
@@ -1233,20 +1509,33 @@ format_stage_table_typst <- function(stage_summary, language = "en") {
 has_lactate <- "lactate_mmol" %in% names(stage_summary) &&
     any(!is.na(stage_summary$lactate_mmol))
 
-  # Define headers based on language
+  # Define headers based on language (with proper subscripts for Typst)
+  # Modality-aware intensity column header
+  intensity_header <- if (identical(modality, "treadmill")) {
+    if (language == "fr") "Vitesse (km/h)" else "Speed (km/h)"
+  } else if (identical(modality, "cycling")) {
+    if (language == "fr") "Puissance (W)" else "Power (W)"
+  } else {
+    if (language == "fr") "Intensit\u00e9" else "Intensity"
+  }
+
   if (language == "fr") {
-    headers <- c("Palier", "Dur\u00e9e", "Intensit\u00e9", "FC", "VE", "VO2", "RER")
+    headers <- c("Palier", "Dur\u00e9e", intensity_header, "FC", "VE", 'VO#sub[2]', "QR")
     if (has_lactate) headers <- c(headers, "Lactate")
   } else {
-    headers <- c("Stage", "Duration", "Intensity", "HR", "VE", "VO2", "RER")
+    headers <- c("Stage", "Duration", intensity_header, "HR", "VE", 'VO#sub[2]', "RER")
     if (has_lactate) headers <- c(headers, "Lactate")
   }
 
-  # Build header row
-  header_row <- paste0(
-    "[*", headers, "*]",
-    collapse = ", "
-  )
+  # Build header row (use text(weight: "bold") for headers with Typst markup)
+  header_cells <- purrr::map_chr(headers, function(h) {
+    if (grepl("#", h, fixed = TRUE)) {
+      sprintf("[#text(weight: \"bold\")[%s]]", h)
+    } else {
+      sprintf("[*%s*]", h)
+    }
+  })
+  header_row <- paste(header_cells, collapse = ", ")
 
   # Build data rows
   rows <- purrr::map_chr(seq_len(n_stages), function(i) {

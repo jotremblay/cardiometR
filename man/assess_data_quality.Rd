@@ -9,9 +9,10 @@ assess_data_quality(x, ...)
 \arguments{
 \item{x}{A CpetData object}
 
-\item{...}{Additional arguments passed to methods}
-
+\item{...}{Additional arguments passed to methods, including:
+\describe{
 \item{aberrant_threshold}{SD threshold for aberrant breath detection (default 3)}
+}}
 }
 \value{
 A DataQualityReport S7 object

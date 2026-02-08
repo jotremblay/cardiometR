@@ -22,13 +22,23 @@
       columns: (auto, 1fr),
       gutter: 1em,
       align(left + horizon)[
-        {{#if logo_path}}
-        #box(
-          clip: true,
-          height: 1.4cm,
-          image("{{logo_path}}", height: 1.4cm)
-        )
-        {{/if}}
+        #box[
+          {{#if logo_path}}
+          #box(
+            clip: true,
+            height: 1.4cm,
+            image("{{logo_path}}", height: 1.4cm)
+          )
+          {{/if}}
+          {{#if lab_logo_path}}
+          #h(0.5em)
+          #box(
+            clip: true,
+            height: 1.4cm,
+            image("{{lab_logo_path}}", height: 1.4cm)
+          )
+          {{/if}}
+        ]
       ],
       align(right + horizon)[
         #stack(
@@ -36,7 +46,11 @@
           spacing: 0.4em,
           text(weight: "bold", size: 9pt, fill: primary)[{{institution}}],
           {{#if lab_name}}
-          link("https://{{lab_name}}")[#text(size: 8pt, fill: accent)[{{lab_name}}]],
+          {{#if lab_url}}
+          link("{{lab_url}}")[#text(size: 8pt, fill: accent)[{{lab_name}}]],
+          {{else}}
+          text(size: 8pt, fill: accent)[{{lab_name}}],
+          {{/if}}
           {{/if}}
           text(size: 8pt, fill: luma(100))[{{report_date}}]
         )
@@ -63,6 +77,10 @@
   font: ("Inter", "Helvetica Neue", "Arial", "sans-serif"),
   size: 10pt
 )
+
+// Readable subscripts/superscripts (default 0.6em is too small in small text)
+#set sub(size: 0.8em)
+#set super(size: 0.8em)
 
 // Monospace for data values
 #show raw: set text(font: ("SF Mono", "Menlo", "Monaco", "monospace"))
@@ -236,6 +254,9 @@
         [#text(size: 9pt, fill: luma(100))[{{label_starting_intensity}}]], [#text(weight: "semibold")[{{starting_intensity}} {{intensity_unit}}]],
         [#text(size: 9pt, fill: luma(100))[{{label_increment}}]], [#text(weight: "semibold")[{{increment_size}} {{intensity_unit}}]],
         [#text(size: 9pt, fill: luma(100))[{{label_stage_duration}}]], [#text(weight: "semibold")[{{stage_duration_s}} s]],
+        {{#if data_type}}
+        [#text(size: 9pt, fill: luma(100))[{{label_data_type}}]], [#text(weight: "semibold")[{{data_type}}]],
+        {{/if}}
       )
     ],
     // Equipment
@@ -356,6 +377,11 @@
     [{{label_power_peak_row}}], [#text(weight: "semibold")[{{power_peak}}]], [{{power_predicted}}], [#text(weight: "bold", fill: primary)[{{power_percent}}%]],
     [{{label_o2_pulse}}], [#text(weight: "semibold")[{{o2_pulse}}]], [{{o2_pulse_predicted}}], [#text(weight: "bold", fill: primary)[{{o2_pulse_percent}}%]],
   )
+
+  #v(0.3em)
+  #text(size: 8pt, fill: luma(120))[
+    {{predicted_values_note}}
+  ]
 ]
 
 #v(0.8em)
@@ -675,7 +701,9 @@
     #text(size: 9pt, fill: luma(80))[{{label_technician_signature}}]
   ],
   [
-    #v(1.5em)
+    #v(0.8em)
+    #text(size: 10pt)[{{signature_date}}]
+    #v(0.3em)
     #line(length: 90%, stroke: 0.5pt + luma(180))
     #v(0.3em)
     #text(size: 9pt, fill: luma(80))[Date]

@@ -213,6 +213,21 @@ test_that("extract_stages() uses phase column when available", {
   expect_gt(length(unique(with_stages@breaths$stage)), 1)
 })
 
+test_that("extract_stages() keeps rest at stage 0 when using power", {
+  data <- create_test_cpet_data()
+  data@breaths$phase <- NULL
+
+  # Force clear rest period at zero power
+  data@breaths$power_w[1:10] <- 0
+  data@breaths$power_w[11:20] <- 50
+  data@breaths$power_w[21:30] <- 75
+
+  with_stages <- extract_stages(data, protocol = "step", stage_duration = 180)
+
+  expect_true(all(with_stages@breaths$stage[1:10] == 0))
+  expect_true(any(with_stages@breaths$stage > 0))
+})
+
 
 # summarize_stages() tests -------------------------------------------------
 
@@ -245,6 +260,75 @@ test_that("summarize_stages() errors without stages", {
   )
 })
 
+test_that("detect_thresholds() returns Thresholds object", {
+  data <- create_test_cpet_data()
+
+  thresholds <- detect_thresholds(data, methods = c("v_slope", "ve_vo2", "ve_vco2"))
+
+  expect_true(is_s7_class(thresholds, "Thresholds"))
+  expect_true(!is.null(thresholds@confidence))
+})
+
+test_that("detect_thresholds() keeps VT2 above VT1 when both detected", {
+  n <- 200
+  power <- seq(0, 200, length.out = n)
+  time_s <- seq(0, 600, length.out = n)
+
+  vo2_ml <- 300 + 10 * power
+  vco2_ml <- ifelse(
+    power <= 120,
+    250 + 9 * power,
+    250 + 9 * 120 + 12 * (power - 120)
+  )
+
+  ve_vo2_ratio <- 30 - 5 * exp(-((power - 80)^2) / (2 * 15^2)) + 0.05 * pmax(power - 80, 0)
+  ve_vco2_ratio <- 30 - 4 * exp(-((power - 120)^2) / (2 * 15^2)) + 0.06 * pmax(power - 120, 0)
+
+  ve_l <- ve_vo2_ratio * vo2_ml / 1000
+
+  breaths <- tibble::tibble(
+    time_s = time_s,
+    vo2_ml = vo2_ml,
+    vco2_ml = vco2_ml,
+    ve_l = ve_l,
+    rer = vco2_ml / vo2_ml,
+    power_w = power
+  )
+
+  participant <- Participant(
+    id = "TEST002",
+    name = "Threshold Test",
+    age = 30,
+    sex = "M",
+    height_cm = 175,
+    weight_kg = 70
+  )
+
+  metadata <- CpetMetadata(
+    test_date = Sys.Date(),
+    device = "Test Device",
+    protocol = "Incremental ramp"
+  )
+
+  data <- CpetData(
+    participant = participant,
+    metadata = metadata,
+    breaths = breaths,
+    is_averaged = FALSE
+  )
+
+  thresholds <- detect_thresholds(
+    data,
+    methods = c("v_slope", "ve_vo2", "ve_vco2"),
+    window_s = 30
+  )
+
+  expect_true(!is.na(thresholds@vt1_vo2))
+  if (!is.na(thresholds@vt2_vo2)) {
+    expect_gt(thresholds@vt2_vo2, thresholds@vt1_vo2)
+  }
+})
+
 
 # Integration test ---------------------------------------------------------
 
@@ -268,7 +352,7 @@ test_that("Full analysis workflow works", {
   summary <- summarize_stages(with_stages, method = "last30s")
   expect_gt(nrow(summary), 0)
 
-  # Create complete analysis (omit thresholds since detect_thresholds not implemented yet)
+  # Create complete analysis
   analysis <- CpetAnalysis(
     data = averaged,
     peaks = peaks,

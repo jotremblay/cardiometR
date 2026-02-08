@@ -101,6 +101,18 @@ test_that("plot_cpet_panel supports French language", {
   expect_s3_class(p, "patchwork")
 })
 
+test_that("plot_cpet_panel works without power data", {
+  skip_if_not_installed("ggplot2")
+  skip_if_not_installed("patchwork")
+
+  data <- create_plot_test_data()
+  data@breaths$power_w <- NULL
+
+  p <- plot_cpet_panel(data)
+
+  expect_s3_class(p, "patchwork")
+})
+
 
 # plot_v_slope() tests -----------------------------------------------------
 
