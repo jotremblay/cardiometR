@@ -318,6 +318,20 @@ breath_by_breath: "Cycle-à-cycle"
 time_averaged: "Moyenné par intervalles"
 data_type: "Type de données"
 
+# Prediction Equations
+prediction_source: "Équations de prédiction"
+prediction_jones: "Jones et al. (1997)"
+prediction_prefaut: "Préfaut et al."
+population_label: "Population"
+pmt_label: "Puissance maximale théorique (PMT)"
+warmup_label: "Échauffement"
+step_label: "Valeur palier"
+
 # Predicted Citation
 predicted_values_note: "Valeurs prédites : Jones et al., 1997 ; Tanaka et al., 2001"
 signature_date: "Date du rapport"
+
+# Expected VO2 Labels
+gross_efficiency_setting: "Rendement brut (%)"
+expected_line_label: "Attendu"
+leger_citation: "Léger & Mercier, 1984"

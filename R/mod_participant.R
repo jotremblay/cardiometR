@@ -14,7 +14,7 @@ mod_participant_ui <- function(id, language = "en") {
       class = "d-flex justify-content-between align-items-center",
       shiny::span(
         shiny::icon("user"),
-        tr("section_patient", language)
+        shiny::span(id = ns("participant_header"), tr("section_patient", language))
       ),
       shiny::actionButton(
         ns("edit_toggle"),
@@ -56,7 +56,16 @@ mod_participant_ui <- function(id, language = "en") {
         shiny::textInput(ns("sport"), tr("participant_sport", language)),
         shiny::actionButton(ns("save_edits"), tr("submit", language),
                             class = "btn-primary mt-2")
-      )
+      ),
+      # Prediction source selector — always visible (not part of edit form)
+      shiny::tags$hr(class = "my-2"),
+      shiny::selectInput(ns("prediction_source"),
+                         label = shiny::span(
+                           id = ns("prediction_source_label"),
+                           tr("prediction_source", language)
+                         ),
+                         choices = c("Jones et al. (1997)" = "jones",
+                                     "Pr\u00e9faut et al." = "prefaut"))
     )
   )
 }
@@ -69,6 +78,7 @@ mod_participant_ui <- function(id, language = "en") {
 #'
 #' @return A list with reactive values:
 #'   - `participant`: Reactive Participant object with user edits.
+#'   - `prediction_source`: Reactive prediction equation source ("jones" or "prefaut").
 #'
 #' @keywords internal
 mod_participant_server <- function(id, language, cpet_data) {
@@ -80,6 +90,45 @@ mod_participant_server <- function(id, language, cpet_data) {
 
     # Store edited participant
     edited_participant <- shiny::reactiveVal(NULL)
+
+    # Update labels when language changes
+    shiny::observeEvent(language(), {
+      lang <- language()
+
+      # Update card header via JS
+      session$sendCustomMessage("update_text", as.list(stats::setNames(
+        tr("section_patient", lang),
+        ns("participant_header")
+      )))
+
+      # Update form input labels
+      shiny::updateTextInput(session, "name", label = tr("participant_name", lang))
+      shiny::updateNumericInput(session, "age", label = tr("participant_age", lang))
+      shiny::updateSelectInput(session, "sex",
+        label = tr("participant_sex", lang),
+        choices = stats::setNames(
+          c("M", "F", "O"),
+          c(tr("male", lang), tr("female", lang), tr("other", lang))
+        ),
+        selected = input$sex
+      )
+      shiny::updateNumericInput(session, "height_cm", label = tr("participant_height", lang))
+      shiny::updateNumericInput(session, "weight_kg", label = tr("participant_weight", lang))
+      shiny::updateTextInput(session, "sport", label = tr("participant_sport", lang))
+      shiny::updateActionButton(session, "save_edits", label = tr("submit", lang))
+
+      # Update edit toggle button title via JS
+      session$sendCustomMessage("update_input_label", list(
+        id = ns("edit_toggle"),
+        label = tr("submit", lang)
+      ))
+
+      # Update prediction source label via JS (target the span inside the label)
+      session$sendCustomMessage("update_text", as.list(stats::setNames(
+        tr("prediction_source", lang),
+        ns("prediction_source_label")
+      )))
+    })
 
     # Toggle edit mode
     shiny::observeEvent(input$edit_toggle, {
@@ -208,24 +257,29 @@ mod_participant_server <- function(id, language, cpet_data) {
         ),
 
         # BMI and sport
-        shiny::tags$dl(
-          class = "row mt-3 mb-0",
-          shiny::tags$dt(class = "col-4", "BMI"),
-          shiny::tags$dd(class = "col-8", paste(bmi, "kg/m\u00B2")),
+        shiny::div(
+          class = "d-flex gap-3 mt-3 pt-2 border-top small text-muted",
+          shiny::span(
+            shiny::tags$strong("BMI"), " ",
+            paste(bmi, "kg/m\u00B2")
+          ),
           if (!is.null(p@sport) && nchar(p@sport) > 0) {
-            shiny::tagList(
-              shiny::tags$dt(class = "col-4", tr("participant_sport", lang)),
-              shiny::tags$dd(class = "col-8", p@sport)
+            shiny::span(
+              shiny::tags$strong(tr("participant_sport", lang)), " ",
+              p@sport
             )
           }
         )
       )
     })
 
-    # Return the participant (edited or original)
+    # Return the participant (edited or original) and prediction_source
     list(
       participant = shiny::reactive({
         edited_participant() %||% cpet_data()@participant
+      }),
+      prediction_source = shiny::reactive({
+        input$prediction_source %||% "jones"
       })
     )
   })

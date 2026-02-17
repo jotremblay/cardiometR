@@ -15,7 +15,7 @@ mod_plots_ui <- function(id, language = "en") {
       class = "d-flex justify-content-between align-items-center",
       shiny::span(
         shiny::icon("chart-line"),
-        tr("section_graphs", language)
+        shiny::span(id = ns("plots_header"), tr("section_graphs", language))
       ),
       shiny::div(
         class = "d-flex gap-2",
@@ -55,12 +55,16 @@ mod_plots_ui <- function(id, language = "en") {
       shiny::conditionalPanel(
         condition = "input.plot_type == 'panel'",
         ns = ns,
-        shiny::plotOutput(ns("static_plot"), height = "550px")
+        shiny::div(class = "plot-container",
+          shiny::plotOutput(ns("static_plot"), height = "550px")
+        )
       ),
       shiny::conditionalPanel(
         condition = "input.plot_type != 'panel'",
         ns = ns,
-        plotly::plotlyOutput(ns("interactive_plot"), height = "550px")
+        shiny::div(class = "plot-container",
+          plotly::plotlyOutput(ns("interactive_plot"), height = "550px")
+        )
       )
     )
   )
@@ -84,9 +88,12 @@ mod_plots_server <- function(id, language, analysis, settings = NULL) {
       shiny::req(a)
       lang <- language()
 
-      # Extract athlete sport/level from settings if available
+      # Extract settings if available
       sport <- NULL
       level <- "recreational"
+      avg_window <- 30
+      gross_efficiency <- 0.20
+      modality <- NULL
       if (!is.null(settings)) {
         s <- settings()
         sport_val <- s$athlete_sport
@@ -94,15 +101,19 @@ mod_plots_server <- function(id, language, analysis, settings = NULL) {
           sport <- sport_val
         }
         level <- s$athlete_level %||% "recreational"
+        avg_window <- s$averaging_window %||% 30
+        gross_efficiency <- (s$gross_efficiency %||% 20) / 100
+        modality <- s$modality %||% NULL
       }
 
       switch(input$plot_type,
-        panel = plot_cpet_panel(a, language = lang),
+        panel = plot_cpet_panel(a, language = lang, averaging_window = avg_window,
+          expected_efficiency = gross_efficiency, modality = modality),
         vslope = plot_v_slope(a, language = lang),
         vent_eq = plot_ventilatory_equivalents(a, language = lang),
         gas = plot_gas_exchange(a, language = lang),
         hr = plot_heart_rate(a, language = lang),
-        power = plot_power(a, language = lang),
+        power = plot_power(a, language = lang, expected_efficiency = gross_efficiency),
         predicted = plot_predicted_comparison(a, sport = sport, level = level, language = lang),
         # Default
         plot_cpet_panel(a, language = lang)
@@ -126,7 +137,7 @@ mod_plots_server <- function(id, language, analysis, settings = NULL) {
         plotly::config(displayModeBar = TRUE, displaylogo = FALSE)
     })
 
-    # Update plot type dropdown on language change
+    # Update plot type dropdown and static text on language change
     shiny::observeEvent(language(), {
       lang <- language()
       shiny::updateSelectInput(session, "plot_type",
@@ -138,6 +149,12 @@ mod_plots_server <- function(id, language, analysis, settings = NULL) {
             tr("plot_predicted", lang))
         )
       )
+
+      # Update card header text via JS
+      session$sendCustomMessage("update_text", as.list(stats::setNames(
+        tr("section_graphs", lang),
+        ns("plots_header")
+      )))
     })
 
     # Download handler

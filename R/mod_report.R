@@ -16,14 +16,16 @@ mod_report_ui <- function(id, language = "en") {
     # Configuration panel
     bslib::card(
       bslib::card_header(
-        shiny::icon("cog"),
-        tr("report_config", language)
+        shiny::span(
+          shiny::icon("cog"),
+          shiny::span(id = ns("report_config_header"), tr("report_config", language))
+        )
       ),
       bslib::card_body(
         shiny::textInput(
           ns("institution"),
           label = tr("institution", language),
-          placeholder = "e.g., University of Montreal"
+          placeholder = "e.g., Universit\u00e9 de Montr\u00e9al"
         ),
         shiny::textInput(
           ns("lab_name"),
@@ -42,11 +44,14 @@ mod_report_ui <- function(id, language = "en") {
         shiny::selectInput(
           ns("logo_choice"),
           label = tr("logo", language),
-          choices = c(
-            "Universit\u00e9 de Montr\u00e9al" = "udem",
-            "Centre \u00c9PIC - ICM" = "epic",
-            "None" = "none",
-            "Custom..." = "custom"
+          choices = stats::setNames(
+            c("udem", "epic", "none", "custom"),
+            c(
+              tr("logo_udem", language),
+              tr("logo_epic", language),
+              tr("logo_none", language),
+              tr("logo_custom", language)
+            )
           ),
           selected = "udem"
         ),
@@ -89,8 +94,10 @@ mod_report_ui <- function(id, language = "en") {
     # Preview panel
     bslib::card(
       bslib::card_header(
-        shiny::icon("eye"),
-        tr("report_preview", language)
+        shiny::span(
+          shiny::icon("eye"),
+          shiny::span(id = ns("report_preview_header"), tr("report_preview", language))
+        )
       ),
       bslib::card_body(
         shiny::uiOutput(ns("preview_content"))
@@ -201,6 +208,52 @@ mod_report_server <- function(id, language, analysis, settings = shiny::reactive
       }
     })
 
+    shiny::observeEvent(language(), {
+      lang <- language()
+
+      # Update card headers via JS
+      session$sendCustomMessage("update_text", as.list(stats::setNames(
+        c(tr("report_config", lang), tr("report_preview", lang)),
+        c(ns("report_config_header"), ns("report_preview_header"))
+      )))
+
+      # Update input labels
+      shiny::updateTextInput(session, "institution", label = tr("institution", lang))
+      shiny::updateTextInput(session, "lab_name", label = tr("lab_name", lang))
+      shiny::updateTextInput(session, "technician", label = tr("technician", lang))
+
+      # dateInput and textAreaInput labels via JS (no native update* for label)
+      session$sendCustomMessage("update_input_label",
+        list(id = ns("signature_date"), label = tr("signature_date", lang))
+      )
+      session$sendCustomMessage("update_input_label",
+        list(id = ns("clinical_notes"), label = tr("clinical_notes", lang))
+      )
+
+      # fileInput label via JS
+      session$sendCustomMessage("update_input_label",
+        list(id = ns("logo_custom"), label = tr("logo_upload", lang))
+      )
+
+      # Logo choice dropdown
+      selected_logo <- input$logo_choice %||% "udem"
+      shiny::updateSelectInput(
+        session,
+        "logo_choice",
+        label = tr("logo", lang),
+        choices = stats::setNames(
+          c("udem", "epic", "none", "custom"),
+          c(
+            tr("logo_udem", lang),
+            tr("logo_epic", lang),
+            tr("logo_none", lang),
+            tr("logo_custom", lang)
+          )
+        ),
+        selected = selected_logo
+      )
+    })
+
     # Build ReportConfig from inputs
     report_config <- shiny::reactive({
       ReportConfig(
@@ -232,7 +285,8 @@ mod_report_server <- function(id, language, analysis, settings = shiny::reactive
       m <- a@data@metadata
       peaks <- a@peaks
 
-      shiny::tagList(
+      shiny::div(
+        class = "report-preview-paper",
         # Header preview
         shiny::div(
           class = "border-bottom pb-3 mb-3",
@@ -324,7 +378,7 @@ mod_report_server <- function(id, language, analysis, settings = shiny::reactive
             shiny::p(class = "small mt-2 mb-0 fst-italic", input$clinical_notes)
           )
         }
-      )
+      )  # end report-preview-paper div
     })
 
     # Download handler for PDF generation

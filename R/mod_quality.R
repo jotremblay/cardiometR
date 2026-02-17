@@ -19,7 +19,7 @@ mod_quality_ui <- function(id, language = "en") {
       class = "d-flex justify-content-between align-items-center",
       shiny::div(
         shiny::icon("clipboard-check"),
-        tr("quality_dashboard", language)
+        shiny::span(id = ns("quality_header"), tr("quality_dashboard", language))
       )
     ),
     bslib::card_body(
@@ -29,17 +29,17 @@ mod_quality_ui <- function(id, language = "en") {
       # Overall summary row
       shiny::uiOutput(ns("overall_summary")),
 
-      shiny::hr(),
+      shiny::tags$hr(class = "section-divider"),
 
       # Maximal criteria section
       shiny::h5(
         shiny::icon("heart-pulse"),
-        tr("maximal_criteria", language),
+        shiny::span(id = ns("maximal_criteria_title"), tr("maximal_criteria", language)),
         class = "mt-3"
       ),
       shiny::uiOutput(ns("criteria_checklist")),
 
-      shiny::hr(),
+      shiny::tags$hr(class = "section-divider"),
 
       # Protocol and Data quality side by side
       bslib::layout_columns(
@@ -48,43 +48,47 @@ mod_quality_ui <- function(id, language = "en") {
 
         # Protocol quality
         shiny::div(
+          class = "quality-metrics-section",
           shiny::h5(
             shiny::icon("route"),
-            tr("protocol_quality", language)
+            shiny::span(id = ns("protocol_quality_title"), tr("protocol_quality", language))
           ),
           shiny::uiOutput(ns("protocol_metrics"))
         ),
 
         # Data quality
         shiny::div(
+          class = "quality-metrics-section",
           shiny::h5(
             shiny::icon("wave-square"),
-            tr("data_quality", language)
+            shiny::span(id = ns("data_quality_title"), tr("data_quality", language))
           ),
           shiny::uiOutput(ns("data_metrics"))
         )
       ),
 
-      shiny::hr(),
+      shiny::tags$hr(class = "section-divider"),
 
       # Stage details (collapsible)
       bslib::accordion(
         id = ns("stage_accordion"),
         bslib::accordion_panel(
-          title = tr("stage_details", language),
+          title = shiny::span(id = ns("stage_details_title"), tr("stage_details", language)),
+          value = "stage_details",
           icon = shiny::icon("table"),
           DT::dataTableOutput(ns("stage_table"))
         ),
         bslib::accordion_panel(
-          title = tr("recommendations", language),
+          title = shiny::span(id = ns("recommendations_title"), tr("recommendations", language)),
+          value = "recommendations",
           icon = shiny::icon("lightbulb"),
           shiny::uiOutput(ns("recommendations"))
         )
       ),
 
       # Optional RPE and Lactate inputs
-      shiny::hr(),
-      shiny::h6(tr("optional_criteria", language)),
+      shiny::tags$hr(class = "section-divider"),
+      shiny::h6(shiny::span(id = ns("optional_criteria_title"), tr("optional_criteria", language))),
       bslib::layout_columns(
         col_widths = c(4, 4, 4),
         shiny::numericInput(
@@ -131,6 +135,31 @@ mod_quality_ui <- function(id, language = "en") {
 mod_quality_server <- function(id, language, cpet_data, analysis) {
   shiny::moduleServer(id, function(input, output, session) {
     ns <- session$ns
+
+    # --- Language reactivity for static UI text ---
+    shiny::observeEvent(language(), {
+      lang <- language()
+
+      # Update span-wrapped text elements
+      ids <- c(
+        ns("quality_header"), ns("maximal_criteria_title"),
+        ns("protocol_quality_title"), ns("data_quality_title"),
+        ns("stage_details_title"), ns("recommendations_title"),
+        ns("optional_criteria_title")
+      )
+      texts <- c(
+        tr("quality_dashboard", lang), tr("maximal_criteria", lang),
+        tr("protocol_quality", lang), tr("data_quality", lang),
+        tr("stage_details", lang), tr("recommendations", lang),
+        tr("optional_criteria", lang)
+      )
+      session$sendCustomMessage("update_text", as.list(stats::setNames(texts, ids)))
+
+      # Update input labels
+      shiny::updateNumericInput(session, "rpe_input", label = tr("rpe_label", lang))
+      shiny::updateNumericInput(session, "lactate_input", label = tr("lactate_label", lang))
+      shiny::updateActionButton(session, "update_criteria", label = tr("update_assessment", lang))
+    })
 
     # Reactive for optional criteria
     rpe_value <- shiny::reactiveVal(NULL)
@@ -304,7 +333,7 @@ mod_quality_server <- function(id, language, cpet_data, analysis) {
 
       shiny::tagList(
         shiny::div(class = "criteria-list", items),
-        shiny::hr(),
+        shiny::tags$hr(class = "section-divider"),
         shiny::div(
           class = summary_class,
           shiny::icon(if (ec@is_maximal) "check-circle" else "exclamation-triangle"),
@@ -371,7 +400,7 @@ mod_quality_server <- function(id, language, cpet_data, analysis) {
       }
 
       # Overall rating
-      items[[length(items) + 1]] <- shiny::hr()
+      items[[length(items) + 1]] <- shiny::tags$hr(class = "section-divider")
       items[[length(items) + 1]] <- metric_row(
         label = tr("rating", lang),
         value = tr(paste0("rating_", pq@overall_rating), lang),
@@ -443,7 +472,7 @@ mod_quality_server <- function(id, language, cpet_data, analysis) {
       )
 
       # Overall score
-      items[[length(items) + 1]] <- shiny::hr()
+      items[[length(items) + 1]] <- shiny::tags$hr(class = "section-divider")
       items[[length(items) + 1]] <- metric_row(
         label = tr("score", lang),
         value = sprintf("%.0f/100", dq@overall_score),

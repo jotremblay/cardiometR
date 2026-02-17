@@ -18,19 +18,23 @@ mod_upload_ui <- function(id, language = "en") {
       bslib::card_header(
         class = "bg-primary text-white",
         shiny::icon("upload"),
-        tr("nav_upload", language)
+        shiny::span(id = ns("upload_header"), tr("nav_upload", language))
       ),
       bslib::card_body(
-        shiny::fileInput(
-          ns("file"),
-          label = tr("upload_prompt", language),
-          accept = c(".xlsx", ".xls"),
-          placeholder = tr("browse", language),
-          width = "100%"
-        ),
-        shiny::tags$small(
-          class = "text-muted",
-          tr("upload_hint", language)
+        shiny::div(
+          class = "upload-dropzone",
+          shiny::fileInput(
+            ns("file"),
+            label = tr("upload_prompt", language),
+            accept = c(".xlsx", ".xls"),
+            placeholder = tr("browse", language),
+            width = "100%"
+          ),
+          shiny::tags$small(
+            id = ns("upload_hint"),
+            class = "text-muted",
+            tr("upload_hint", language)
+          )
         )
       )
     ),
@@ -39,7 +43,7 @@ mod_upload_ui <- function(id, language = "en") {
     bslib::card(
       bslib::card_header(
         shiny::icon("check-circle"),
-        tr("validation_status", language)
+        shiny::span(id = ns("validation_header"), tr("validation_status", language))
       ),
       bslib::card_body(
         shiny::uiOutput(ns("validation_display"))
@@ -65,6 +69,19 @@ mod_upload_server <- function(id, language) {
     # Reactive values to store results
     cpet_data <- shiny::reactiveVal(NULL)
     validation <- shiny::reactiveVal(NULL)
+
+    # Update static text when language changes
+    shiny::observeEvent(language(), {
+      lang <- language()
+      session$sendCustomMessage("update_text", as.list(stats::setNames(
+        c(tr("nav_upload", lang), tr("validation_status", lang), tr("upload_hint", lang)),
+        c(ns("upload_header"), ns("validation_header"), ns("upload_hint"))
+      )))
+      session$sendCustomMessage("update_input_label", list(
+        id = ns("file"),
+        label = tr("upload_prompt", lang)
+      ))
+    })
 
     # Process uploaded file
     shiny::observeEvent(input$file, {
@@ -108,8 +125,8 @@ mod_upload_server <- function(id, language) {
       if (is.null(val)) {
         return(
           shiny::div(
-            class = "text-muted text-center py-4",
-            shiny::icon("file-upload", class = "fa-3x mb-3"),
+            class = "empty-state",
+            shiny::icon("cloud-arrow-up"),
             shiny::p(tr("upload_prompt", lang))
           )
         )

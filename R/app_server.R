@@ -39,6 +39,9 @@ language <- shiny::reactiveVal(getOption("cardiometR.language", "fr"))
     )
     session$sendCustomMessage("update_nav_labels", tab_labels)
 
+    # Update back_to_upload button label
+    shiny::updateActionButton(session, "back_to_upload", label = tr("back_to_upload", new_lang))
+
     # Show a notification about the language change
     shiny::showNotification(
       tr("language_changed", new_lang),
@@ -71,7 +74,8 @@ language <- shiny::reactiveVal(getOption("cardiometR.language", "fr"))
     language,
     cpet_data = upload_result$cpet_data,
     participant = participant_result$participant,
-    settings = settings_result$settings
+    settings = settings_result$settings,
+    prediction_source = participant_result$prediction_source
   )
 
   # ---- Module: Plots ----

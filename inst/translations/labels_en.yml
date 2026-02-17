@@ -318,6 +318,20 @@ breath_by_breath: "Breath-by-breath"
 time_averaged: "Time-averaged"
 data_type: "Data Type"
 
+# Prediction Equations
+prediction_source: "Prediction equations"
+prediction_jones: "Jones et al. (1997)"
+prediction_prefaut: "Préfaut et al."
+population_label: "Population"
+pmt_label: "Theoretical max power (PMT)"
+warmup_label: "Warmup"
+step_label: "Step increment"
+
 # Predicted Citation
 predicted_values_note: "Predicted values: Jones et al., 1997; Tanaka et al., 2001"
 signature_date: "Report Date"
+
+# Expected VO2 Labels
+gross_efficiency_setting: "Gross Efficiency (%)"
+expected_line_label: "Expected"
+leger_citation: "Léger & Mercier, 1984"

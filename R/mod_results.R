@@ -13,7 +13,7 @@ mod_results_ui <- function(id, language = "en") {
     fill = TRUE,
     bslib::card_header(
       shiny::icon("chart-column"),
-      tr("peak_values", language)
+      shiny::span(id = ns("results_header"), tr("peak_values", language))
     ),
     bslib::card_body(
       class = "overflow-auto",
@@ -23,21 +23,23 @@ mod_results_ui <- function(id, language = "en") {
       # Comparison with predicted values
       shiny::uiOutput(ns("comparison_display")),
 
-      shiny::hr(),
+      shiny::tags$hr(class = "section-divider"),
 
       # Thresholds
-      shiny::h6(tr("threshold_results", language)),
+      shiny::h6(shiny::span(id = ns("threshold_title"), tr("threshold_results", language))),
       shiny::uiOutput(ns("threshold_display")),
 
-      shiny::hr(),
+      shiny::tags$hr(class = "section-divider"),
 
       # Stage summary table
-      shiny::h6(tr("stage_results", language)),
+      shiny::h6(shiny::span(id = ns("stage_title"), tr("stage_results", language))),
       DT::dataTableOutput(ns("stage_table")),
       shiny::downloadButton(
         ns("download_data"),
-        label = tr("export_csv", language),
-        icon = shiny::icon("file-csv"),
+        label = shiny::tagList(
+          shiny::icon("file-csv"),
+          shiny::span(id = ns("export_label"), tr("export_csv", language))
+        ),
         class = "btn-outline-secondary btn-sm mt-2"
       )
     )
@@ -51,14 +53,24 @@ mod_results_ui <- function(id, language = "en") {
 #' @param cpet_data Reactive CpetData object from upload module.
 #' @param participant Reactive Participant object from participant module.
 #' @param settings Reactive settings list from settings module.
+#' @param prediction_source Reactive prediction equation source ("jones" or "prefaut").
 #'
 #' @return A list with reactive values:
 #'   - `analysis`: Reactive CpetAnalysis object.
 #'
 #' @keywords internal
-mod_results_server <- function(id, language, cpet_data, participant, settings) {
+mod_results_server <- function(id, language, cpet_data, participant, settings,
+                               prediction_source = shiny::reactive("jones")) {
   shiny::moduleServer(id, function(input, output, session) {
     ns <- session$ns
+
+    # --- Language reactivity for static UI text ---
+    shiny::observeEvent(language(), {
+      lang <- language()
+      ids <- c(ns("results_header"), ns("threshold_title"), ns("stage_title"), ns("export_label"))
+      texts <- c(tr("peak_values", lang), tr("threshold_results", lang), tr("stage_results", lang), tr("export_csv", lang))
+      session$sendCustomMessage("update_text", as.list(stats::setNames(texts, ids)))
+    })
 
     averaged_data <- shiny::reactive({
       data <- cpet_data()
@@ -109,7 +121,10 @@ mod_results_server <- function(id, language, cpet_data, participant, settings) {
 
           # Find peaks with specified averaging
           shiny::incProgress(0.2, detail = tr("step_peaks", lang))
-          peaks <- find_peaks(data, averaging = s$averaging_window)
+          peaks <- find_peaks(
+            data_avg,
+            averaging = s$averaging_window %||% 30
+          )
 
           # Detect thresholds (if methods specified)
           shiny::incProgress(0.2, detail = tr("step_thresholds", lang))
@@ -135,9 +150,9 @@ mod_results_server <- function(id, language, cpet_data, participant, settings) {
           shiny::incProgress(0.2, detail = tr("step_stages", lang))
           stage_summary <- NULL
           tryCatch({
-            data_with_stages <- extract_stages(data, protocol = s$protocol,
+            data_with_stages <- extract_stages(data_avg, protocol = s$protocol,
                                                stage_duration = s$stage_duration)
-            stage_summary <- summarize_stages(data_with_stages)
+            stage_summary <- summarize_stages(data_with_stages, window_s = s$averaging_window %||% 30)
           }, error = function(e) {
             shiny::showNotification(
               tr("warning_stages_failed", lang),
@@ -161,7 +176,7 @@ mod_results_server <- function(id, language, cpet_data, participant, settings) {
 
           # Create analysis object
           CpetAnalysis(
-            data = data,
+            data = data_avg,
             peaks = peaks,
             thresholds = thresholds,
             stage_summary = stage_summary,
@@ -272,6 +287,7 @@ mod_results_server <- function(id, language, cpet_data, participant, settings) {
       a <- analysis()
       lang <- language()
       s <- settings()
+      pred_source <- prediction_source()
 
       if (is.null(a) || is.null(a@peaks) || length(a@peaks@vo2_peak) == 0) {
         return(NULL)
@@ -279,7 +295,7 @@ mod_results_server <- function(id, language, cpet_data, participant, settings) {
 
       peaks <- a@peaks
       participant <- a@data@participant
-      predicted <- calculate_predicted_values(participant)
+      predicted <- calculate_predicted_values(participant, prediction_source = pred_source)
 
       # Compute percentages
       vo2_pct <- round(100 * peaks@vo2_peak / predicted$vo2_max, 0)
@@ -331,7 +347,7 @@ mod_results_server <- function(id, language, cpet_data, participant, settings) {
       }
 
       shiny::tagList(
-        shiny::hr(),
+        shiny::tags$hr(class = "section-divider"),
         shiny::h6(tr("comparison_title", lang)),
         norms_info,
         make_gauge(
@@ -371,7 +387,7 @@ mod_results_server <- function(id, language, cpet_data, participant, settings) {
       th <- a@thresholds
 
       shiny::tags$table(
-        class = "table table-sm",
+        class = "table table-sm table-clean",
         shiny::tags$thead(
           shiny::tags$tr(
             shiny::tags$th(""),
