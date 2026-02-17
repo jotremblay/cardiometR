@@ -19,37 +19,55 @@
   margin: (top: 3.2cm, bottom: 2cm, left: 2cm, right: 2cm),
   header: [
     #grid(
-      columns: (auto, 1fr),
+      columns: (1fr, 1fr),
       gutter: 1em,
       align(left + horizon)[
-        #box[
-          {{#if logo_path}}
-          #box(
-            clip: true,
-            height: 1.4cm,
-            image("{{logo_path}}", height: 1.4cm)
-          )
-          {{/if}}
-          {{#if lab_logo_path}}
-          #h(0.5em)
-          #box(
-            clip: true,
-            height: 1.4cm,
-            image("{{lab_logo_path}}", height: 1.4cm)
-          )
-          {{/if}}
-        ]
+        #grid(
+          columns: (auto, auto),
+          gutter: 0.8em,
+          align(left + horizon)[
+            {{#if logo_path}}
+            #box(
+              height: 1.35cm,
+            )[
+              #align(center + horizon)[
+                #image("{{logo_path}}", height: 1.15cm)
+              ]
+            ]
+            {{/if}}
+          ],
+          align(left + horizon)[
+            {{#if lab_logo_path}}
+            #box(
+              height: 1.35cm,
+            )[
+              #align(center + horizon)[
+                #image("{{lab_logo_path}}", height: 1.30cm)
+              ]
+            ]
+            {{/if}}
+          ]
+        )
       ],
-      align(right + horizon)[
+      align(right + top)[
         #stack(
           dir: ttb,
           spacing: 0.4em,
-          text(weight: "bold", size: 9pt, fill: primary)[{{institution}}],
-          {{#if lab_name}}
+          text(weight: "bold", size: 9pt, fill: primary)[{{institution_line1}}],
+          {{#if institution_line2}}
+          text(weight: "bold", size: 9pt, fill: primary)[{{institution_line2}}],
+          {{/if}}
+          {{#if lab_name_line1}}
           {{#if lab_url}}
-          link("{{lab_url}}")[#text(size: 8pt, fill: accent)[{{lab_name}}]],
+          link("{{lab_url}}")[#text(size: 8pt, fill: accent)[{{lab_name_line1}}]],
+          {{#if lab_name_line2}}
+          link("{{lab_url}}")[#text(size: 8pt, fill: accent)[{{lab_name_line2}}]],
+          {{/if}}
           {{else}}
-          text(size: 8pt, fill: accent)[{{lab_name}}],
+          text(size: 8pt, fill: accent)[{{lab_name_line1}}],
+          {{#if lab_name_line2}}
+          text(size: 8pt, fill: accent)[{{lab_name_line2}}],
+          {{/if}}
           {{/if}}
           {{/if}}
           text(size: 8pt, fill: luma(100))[{{report_date}}]
@@ -122,55 +140,35 @@
 
 #v(0.8em)
 
-// Patient and Test Information - Combined side by side
-#grid(
-  columns: (1fr, 1fr),
-  gutter: 1.5em,
-  // Patient Info
-  [
-    #block(
-      stroke: (left: 3pt + primary),
-      inset: (left: 1em, y: 0.8em, right: 0.5em),
-      width: 100%
-    )[
-      #text(size: 11pt, weight: "bold", fill: primary)[{{section_patient}}]
-      #v(0.5em)
-      #table(
-        columns: (7em, 1fr),
-        stroke: none,
-        inset: (x: 0pt, y: 4pt),
-        [#text(fill: luma(80))[{{label_name}}]], [#text(weight: "semibold")[{{patient_name}}]],
-        [#text(fill: luma(80))[{{label_id}}]], [{{patient_id}}],
-        [#text(fill: luma(80))[{{label_age}} / {{label_sex}}]], [{{patient_age}} {{label_years}} / {{patient_sex}}],
-        [#text(fill: luma(80))[{{label_height}} / {{label_weight}}]], [{{patient_height}} cm / {{patient_weight}} kg],
-        [#text(fill: luma(80))[{{label_bmi}}]], [{{patient_bmi}} kg/m#super[2]],
-        [#text(fill: luma(80))[{{label_sport}}]], [{{patient_sport}}],
-      )
-    ]
-  ],
-  // Test Info
-  [
-    #block(
-      stroke: (left: 3pt + accent),
-      inset: (left: 1em, y: 0.8em, right: 0.5em),
-      width: 100%
-    )[
-      #text(size: 11pt, weight: "bold", fill: accent)[{{section_test}}]
-      #v(0.5em)
-      #table(
-        columns: (7em, 1fr),
-        stroke: none,
-        inset: (x: 0pt, y: 4pt),
-        [#text(fill: luma(80))[{{label_test_date}}]], [#text(weight: "semibold")[{{test_date}}]],
-        [#text(fill: luma(80))[{{label_protocol}}]], [{{test_protocol}}],
-        [#text(fill: luma(80))[{{label_device}}]], [{{test_device}}],
-        [#text(fill: luma(80))[{{label_duration}}]], [{{test_duration}}],
-        [#text(fill: luma(80))[{{label_technician}}]], [{{test_technician}}],
-        [#text(fill: luma(80))[{{label_reason}}]], [{{test_reason}}],
-      )
-    ]
-  ]
-)
+// Patient Information
+#block(
+  stroke: (left: 3pt + primary),
+  inset: (left: 1em, y: 0.8em, right: 0.5em),
+  width: 100%
+)[
+  #text(size: 11pt, weight: "bold", fill: primary)[{{section_patient}}]
+  #v(0.5em)
+  #grid(
+    columns: (1fr, 1fr),
+    gutter: 1.5em,
+    table(
+      columns: (7em, 1fr),
+      stroke: none,
+      inset: (x: 0pt, y: 4pt),
+      [#text(fill: luma(80))[{{label_name}}]], [#text(weight: "semibold")[{{patient_name}}]],
+      [#text(fill: luma(80))[{{label_id}}]], [{{patient_id}}],
+      [#text(fill: luma(80))[{{label_age}} / {{label_sex}}]], [{{patient_age}} {{label_years}} / {{patient_sex}}],
+    ),
+    table(
+      columns: (7em, 1fr),
+      stroke: none,
+      inset: (x: 0pt, y: 4pt),
+      [#text(fill: luma(80))[{{label_height}} / {{label_weight}}]], [{{patient_height}} cm / {{patient_weight}} kg],
+      [#text(fill: luma(80))[{{label_bmi}}]], [{{patient_bmi}} kg/m#super[2]],
+      [#text(fill: luma(80))[{{label_sport}}]], [{{patient_sport}}],
+    )
+  )
+]
 
 #v(0.8em)
 
@@ -251,9 +249,9 @@
         stroke: none,
         inset: (x: 0pt, y: 3pt),
         [#text(size: 9pt, fill: luma(100))[{{label_modality}}]], [#text(weight: "semibold")[{{protocol_modality_label}}]],
-        [#text(size: 9pt, fill: luma(100))[{{label_starting_intensity}}]], [#text(weight: "semibold")[{{starting_intensity}} {{intensity_unit}}]],
-        [#text(size: 9pt, fill: luma(100))[{{label_increment}}]], [#text(weight: "semibold")[{{increment_size}} {{intensity_unit}}]],
-        [#text(size: 9pt, fill: luma(100))[{{label_stage_duration}}]], [#text(weight: "semibold")[{{stage_duration_s}} s]],
+        [#text(size: 9pt, fill: luma(100))[{{label_starting_intensity}}]], [#text(weight: "semibold")[{{starting_intensity_display}}]],
+        [#text(size: 9pt, fill: luma(100))[{{label_increment}}]], [#text(weight: "semibold")[{{increment_size_display}}]],
+        [#text(size: 9pt, fill: luma(100))[{{label_stage_duration}}]], [#text(weight: "semibold")[{{stage_duration_display}}]],
         {{#if data_type}}
         [#text(size: 9pt, fill: luma(100))[{{label_data_type}}]], [#text(weight: "semibold")[{{data_type}}]],
         {{/if}}
@@ -262,7 +260,7 @@
     // Equipment
     [
       #table(
-        columns: (auto, 1fr),
+        columns: (8em, 1fr),
         stroke: none,
         inset: (x: 0pt, y: 3pt),
         {{#if equipment_model}}

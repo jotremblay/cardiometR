@@ -205,7 +205,7 @@ Generate professional bilingual reports using Typst:
 # Configure report
 config <- ReportConfig(
   language = "fr",
-  institution = "Centre EPIC",
+  institution = "Centre ÉPIC",
   technician = "Dr. Smith"
 )
 
@@ -228,7 +228,7 @@ generate_report(
 
 # Built-in logos
 config <- ReportConfig(
-  institution = "Universite de Montreal",
+  institution = "Université de Montréal",
   logo_path = get_logo("udem")
 )
 

@@ -29,7 +29,7 @@ report_graph_cache <- new.env(parent = emptyenv())
 #' @examples
 #' \dontrun{
 #' analysis <- analyze_cpet(data)
-#' config <- ReportConfig(language = "fr", institution = "UCLouvain")
+#' config <- ReportConfig(language = "fr", institution = "Universit\u00e9 de Montr\u00e9al")
 #'
 #' # Standard report with general population comparison
 #' generate_report(analysis, "patient_report.pdf", config)
@@ -68,6 +68,7 @@ generate_report <- function(analysis,
   }
 
   language <- config@language
+  prediction_source <- config@prediction_source
 
   # Get labels for the report
   labels <- get_report_labels(language)
@@ -91,7 +92,8 @@ generate_report <- function(analysis,
   graphs_enabled <- is.null(report_sections) || "graphs" %in% report_sections
   if (include_graphs && graphs_enabled) {
     graph_files <- tryCatch(
-      generate_report_graphs(analysis, language, athlete_sport, athlete_level),
+      generate_report_graphs(analysis, language, athlete_sport, athlete_level,
+                             prediction_source = prediction_source),
       error = function(e) {
         cli::cli_warn(c(
           "Graph generation failed; continuing without graphs.",
@@ -370,6 +372,7 @@ build_template_data <- function(analysis, config, labels, clinical_notes, interp
                                 athlete_sport = NULL, athlete_level = "recreational",
                                 report_sections = NULL, signature_date = NULL) {
   language <- config@language
+  prediction_source <- config@prediction_source
   data <- analysis@data
   participant <- data@participant
   metadata <- data@metadata
@@ -380,7 +383,7 @@ build_template_data <- function(analysis, config, labels, clinical_notes, interp
   bmi <- participant@weight_kg / (participant@height_cm / 100)^2
 
   # Calculate predicted values
-  predicted <- calculate_predicted_values(participant)
+  predicted <- calculate_predicted_values(participant, prediction_source = prediction_source)
 
   # Format sex
   sex_label <- if (participant@sex == "M") {
@@ -391,13 +394,20 @@ build_template_data <- function(analysis, config, labels, clinical_notes, interp
     "Other"
   }
 
+  institution_split <- split_header_text(config@institution %||% "", split_word = "et")
+  lab_name_split <- split_header_text(config@lab_name %||% "", split_word = "et")
+
   # Build base data
   template_data <- c(
     labels,
     list(
       # Header info
       institution = config@institution %||% "",
+      institution_line1 = institution_split$line1,
+      institution_line2 = institution_split$line2,
       lab_name = config@lab_name %||% "",
+      lab_name_line1 = lab_name_split$line1,
+      lab_name_line2 = lab_name_split$line2,
       lab_url = config@lab_url %||% "",
       report_date = format(Sys.Date(), "%Y-%m-%d"),
       signature_date = format(signature_date %||% Sys.Date(), "%Y-%m-%d"),
@@ -435,7 +445,7 @@ build_template_data <- function(analysis, config, labels, clinical_notes, interp
 
       # Test info
       test_date = format(metadata@test_date, "%Y-%m-%d"),
-      test_protocol = escape_typst(gsub("^_+", "", metadata@protocol)),
+      test_protocol = escape_typst(trimws(gsub("_", " ", metadata@protocol, fixed = TRUE))),
       test_device = escape_typst(metadata@device),
       test_technician = escape_typst(config@technician %||% metadata@technician %||% "-"),
       test_duration = format_duration(max(data@breaths$time_s)),
@@ -563,10 +573,26 @@ build_template_data <- function(analysis, config, labels, clinical_notes, interp
     template_data$has_pretest_conditions <- FALSE
   }
 
+  protocol_for_report <- analysis@protocol_config
+  if (is.null(protocol_for_report)) {
+    protocol_for_report <- tryCatch(
+      detect_protocol_config(data),
+      error = function(e) NULL
+    )
+  }
+
   # Protocol details if available
-  if (!is.null(analysis@protocol_config)) {
-    pc <- analysis@protocol_config
+  if (!is.null(protocol_for_report)) {
+    pc <- protocol_for_report
     intensity_unit <- if (pc@modality == "treadmill") "km/h" else "W"
+    value_digits <- if (pc@modality == "treadmill") 1 else 0
+
+    format_with_unit <- function(value, unit, digits = 0) {
+      if (is.null(value) || length(value) == 0 || anyNA(value)) {
+        return("-")
+      }
+      paste0(format(round(value, digits), trim = TRUE), " ", unit)
+    }
 
     # Modality-aware intensity labels
     label_start <- if (pc@modality == "treadmill") {
@@ -580,6 +606,29 @@ build_template_data <- function(analysis, config, labels, clinical_notes, interp
       tr("power_increment", language)
     }
 
+    is_blank_text <- function(x) {
+      is.null(x) ||
+        length(x) == 0 ||
+        all(is.na(x)) ||
+        !nzchar(trimws(as.character(x[[1]])))
+    }
+
+    # Equipment: use modality-aware display name
+    equipment_model <- format_modality(pc@modality, language)
+
+    # Analyzer: default to "COSMED Quark CPET" when available
+    analyzer_model <- pc@analyzer_model
+    if (!is_blank_text(analyzer_model)) {
+      analyzer_model <- escape_typst(as.character(analyzer_model[[1]]))
+    } else {
+      # Fall back to device metadata or standard COSMED name
+      if (!is_blank_text(metadata@device)) {
+        analyzer_model <- escape_typst(as.character(metadata@device))
+      } else {
+        analyzer_model <- "COSMED Quark CPET"
+      }
+    }
+
     template_data <- c(template_data, list(
       has_protocol_details = TRUE,
       protocol_modality = pc@modality,
@@ -590,10 +639,19 @@ build_template_data <- function(analysis, config, labels, clinical_notes, interp
       intensity_unit = intensity_unit,
       increment_size = pc@increment_size,
       stage_duration_s = pc@stage_duration_s,
+      starting_intensity_display = format_with_unit(pc@starting_intensity, intensity_unit, value_digits),
+      increment_size_display = format_with_unit(pc@increment_size, intensity_unit, value_digits),
+      stage_duration_display = if (!is.null(pc@stage_duration_s) &&
+        length(pc@stage_duration_s) > 0 &&
+        !anyNA(pc@stage_duration_s)) {
+        paste0(round(pc@stage_duration_s, 0), " s")
+      } else {
+        "-"
+      },
       starting_grade = pc@starting_grade,
       grade_increment = pc@grade_increment,
-      equipment_model = escape_typst(pc@equipment_model %||% "-"),
-      analyzer_model = escape_typst(pc@analyzer_model %||% "-")
+      equipment_model = equipment_model,
+      analyzer_model = analyzer_model
     ))
   } else {
     template_data$has_protocol_details <- FALSE
@@ -602,8 +660,8 @@ build_template_data <- function(analysis, config, labels, clinical_notes, interp
   # Stage-by-stage summary table
   if (!is.null(analysis@stage_summary) && nrow(analysis@stage_summary) > 0) {
     template_data$has_stage_table <- TRUE
-    modality <- if (!is.null(analysis@protocol_config)) {
-      analysis@protocol_config@modality
+    modality <- if (!is.null(protocol_for_report)) {
+      protocol_for_report@modality
     } else {
       NULL
     }
@@ -655,15 +713,17 @@ build_template_data <- function(analysis, config, labels, clinical_notes, interp
   } else {
     if (language == "fr") "femmes" else "females"
   }
+
+  # Use citation from predicted values (adapts to prediction source)
   if (language == "fr") {
     template_data$predicted_values_note <- sprintf(
-      "Valeurs pr\u00e9dites pour %s, %d ans (population g\u00e9n\u00e9rale en sant\u00e9, s\u00e9dentaire \u00e0 mod\u00e9r\u00e9ment actif). R\u00e9f. : Jones et al., 1997 ; Tanaka et al., 2001.",
-      sex_desc, participant@age
+      "Valeurs pr\u00e9dites pour %s, %d ans. R\u00e9f. : %s.",
+      sex_desc, participant@age, predicted$citation_short
     )
   } else {
     template_data$predicted_values_note <- sprintf(
-      "Predicted values for %s, age %d (healthy general population, sedentary to moderately active). Ref: Jones et al., 1997; Tanaka et al., 2001.",
-      sex_desc, participant@age
+      "Predicted values for %s, age %d. Ref: %s.",
+      sex_desc, participant@age, predicted$citation_short
     )
   }
 
@@ -690,7 +750,8 @@ build_template_data <- function(analysis, config, labels, clinical_notes, interp
   }
 
   # Add visual interpretation data
-  visual_interp <- generate_visual_interpretation(analysis, config@language)
+  visual_interp <- generate_visual_interpretation(analysis, config@language,
+                                                   prediction_source = prediction_source)
   template_data <- c(template_data, visual_interp)
 
   # Add clinical notes
@@ -728,7 +789,44 @@ build_template_data <- function(analysis, config, labels, clinical_notes, interp
 
   template_data$bibliography <- if (length(bibliography_entries) > 0) bib_text else ""
 
+  # Add Pr\u00e9faut-specific protocol fields if available
+  if (prediction_source == "prefaut" && !is.null(predicted$pmt)) {
+    template_data$prefaut_pmt <- round(predicted$pmt, 0)
+    template_data$prefaut_warmup <- round(predicted$warmup_watts, 0)
+    template_data$prefaut_step <- round(predicted$step_watts, 0)
+    template_data$prefaut_population <- predicted$population
+  }
+
   template_data
+}
+
+# Split long header labels into two lines (e.g., before "et" in French names)
+split_header_text <- function(text, split_word = "et") {
+  raw_value <- as.character(text %||% "")
+  if (length(raw_value) == 0 || is.na(raw_value[1])) {
+    raw_value <- ""
+  } else {
+    raw_value <- raw_value[1]
+  }
+
+  value <- gsub("\\s+", " ", trimws(raw_value))
+  if (!nzchar(value)) {
+    return(list(line1 = "", line2 = ""))
+  }
+
+
+  pattern <- sprintf("^(.+?)\\s+(%s\\b.*)$", split_word)
+  match <- regexec(pattern, value, ignore.case = TRUE, perl = TRUE)
+  parts <- regmatches(value, match)[[1]]
+
+  if (length(parts) >= 3) {
+    return(list(
+      line1 = escape_typst(trimws(parts[2])),
+      line2 = escape_typst(trimws(parts[3]))
+    ))
+  }
+
+  list(line1 = escape_typst(value), line2 = "")
 }
 
 
@@ -736,56 +834,133 @@ build_template_data <- function(analysis, config, labels, clinical_notes, interp
 #'
 #' @description
 #' Calculates age/sex-specific predicted maximal values.
-#' Uses standard prediction equations.
+#' Supports Jones et al. (1997) and Pr\u00e9faut et al. prediction equations.
 #'
 #' @param participant Participant object
+#' @param prediction_source Prediction equation source: "jones" or "prefaut"
 #' @return Named list of predicted values
 #' @keywords internal
-calculate_predicted_values <- function(participant) {
+calculate_predicted_values <- function(participant, prediction_source = "jones") {
   age <- participant@age
   sex <- participant@sex
   weight <- participant@weight_kg
   height <- participant@height_cm
 
-  # Predicted HR max (Tanaka et al., 2001)
-  hr_max <- 208 - 0.7 * age
+  if (prediction_source == "prefaut") {
+    # --- Pr\u00e9faut prediction equations ---
 
-  # Predicted VO2max (ml/min) - Jones et al. equations
-  if (sex == "M") {
-    # Males: VO2max = (60 - 0.55 * age) * weight
-    vo2_max_rel <- 60 - 0.55 * age
-    vo2_max <- vo2_max_rel * weight
+    # Determine population category and VO2max predicted (mL/min)
+    if (age < 16) {
+      # Pediatric equations
+      if (sex == "M") {
+        population <- "boy"
+        vo2_max <- (52.8 * weight) - 303.4
+      } else {
+        population <- "girl"
+        vo2_max <- (28.5 * weight) + 288
+      }
+    } else if (sex == "M") {
+      # Adult male - check obesity threshold
+      ideal_weight <- (0.79 * height) - 60.7
+      if (weight > ideal_weight) {
+        population <- "obese_male"
+        vo2_max <- ideal_weight * (50.72 - 0.372 * age)
+      } else {
+        population <- "male"
+        vo2_max <- weight * (50.72 - 0.372 * age)
+      }
+    } else {
+      # Adult female - check obesity threshold
+      ideal_weight <- (0.65 * height) - 42.8
+      if (weight > ideal_weight) {
+        population <- "obese_female"
+        vo2_max <- height * (14.81 - 0.11 * age)
+      } else {
+        population <- "female"
+        vo2_max <- (42.8 + weight) * (22.8 - 0.17 * age)
+      }
+    }
+
+    vo2_max_rel <- vo2_max / weight
+
+    # HR max (Pr\u00e9faut): 210 - 0.65 * age (all populations)
+    hr_max <- 210 - 0.65 * age
+
+    # PMT (maximal theoretical power, watts)
+    pmt <- (vo2_max - 300) / 10.3
+
+    # Warmup watts
+    warmup_watts <- pmt / 5
+
+    # Step increment (10 stages from warmup to PMT)
+    step_watts <- round((pmt - warmup_watts) / 10)
+
+    # VE max approximation (same as Jones)
+    ve_max <- 25 * (vo2_max / 1000)
+
+    # Power max (use PMT as predicted power)
+    power_max <- max(pmt, 50)
+
+    # O2 pulse predicted
+    o2_pulse <- vo2_max / hr_max
+
+    list(
+      hr_max = hr_max,
+      vo2_max = vo2_max,
+      vo2_max_rel = vo2_max_rel,
+      ve_max = ve_max,
+      power_max = power_max,
+      o2_pulse = o2_pulse,
+      pmt = pmt,
+      warmup_watts = warmup_watts,
+      step_watts = step_watts,
+      population = population,
+      citation = "Pr\u00e9faut C, et al. Exercise and Sport Sciences Reviews. Prediction equations for VO2max.",
+      citation_short = "Pr\u00e9faut et al."
+    )
   } else {
-    # Females: VO2max = (48 - 0.37 * age) * weight
-    vo2_max_rel <- 48 - 0.37 * age
-    vo2_max <- vo2_max_rel * weight
+    # --- Jones et al. (1997) prediction equations (default) ---
+
+    # Predicted HR max (Tanaka et al., 2001)
+    hr_max <- 208 - 0.7 * age
+
+    # Predicted VO2max (ml/min) - Jones et al. equations
+    if (sex == "M") {
+      # Males: VO2max = (60 - 0.55 * age) * weight
+      vo2_max_rel <- 60 - 0.55 * age
+      vo2_max <- vo2_max_rel * weight
+    } else {
+      # Females: VO2max = (48 - 0.37 * age) * weight
+      vo2_max_rel <- 48 - 0.37 * age
+      vo2_max <- vo2_max_rel * weight
+    }
+
+    # Predicted VE max (approximation: 35 * FEV1, using estimated FEV1)
+    # Simplified: VE_max ~ 25-30 * VO2max(L/min)
+    ve_max <- 25 * (vo2_max / 1000)
+
+    # Predicted power (Wasserman equation approximation)
+    if (sex == "M") {
+      power_max <- (height - 60) * 20 - age * 2
+    } else {
+      power_max <- (height - 60) * 14 - age * 2
+    }
+    power_max <- max(power_max, 50)
+
+    # O2 pulse predicted
+    o2_pulse <- vo2_max / hr_max
+
+    list(
+      hr_max = hr_max,
+      vo2_max = vo2_max,
+      vo2_max_rel = vo2_max_rel,
+      ve_max = ve_max,
+      power_max = power_max,
+      o2_pulse = o2_pulse,
+      citation = "Jones NL, et al. Clinical Exercise Testing. 4th ed. Saunders; 1997. Tanaka H, et al. J Am Coll Cardiol. 2001;37(1):153-156.",
+      citation_short = "Jones et al., 1997; Tanaka et al., 2001"
+    )
   }
-
-  # Predicted VE max (approximation: 35 * FEV1, using estimated FEV1)
-  # Simplified: VE_max ~ 25-30 * VO2max(L/min)
-  ve_max <- 25 * (vo2_max / 1000)
-
-  # Predicted power (Wasserman equation approximation)
-  if (sex == "M") {
-    power_max <- (height - 60) * 20 - age * 2
-  } else {
-    power_max <- (height - 60) * 14 - age * 2
-  }
-  power_max <- max(power_max, 50)
-
-  # O2 pulse predicted
-  o2_pulse <- vo2_max / hr_max
-
-  list(
-    hr_max = hr_max,
-    vo2_max = vo2_max,
-    vo2_max_rel = vo2_max_rel,
-    ve_max = ve_max,
-    power_max = power_max,
-    o2_pulse = o2_pulse,
-    citation = "Jones NL, et al. Clinical Exercise Testing. 4th ed. Saunders; 1997. Tanaka H, et al. J Am Coll Cardiol. 2001;37(1):153-156.",
-    citation_short = "Jones et al., 1997; Tanaka et al., 2001"
-  )
 }
 
 
@@ -797,12 +972,14 @@ calculate_predicted_values <- function(participant) {
 #'
 #' @param analysis CpetAnalysis object
 #' @param language Language code
+#' @param prediction_source Prediction equation source: "jones" or "prefaut"
 #' @return List with visual interpretation elements
 #' @keywords internal
-generate_visual_interpretation <- function(analysis, language = "en") {
+generate_visual_interpretation <- function(analysis, language = "en",
+                                            prediction_source = "jones") {
   peaks <- analysis@peaks
   participant <- analysis@data@participant
-  predicted <- calculate_predicted_values(participant)
+  predicted <- calculate_predicted_values(participant, prediction_source = prediction_source)
 
   # Default values
   default_result <- list(
@@ -903,7 +1080,7 @@ generate_visual_interpretation <- function(analysis, language = "en") {
   summary_parts <- c()
 
   if (language == "fr") {
-    summary_parts <- c(summary_parts, sprintf("VO2max \u00e0 %d%% du pr\u00e9dit", vo2_pct))
+    summary_parts <- c(summary_parts, sprintf("VO#sub[2]max \u00e0 %d%% du pr\u00e9dit", vo2_pct))
     if (hr_pct > 0) {
       summary_parts <- c(summary_parts, sprintf("FC max \u00e0 %d%% du pr\u00e9dit", hr_pct))
     }
@@ -913,7 +1090,7 @@ generate_visual_interpretation <- function(analysis, language = "en") {
       summary_parts <- c(summary_parts, sprintf("RER pic = %.2f", rer_val))
     }
   } else {
-    summary_parts <- c(summary_parts, sprintf("VO2max at %d%% of predicted", vo2_pct))
+    summary_parts <- c(summary_parts, sprintf("VO#sub[2]max at %d%% of predicted", vo2_pct))
     if (hr_pct > 0) {
       summary_parts <- c(summary_parts, sprintf("HR max at %d%% of predicted", hr_pct))
     }
@@ -950,12 +1127,14 @@ generate_visual_interpretation <- function(analysis, language = "en") {
 #'
 #' @param analysis CpetAnalysis object
 #' @param language Language code
+#' @param prediction_source Prediction equation source: "jones" or "prefaut"
 #' @return List with interpretation sections
 #' @keywords internal
-generate_auto_interpretation <- function(analysis, language = "en") {
+generate_auto_interpretation <- function(analysis, language = "en",
+                                          prediction_source = "jones") {
   peaks <- analysis@peaks
   participant <- analysis@data@participant
-  predicted <- calculate_predicted_values(participant)
+  predicted <- calculate_predicted_values(participant, prediction_source = prediction_source)
 
   if (is.null(peaks) || length(peaks@vo2_peak) == 0) {
     return(list(
@@ -1053,10 +1232,12 @@ generate_auto_interpretation <- function(analysis, language = "en") {
 #' @param language Language code
 #' @param athlete_sport Sport for normative comparison (optional)
 #' @param athlete_level Competitive level
+#' @param prediction_source Prediction equation source: "jones" or "prefaut"
 #' @return List with graph file paths
 #' @keywords internal
 generate_report_graphs <- function(analysis, language = "en",
-                                   athlete_sport = NULL, athlete_level = "recreational") {
+                                   athlete_sport = NULL, athlete_level = "recreational",
+                                   prediction_source = "jones") {
   if (!requireNamespace("patchwork", quietly = TRUE)) {
     cli::cli_abort(c(
       "The {.pkg patchwork} package is required to generate the 9-panel report plot",
@@ -1083,7 +1264,8 @@ generate_report_graphs <- function(analysis, language = "en",
       sport = athlete_sport,
       level = athlete_level,
       language = language,
-      show_citation = TRUE
+      show_citation = TRUE,
+      prediction_source = prediction_source
     )
 
     report_graph_cache$key <- cache_key
@@ -1119,12 +1301,30 @@ build_report_graph_cache_key <- function(analysis, language, athlete_sport, athl
   breaths <- analysis@data@breaths
   peaks <- analysis@peaks
   thresholds <- analysis@thresholds
+  stage_summary <- analysis@stage_summary
+
+  stage_rows <- if (is.null(stage_summary)) 0L else nrow(stage_summary)
+  stage_end_time <- if (stage_rows > 0 && "time_s" %in% names(stage_summary)) {
+    round(max(stage_summary$time_s, na.rm = TRUE), 1)
+  } else {
+    NA_real_
+  }
+  stage_vo2_signature <- if (stage_rows > 0 && "vo2_ml" %in% names(stage_summary)) {
+    round(sum(stage_summary$vo2_ml, na.rm = TRUE), 1)
+  } else {
+    NA_real_
+  }
 
   paste(
     analysis@data@participant@id %||% "",
     as.character(analysis@data@metadata@test_date) %||% "",
+    as.character(analysis@data@is_averaged),
+    analysis@data@averaging_window %||% "",
     nrow(breaths),
     round(max(breaths$time_s, na.rm = TRUE), 1),
+    stage_rows,
+    stage_end_time,
+    stage_vo2_signature,
     if (!is.null(peaks) && length(peaks@vo2_peak) > 0) round(peaks@vo2_peak, 1) else NA_real_,
     if (!is.null(thresholds) && length(thresholds@vt1_vo2) > 0) round(thresholds@vt1_vo2, 1) else NA_real_,
     if (!is.null(thresholds) && length(thresholds@vt2_vo2) > 0) round(thresholds@vt2_vo2, 1) else NA_real_,
@@ -1255,7 +1455,7 @@ process_conditionals <- function(content, data) {
 #' @keywords internal
 render_typst_report <- function(template_path, data, output_file) {
   # Read template
-  template_content <- paste(readLines(template_path, warn = FALSE), collapse = "\n")
+  template_content <- paste(readLines(template_path, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 
   # Process conditionals recursively to handle nesting properly
   template_content <- process_conditionals(template_content, data)
@@ -1274,6 +1474,7 @@ render_typst_report <- function(template_path, data, output_file) {
       if (is.na(value) || identical(value, "NA")) {
         value <- "-"
       }
+      value <- enc2utf8(value)
     }
     pattern <- paste0("{{", name, "}}")
     template_content <- gsub(pattern, value, template_content, fixed = TRUE)
@@ -1291,7 +1492,7 @@ render_typst_report <- function(template_path, data, output_file) {
   on.exit(unlink(temp_dir, recursive = TRUE), add = TRUE)
 
   # Copy any image files to the temp directory and update paths
-  image_vars <- c("graph_panel", "graph_vslope", "graph_predicted", "logo_path")
+  image_vars <- c("graph_panel", "graph_vslope", "graph_predicted", "logo_path", "lab_logo_path")
   for (var in image_vars) {
     val <- data[[var]]
     if (!is.null(val) && length(val) > 0 && !anyNA(val) && nchar(val) > 0 && file.exists(val)) {
@@ -1306,7 +1507,7 @@ render_typst_report <- function(template_path, data, output_file) {
 
   # Write interpolated template
   temp_typ <- file.path(temp_dir, "report.typ")
-  writeLines(template_content, temp_typ)
+  writeLines(enc2utf8(template_content), temp_typ, useBytes = TRUE)
 
   # Typst requires the output file to have a .pdf extension.
   # Shiny downloadHandler passes a temp path without one, so compile to a
@@ -1388,7 +1589,7 @@ validate_pdf_output <- function(path) {
 #' @keywords internal
 escape_typst <- function(x) {
   if (is.null(x) || length(x) == 0 || is.na(x[1])) return(x)
-  x <- as.character(x)
+  x <- enc2utf8(as.character(x))
   x <- gsub("\\", "\\\\", x, fixed = TRUE)
   x <- gsub("#", "\\#", x, fixed = TRUE)
   x <- gsub("[", "\\[", x, fixed = TRUE)
@@ -1639,8 +1840,8 @@ has_lactate <- "lactate_mmol" %in% names(stage_summary) &&
 #'
 #' @description
 #' Returns the path to a built-in institution logo for use in reports.
-#' Available logos: "udem" (UdeM - Ecole de kinesiologie),
-#' "epic" (Centre EPIC - Institut de Cardiologie de Montreal).
+#' Available logos: "udem" (UdeM - \u00c9cole de kin\u00e9siologie),
+#' "epic" (Centre \u00c9PIC - Institut de Cardiologie de Montr\u00e9al).
 #'
 #' @param institution Institution identifier: "udem" or "epic"
 #'
@@ -1653,7 +1854,7 @@ has_lactate <- "lactate_mmol" %in% names(stage_summary) &&
 #' # Use in report config
 #' \dontrun{
 #' config <- ReportConfig(
-#'   institution = "Ecole de kinesiologie, UdeM",
+#'   institution = "\u00c9cole de kin\u00e9siologie, UdeM",
 #'   logo_path = get_logo("udem")
 #' )
 #' }
@@ -1685,18 +1886,19 @@ get_logo <- function(institution = c("udem", "epic")) {
 #'
 #' @param analysis CpetAnalysis object
 #' @param language Language code
+#' @param prediction_source Prediction equation source: "jones" or "prefaut"
 #'
 #' @return A gt table object
 #'
 #' @export
-create_summary_table <- function(analysis, language = "en") {
+create_summary_table <- function(analysis, language = "en", prediction_source = "jones") {
   if (!requireNamespace("gt", quietly = TRUE)) {
     cli::cli_abort("Package {.pkg gt} is required for tables")
   }
 
   peaks <- analysis@peaks
   participant <- analysis@data@participant
-  predicted <- calculate_predicted_values(participant)
+  predicted <- calculate_predicted_values(participant, prediction_source = prediction_source)
 
   if (is.null(peaks) || length(peaks@vo2_peak) == 0) {
     cli::cli_abort("No peak values available in analysis")

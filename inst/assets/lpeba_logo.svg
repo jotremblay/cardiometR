@@ -1,6 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 150">
-  <!-- Icon (scaled to fit) -->
-  <g transform="translate(0, 75) scale(0.0125, -0.0125)">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-8 -8 130 132" preserveAspectRatio="xMidYMid meet">
+  <!-- LPEBA icon (no wordmark) -->
+  <g transform="translate(5, 112) scale(0.0125, -0.0125)">
     <g fill="#1e3a5f" stroke="none">
       <path d="M4001 8630 c-74 -20 -108 -37 -411 -212 -227 -131 -991 -567 -1420
 -811 -406 -231 -441 -258 -506 -392 -33 -70 -39 -91 -42 -167 l-4 -88 258 0
@@ -40,11 +40,4 @@ m-612 -812 c188 -43 296 -135 414 -354 130 -241 255 -470 257 -470 1 0 115 23
 10 126 17 365 24 183 6 347 12 363 14 80 8 153 5 218 -10z"/>
     </g>
   </g>
-
-  <!-- LPEBA wordmark -->
-  <text x="140" y="95"
-        font-family="Inter, system-ui, -apple-system, sans-serif"
-        font-size="64"
-        font-weight="600"
-        fill="#1e3a5f">LPEBA</text>
 </svg>

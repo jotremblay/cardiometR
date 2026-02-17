@@ -156,6 +156,7 @@ extract_stages <- new_generic("extract_stages", "x")
 #'   \describe{
 #'     \item{method}{Summarization method: "last30s" (last 30 seconds of stage),
 #'       "last60s", "mean" (stage mean), or "peak" (stage maximum)}
+#'     \item{window_s}{Averaging window in seconds for "last30s" method (default 30)}
 #'   }
 #'
 #' @return A tibble with one row per stage and summary statistics

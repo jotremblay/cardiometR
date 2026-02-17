@@ -104,7 +104,7 @@ Generate professional bilingual reports:
 ```r
 config <- ReportConfig(
   language = "fr",
-  institution = "Centre EPIC",
+  institution = "Centre ÉPIC",
   technician = "Dr. Smith"
 )
 

@@ -349,6 +349,7 @@ detect_power_increment <- function(power) {
 #' @export
 method(summarize_stages, CpetData) <- function(x,
                                                 method = c("last30s", "last60s", "mean", "peak"),
+                                                window_s = 30,
                                                 ...) {
   method <- match.arg(method)
 
@@ -369,7 +370,7 @@ method(summarize_stages, CpetData) <- function(x,
 
   # Determine summary function based on method
   summary_fn <- switch(method,
-    last30s = function(df) summarize_last_n_seconds(df, 30),
+    last30s = function(df) summarize_last_n_seconds(df, window_s),
     last60s = function(df) summarize_last_n_seconds(df, 60),
     mean = function(df) summarize_mean(df),
     peak = function(df) summarize_peak(df)
@@ -422,18 +423,54 @@ summarize_last_n_seconds <- function(df, seconds) {
 #' @param df Stage data
 #' @return Summary tibble
 #' @keywords internal
-summarize_mean <- function(df) {
-  tibble::tibble(
-    time_s = mean(df$time_s, na.rm = TRUE),
-    duration_s = max(df$time_s) - min(df$time_s),
-    vo2_ml = mean(df$vo2_ml, na.rm = TRUE),
-    vco2_ml = mean(df$vco2_ml, na.rm = TRUE),
-    ve_l = mean(df$ve_l, na.rm = TRUE),
-    rer = mean(df$rer, na.rm = TRUE),
-    hr_bpm = if ("hr_bpm" %in% names(df)) mean(df$hr_bpm, na.rm = TRUE) else NA_real_,
-    power_w = if ("power_w" %in% names(df)) mean(df$power_w, na.rm = TRUE) else NA_real_,
-    n_breaths = nrow(df)
+summarize_stage_numeric <- function(df, stat = c("mean", "max")) {
+  stat <- match.arg(stat)
+  summarize_fn <- switch(
+    stat,
+    mean = function(x) mean(x, na.rm = TRUE),
+    max = function(x) max(x, na.rm = TRUE)
   )
+
+  numeric_cols <- names(df)[vapply(df, is.numeric, logical(1))]
+  excluded_cols <- c(
+    "stage", "stage_power", "power_rounded",
+    "breath_group", "time_bin", "duration_s", "n_breaths", "time_s"
+  )
+  value_cols <- setdiff(numeric_cols, excluded_cols)
+
+  values <- stats::setNames(
+    purrr::map_dbl(value_cols, function(col) {
+      x <- df[[col]]
+      x <- x[!is.na(x)]
+      if (length(x) == 0) {
+        return(NA_real_)
+      }
+      summarize_fn(x)
+    }),
+    value_cols
+  )
+
+  result <- as.list(values)
+  result$time_s <- mean(df$time_s, na.rm = TRUE)
+  result$duration_s <- max(df$time_s, na.rm = TRUE) - min(df$time_s, na.rm = TRUE)
+  result$n_breaths <- nrow(df)
+
+  result_df <- tibble::as_tibble(result)
+
+  preferred_order <- c(
+    "time_s", "duration_s", "vo2_ml", "vco2_ml", "ve_l",
+    "rer", "hr_bpm", "power_w", "speed_kmh"
+  )
+
+  dplyr::select(
+    result_df,
+    dplyr::any_of(preferred_order),
+    dplyr::everything()
+  )
+}
+
+summarize_mean <- function(df) {
+  summarize_stage_numeric(df, stat = "mean")
 }
 
 
@@ -443,15 +480,5 @@ summarize_mean <- function(df) {
 #' @return Summary tibble
 #' @keywords internal
 summarize_peak <- function(df) {
-  tibble::tibble(
-    time_s = mean(df$time_s, na.rm = TRUE),
-    duration_s = max(df$time_s) - min(df$time_s),
-    vo2_ml = max(df$vo2_ml, na.rm = TRUE),
-    vco2_ml = max(df$vco2_ml, na.rm = TRUE),
-    ve_l = max(df$ve_l, na.rm = TRUE),
-    rer = max(df$rer, na.rm = TRUE),
-    hr_bpm = if ("hr_bpm" %in% names(df)) max(df$hr_bpm, na.rm = TRUE) else NA_real_,
-    power_w = if ("power_w" %in% names(df)) max(df$power_w, na.rm = TRUE) else NA_real_,
-    n_breaths = nrow(df)
-  )
+  summarize_stage_numeric(df, stat = "max")
 }

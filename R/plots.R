@@ -1,6 +1,78 @@
 # Visualization Functions for cardiometR
 # CPET-specific plots based on clinical guidelines
 
+#' Filter exercise data by removing warmup/rest/recovery phases
+#'
+#' @description
+#' Filters breath-by-breath data to exercise-only phases by detecting and
+#' removing warmup (stage 0), rest, and recovery data. Uses stage annotations,
+#' power output, or phase labels depending on what is available.
+#'
+#' @param breaths Data frame with breath-by-breath data
+#'
+#' @return Filtered data frame containing only exercise phase data
+#'
+#' @keywords internal
+filter_exercise_data <- function(breaths) {
+  if (nrow(breaths) == 0) return(breaths)
+
+  if ("stage" %in% names(breaths) && any(!is.na(breaths$stage))) {
+    return(breaths |> dplyr::filter(stage > 0))
+  }
+
+  if ("power_w" %in% names(breaths) && any(!is.na(breaths$power_w))) {
+    return(breaths |> dplyr::filter(power_w > 0))
+  }
+
+  if ("phase" %in% names(breaths) && any(!is.na(breaths$phase))) {
+    exclude <- c("rest", "warmup", "recovery", "cool")
+    return(breaths |> dplyr::filter(!tolower(phase) %in% exclude))
+  }
+
+  breaths
+}
+
+#' Calculate expected VO2 for treadmill exercise
+#'
+#' @description
+#' Calculates expected VO2 from treadmill speed using the equation from
+#' Leger & Mercier (1984): VO2 (mL/kg/min) = 2.209 + 3.163 * speed (km/h).
+#' Returns absolute VO2 in mL/min.
+#'
+#' @param speed_kmh Treadmill speed in km/h (numeric vector)
+#' @param weight_kg Body weight in kilograms
+#'
+#' @return Numeric vector of expected VO2 values in mL/min
+#'
+#' @references
+#' Leger, L., & Mercier, D. (1984). Gross energy cost of horizontal treadmill
+#' and track running. Sports Medicine, 1(4), 270-277.
+#'
+#' @export
+calculate_expected_vo2_treadmill <- function(speed_kmh, weight_kg) {
+  vo2_rel <- 2.209 + 3.163 * speed_kmh
+  vo2_rel * weight_kg
+}
+
+#' Calculate expected VO2 for cycling exercise
+#'
+#' @description
+#' Calculates expected VO2 from cycling power output using metabolic
+#' efficiency. The formula converts mechanical power to metabolic cost:
+#' VO2 (mL/min) = (power_w * 0.01433 / (efficiency * 5.05)) * 1000.
+#'
+#' @param power_w Power output in watts (numeric vector)
+#' @param weight_kg Body weight in kilograms (not used in calculation but
+#'   included for API consistency with treadmill function)
+#' @param efficiency Gross mechanical efficiency as a proportion (default 0.20)
+#'
+#' @return Numeric vector of expected VO2 values in mL/min
+#'
+#' @export
+calculate_expected_vo2_cycling <- function(power_w, weight_kg, efficiency = 0.20) {
+  (power_w * 0.01433 / (efficiency * 5.05)) * 1000
+}
+
 #' Calculate stage averages for CPET data
 #'
 #' @description
@@ -9,14 +81,20 @@
 #'
 #' @param breaths Data frame with breath-by-breath data
 #' @param window_seconds Averaging window in seconds (default 30)
+#' @param protocol_config Optional ProtocolConfig S7 object. When provided with
+#'   an `increment_size` property, uses that instead of auto-detecting the power
+#'   increment from noisy BxB data.
 #'
 #' @return Data frame with one row per stage containing averaged values
 #'
 #' @keywords internal
-calculate_stage_averages <- function(breaths, window_seconds = 30) {
+calculate_stage_averages <- function(breaths, window_seconds = 30, protocol_config = NULL) {
   if (nrow(breaths) == 0 || !"time_s" %in% names(breaths)) {
     return(tibble::tibble())
   }
+
+  breaths <- filter_exercise_data(breaths)
+  if (nrow(breaths) == 0) return(tibble::tibble())
 
   breaths <- breaths |>
     dplyr::arrange(time_s)
@@ -30,7 +108,11 @@ calculate_stage_averages <- function(breaths, window_seconds = 30) {
     group_col <- ".stage_group"
   } else if ("power_w" %in% names(breaths) && any(!is.na(breaths$power_w))) {
     # Use rounded power stages when repeated levels exist
-    power_increment <- detect_power_increment(breaths$power_w[!is.na(breaths$power_w)])
+    power_increment <- if (!is.null(protocol_config) && !is.null(protocol_config@increment_size)) {
+      protocol_config@increment_size
+    } else {
+      detect_power_increment(breaths$power_w[!is.na(breaths$power_w)])
+    }
     breaths <- breaths |>
       dplyr::mutate(
         .stage_power = ifelse(is.na(power_w), NA_real_,
@@ -86,6 +168,37 @@ calculate_stage_averages <- function(breaths, window_seconds = 30) {
     dplyr::filter(!is.na(vo2_ml))
 }
 
+is_cpet_analysis <- function(x) {
+  inherits(x, "CpetAnalysis") || grepl("CpetAnalysis$", class(x)[1])
+}
+
+resolve_plot_data <- function(x, prefer_stage_summary = FALSE) {
+  if (is_cpet_analysis(x)) {
+    stage_summary <- x@stage_summary
+    use_stage <- isTRUE(prefer_stage_summary) &&
+      !is.null(stage_summary) &&
+      nrow(stage_summary) > 0
+
+    list(
+      data = if (use_stage) stage_summary else x@data@breaths,
+      breaths = x@data@breaths,
+      stage_summary = stage_summary,
+      participant = x@data@participant,
+      thresholds = x@thresholds,
+      using_stage_summary = use_stage
+    )
+  } else {
+    list(
+      data = x@breaths,
+      breaths = x@breaths,
+      stage_summary = NULL,
+      participant = x@participant,
+      thresholds = NULL,
+      using_stage_summary = FALSE
+    )
+  }
+}
+
 #' Plot CPET 9-Panel Display
 #'
 #' @description
@@ -100,6 +213,10 @@ calculate_stage_averages <- function(breaths, window_seconds = 30) {
 #' @param time_axis Time axis: "seconds", "minutes", or "auto" (default)
 #' @param language Language for labels: "en" or "fr" (default "en")
 #' @param averaging_window Seconds to average at end of each stage (default 30)
+#' @param expected_efficiency Gross mechanical efficiency for expected VO2 line
+#'   (default 0.20). Set to NULL to hide expected line.
+#' @param modality Exercise modality: "cycling", "treadmill", or NULL for
+#'   auto-detection from data columns (default NULL)
 #'
 #' @return A ggplot2 patchwork object with 9 panels
 #'
@@ -115,16 +232,20 @@ plot_cpet_panel <- function(x,
                             show_peaks = TRUE,
                             time_axis = "auto",
                             language = "en",
-                            averaging_window = 30) {
+                            averaging_window = 30,
+                            expected_efficiency = 0.20,
+                            modality = NULL) {
   if (!requireNamespace("patchwork", quietly = TRUE)) {
     cli::cli_abort(c(
       "The {.pkg patchwork} package is required for the 9-panel plot",
       "i" = "Install it with {.code install.packages('patchwork')}"
     ))
   }
-  # Extract data from CpetAnalysis if needed
+  # Extract data and config from CpetAnalysis if needed
+  protocol_config <- NULL
   if (inherits(x, "CpetAnalysis") || grepl("CpetAnalysis$", class(x)[1])) {
     data <- x@data
+    protocol_config <- x@protocol_config
     if (is.null(thresholds) && !is.null(x@thresholds)) {
       thresholds <- x@thresholds
     }
@@ -133,9 +254,25 @@ plot_cpet_panel <- function(x,
   }
 
   breaths <- data@breaths
+  weight_kg <- data@participant@weight_kg
 
-  # Calculate stage averages (30-second rolling averages at end of each stage)
-  stage_avg <- calculate_stage_averages(breaths, window_seconds = averaging_window)
+  # Auto-detect modality if not specified
+  if (is.null(modality)) {
+    if ("speed_kmh" %in% names(breaths) && any(!is.na(breaths$speed_kmh))) {
+      modality <- "treadmill"
+    } else if ("power_w" %in% names(breaths) && any(!is.na(breaths$power_w))) {
+      modality <- "cycling"
+    }
+  }
+
+  # Use pre-computed stage summary if available, otherwise calculate
+  if (inherits(x, "CpetAnalysis") &&
+      !is.null(x@stage_summary) && nrow(x@stage_summary) > 0) {
+    stage_avg <- x@stage_summary
+  } else {
+    stage_avg <- calculate_stage_averages(breaths, window_seconds = averaging_window,
+                                          protocol_config = protocol_config)
+  }
 
   # Determine time unit
   max_time <- max(breaths$time_s, na.rm = TRUE)
@@ -242,11 +379,62 @@ plot_cpet_panel <- function(x,
         y = expression(VO[2]~(mL/min))
       ) +
       theme_cpet
+
+    # Overlay expected VO2 line
+    if (!is.null(expected_efficiency) && modality == "cycling") {
+      power_seq <- seq(min(stage_ex$power_w, na.rm = TRUE),
+                       max(stage_ex$power_w, na.rm = TRUE),
+                       length.out = 50)
+      expected_df <- tibble::tibble(
+        power_w = power_seq,
+        vo2_expected = calculate_expected_vo2_cycling(power_seq, weight_kg, expected_efficiency)
+      )
+      expected_label <- if (language == "fr") "Attendu" else "Expected"
+      p2 <- p2 +
+        ggplot2::geom_line(data = expected_df,
+                           ggplot2::aes(x = power_w, y = vo2_expected),
+                           linetype = "dashed", color = "gray50", linewidth = 0.8,
+                           inherit.aes = FALSE) +
+        ggplot2::annotate("text",
+                          x = max(expected_df$power_w),
+                          y = max(expected_df$vo2_expected),
+                          label = expected_label,
+                          hjust = 1.1, vjust = -0.5, size = 2.5, color = "gray50")
+    } else if (!is.null(expected_efficiency) && modality == "treadmill" &&
+               "speed_kmh" %in% names(stage_avg)) {
+      stage_ex_speed <- stage_ex |> dplyr::filter(!is.na(speed_kmh))
+      if (nrow(stage_ex_speed) > 0) {
+        speed_seq <- seq(min(stage_ex_speed$speed_kmh, na.rm = TRUE),
+                         max(stage_ex_speed$speed_kmh, na.rm = TRUE),
+                         length.out = 50)
+        expected_df <- tibble::tibble(
+          speed_kmh = speed_seq,
+          vo2_expected = calculate_expected_vo2_treadmill(speed_seq, weight_kg)
+        )
+        # Map speed to power axis using the stage data relationship
+        speed_power_fit <- stats::lm(power_w ~ speed_kmh, data = stage_ex_speed)
+        expected_df$power_w <- stats::predict(speed_power_fit, newdata = expected_df)
+        expected_label <- if (language == "fr") "Attendu" else "Expected"
+        p2 <- p2 +
+          ggplot2::geom_line(data = expected_df,
+                             ggplot2::aes(x = power_w, y = vo2_expected),
+                             linetype = "dashed", color = "gray50", linewidth = 0.8,
+                             inherit.aes = FALSE) +
+          ggplot2::annotate("text",
+                            x = max(expected_df$power_w),
+                            y = max(expected_df$vo2_expected),
+                            label = expected_label,
+                            hjust = 1.1, vjust = -0.5, size = 2.5, color = "gray50")
+      }
+    }
+
     if (!is.null(peak_point) && length(peak_point$power_w) > 0 &&
         !anyNA(peak_point$power_w)) {
       p2 <- p2 +
-        ggplot2::geom_point(
-          ggplot2::aes(x = peak_point$power_w, y = peak_point$vo2_peak),
+        ggplot2::annotate(
+          "point",
+          x = peak_point$power_w,
+          y = peak_point$vo2_peak,
           color = "#C0392B",
           size = 3
         ) +
@@ -275,8 +463,10 @@ plot_cpet_panel <- function(x,
     if (!is.null(peak_point) && length(peak_point$time_plot) > 0 &&
         !anyNA(peak_point$time_plot)) {
       p2 <- p2 +
-        ggplot2::geom_point(
-          ggplot2::aes(x = peak_point$time_plot, y = peak_point$vo2_peak),
+        ggplot2::annotate(
+          "point",
+          x = peak_point$time_plot,
+          y = peak_point$vo2_peak,
           color = "#C0392B",
           size = 3
         ) +
@@ -439,8 +629,10 @@ plot_cpet_panel <- function(x,
         !anyNA(peak_point$power_w) && length(peak_point$hr_peak) > 0 &&
         !anyNA(peak_point$hr_peak)) {
       p8 <- p8 +
-        ggplot2::geom_point(
-          ggplot2::aes(x = peak_point$power_w, y = peak_point$hr_peak),
+        ggplot2::annotate(
+          "point",
+          x = peak_point$power_w,
+          y = peak_point$hr_peak,
           color = "#0F766E",
           size = 3
         ) +
@@ -469,8 +661,10 @@ plot_cpet_panel <- function(x,
         !anyNA(peak_point$hr_peak) && length(peak_point$time_plot) > 0 &&
         !anyNA(peak_point$time_plot)) {
       p8 <- p8 +
-        ggplot2::geom_point(
-          ggplot2::aes(x = peak_point$time_plot, y = peak_point$hr_peak),
+        ggplot2::annotate(
+          "point",
+          x = peak_point$time_plot,
+          y = peak_point$hr_peak,
           color = "#0F766E",
           size = 3
         ) +
@@ -543,15 +737,15 @@ plot_v_slope <- function(x,
                          thresholds = NULL,
                          show_identity = TRUE,
                          language = "en") {
-  if (inherits(x, "CpetAnalysis") || grepl("CpetAnalysis$", class(x)[1])) {
-    breaths <- x@data@breaths
-    if (is.null(thresholds)) thresholds <- x@thresholds
-  } else {
-    breaths <- x@breaths
-  }
+  plot_data <- resolve_plot_data(x, prefer_stage_summary = TRUE)
+  breaths <- filter_exercise_data(plot_data$data)
+  if (is.null(thresholds)) thresholds <- plot_data$thresholds
+
+  point_size <- if (plot_data$using_stage_summary) 2.4 else 1.5
+  point_alpha <- if (plot_data$using_stage_summary) 0.9 else 0.6
 
   p <- ggplot2::ggplot(breaths, ggplot2::aes(x = vo2_ml, y = vco2_ml)) +
-    ggplot2::geom_point(size = 1.5, alpha = 0.6, color = "#2E86AB") +
+    ggplot2::geom_point(size = point_size, alpha = point_alpha, color = "#2E86AB") +
     ggplot2::labs(
       title = if (language == "fr") expression(V-Slope~(VCO[2]~vs~VO[2])) else expression(V-Slope~(VCO[2]~vs~VO[2])),
       x = expression(VO[2]~(mL/min)),
@@ -607,12 +801,12 @@ plot_ventilatory_equivalents <- function(x,
                                           x_axis = "time",
                                           thresholds = NULL,
                                           language = "en") {
-  if (inherits(x, "CpetAnalysis") || grepl("CpetAnalysis$", class(x)[1])) {
-    breaths <- x@data@breaths
-    if (is.null(thresholds)) thresholds <- x@thresholds
-  } else {
-    breaths <- x@breaths
-  }
+  plot_data <- resolve_plot_data(x, prefer_stage_summary = TRUE)
+  breaths <- filter_exercise_data(plot_data$data)
+  if (is.null(thresholds)) thresholds <- plot_data$thresholds
+
+  point_size <- if (plot_data$using_stage_summary) 2.4 else 1.2
+  point_alpha <- if (plot_data$using_stage_summary) 0.9 else 0.6
 
   # Calculate ventilatory equivalents
   breaths <- breaths |>
@@ -645,7 +839,7 @@ plot_ventilatory_equivalents <- function(x,
   }
 
   p <- ggplot2::ggplot(breaths_long, ggplot2::aes(x = .data[[x_var]], y = value, color = variable)) +
-    ggplot2::geom_point(size = 1.2, alpha = 0.6) +
+    ggplot2::geom_point(size = point_size, alpha = point_alpha) +
     ggplot2::scale_color_manual(
       values = c("VE/VO2" = "#2E86AB", "VE/VCO2" = "#E94F37"),
       name = NULL,
@@ -692,13 +886,9 @@ plot_gas_exchange <- function(x,
                                smooth = FALSE,
                                normalize = FALSE,
                                language = "en") {
-  if (inherits(x, "CpetAnalysis") || grepl("CpetAnalysis$", class(x)[1])) {
-    breaths <- x@data@breaths
-    weight_kg <- x@data@participant@weight_kg
-  } else {
-    breaths <- x@breaths
-    weight_kg <- x@participant@weight_kg
-  }
+  plot_source <- resolve_plot_data(x, prefer_stage_summary = TRUE)
+  breaths <- filter_exercise_data(plot_source$data)
+  weight_kg <- plot_source$participant@weight_kg
 
   breaths <- breaths |>
     dplyr::mutate(time_min = time_s / 60)
@@ -709,7 +899,7 @@ plot_gas_exchange <- function(x,
   }
 
   # Build plot data
-  plot_data <- breaths |>
+  gas_data <- breaths |>
     dplyr::select(time_min, dplyr::any_of(c(
       vo2 = "vo2_ml",
       vco2 = "vco2_ml",
@@ -719,13 +909,13 @@ plot_gas_exchange <- function(x,
     dplyr::rename_with(~ gsub("_ml|_l", "", .x))
 
   # Filter to requested variables
-  vars_present <- intersect(variables, names(plot_data))
+  vars_present <- intersect(variables, names(gas_data))
 
   if (length(vars_present) == 0) {
     cli::cli_abort("None of the requested variables found in data")
   }
 
-  plot_long <- plot_data |>
+  plot_long <- gas_data |>
     tidyr::pivot_longer(
       cols = dplyr::all_of(vars_present),
       names_to = "variable",
@@ -744,8 +934,11 @@ plot_gas_exchange <- function(x,
     "VE" = "#1B998B"
   )
 
+  point_size <- if (plot_source$using_stage_summary) 2.2 else 1
+  point_alpha <- if (plot_source$using_stage_summary) 0.9 else 0.5
+
   p <- ggplot2::ggplot(plot_long, ggplot2::aes(x = time_min, y = value, color = variable)) +
-    ggplot2::geom_point(size = 1, alpha = 0.5) +
+    ggplot2::geom_point(size = point_size, alpha = point_alpha) +
     ggplot2::scale_color_manual(values = colors, name = NULL) +
     ggplot2::facet_wrap(~ variable, scales = "free_y", ncol = 1) +
     ggplot2::labs(
@@ -785,13 +978,9 @@ plot_heart_rate <- function(x,
                             x_axis = "time",
                             show_zones = FALSE,
                             language = "en") {
-  if (inherits(x, "CpetAnalysis") || grepl("CpetAnalysis$", class(x)[1])) {
-    breaths <- x@data@breaths
-    age <- x@data@participant@age
-  } else {
-    breaths <- x@breaths
-    age <- x@participant@age
-  }
+  plot_data <- resolve_plot_data(x, prefer_stage_summary = TRUE)
+  breaths <- filter_exercise_data(plot_data$data)
+  age <- plot_data$participant@age
 
   if (!"hr_bpm" %in% names(breaths) || all(is.na(breaths$hr_bpm))) {
     cli::cli_abort("Heart rate data not available")
@@ -809,8 +998,11 @@ plot_heart_rate <- function(x,
     x_label <- if (language == "fr") "Temps (min)" else "Time (min)"
   }
 
+  point_size <- if (plot_data$using_stage_summary) 2.4 else 1.2
+  point_alpha <- if (plot_data$using_stage_summary) 0.9 else 0.6
+
   p <- ggplot2::ggplot(breaths, ggplot2::aes(x = .data[[x_var]], y = hr_bpm)) +
-    ggplot2::geom_point(size = 1.2, alpha = 0.6, color = "#E94F37") +
+    ggplot2::geom_point(size = point_size, alpha = point_alpha, color = "#E94F37") +
     ggplot2::labs(
       title = if (language == "fr") "Fr\u00e9quence cardiaque" else "Heart Rate",
       x = x_label,
@@ -844,9 +1036,13 @@ plot_heart_rate <- function(x,
 #'
 #' @description
 #' Plots power output against time with VO2 overlay option.
+#' When show_vo2 is TRUE and expected_efficiency is provided, overlays
+#' an expected VO2 dashed line based on mechanical efficiency.
 #'
 #' @param x A CpetData object
 #' @param show_vo2 Overlay VO2 on secondary axis
+#' @param expected_efficiency Gross mechanical efficiency for expected VO2 line
+#'   (default 0.20). Set to NULL to hide expected line.
 #' @param language Language for labels
 #'
 #' @return A ggplot2 object
@@ -854,14 +1050,11 @@ plot_heart_rate <- function(x,
 #' @export
 plot_power <- function(x,
                        show_vo2 = TRUE,
+                       expected_efficiency = 0.20,
                        language = "en") {
-  if (inherits(x, "CpetAnalysis") || grepl("CpetAnalysis$", class(x)[1])) {
-    breaths <- x@data@breaths
-    weight_kg <- x@data@participant@weight_kg
-  } else {
-    breaths <- x@breaths
-    weight_kg <- x@participant@weight_kg
-  }
+  plot_data <- resolve_plot_data(x, prefer_stage_summary = TRUE)
+  breaths <- filter_exercise_data(plot_data$data)
+  weight_kg <- plot_data$participant@weight_kg
 
   if (!"power_w" %in% names(breaths) || all(is.na(breaths$power_w))) {
     cli::cli_abort("Power data not available")
@@ -869,6 +1062,11 @@ plot_power <- function(x,
 
   breaths <- breaths |>
     dplyr::mutate(time_min = time_s / 60)
+
+  point_size_primary <- if (plot_data$using_stage_summary) 2.4 else 1.2
+  point_alpha_primary <- if (plot_data$using_stage_summary) 0.9 else 0.6
+  point_size_secondary <- if (plot_data$using_stage_summary) 2.1 else 1
+  point_alpha_secondary <- if (plot_data$using_stage_summary) 0.7 else 0.4
 
   if (show_vo2) {
     # Calculate scaling factor for secondary axis
@@ -878,9 +1076,14 @@ plot_power <- function(x,
     offset <- power_range[1] - vo2_range[1] * scale_factor
 
     p <- ggplot2::ggplot(breaths, ggplot2::aes(x = time_min)) +
-      ggplot2::geom_point(ggplot2::aes(y = power_w), size = 1.2, alpha = 0.6, color = "#1B998B") +
+      ggplot2::geom_point(
+        ggplot2::aes(y = power_w),
+        size = point_size_primary,
+        alpha = point_alpha_primary,
+        color = "#1B998B"
+      ) +
       ggplot2::geom_point(ggplot2::aes(y = vo2_ml * scale_factor + offset),
-                          size = 1, alpha = 0.4, color = "#2E86AB") +
+                          size = point_size_secondary, alpha = point_alpha_secondary, color = "#2E86AB") +
       ggplot2::scale_y_continuous(
         name = "Power (W)",
         sec.axis = ggplot2::sec_axis(
@@ -898,9 +1101,33 @@ plot_power <- function(x,
         axis.title.y.left = ggplot2::element_text(color = "#1B998B"),
         axis.title.y.right = ggplot2::element_text(color = "#2E86AB")
       )
+
+    # Overlay expected VO2 line on secondary axis
+    if (!is.null(expected_efficiency)) {
+      expected_vo2 <- calculate_expected_vo2_cycling(breaths$power_w, weight_kg, expected_efficiency)
+      expected_df <- tibble::tibble(
+        time_min = breaths$time_min,
+        vo2_expected_scaled = expected_vo2 * scale_factor + offset
+      )
+      expected_label <- if (language == "fr") "Attendu" else "Expected"
+      p <- p +
+        ggplot2::geom_line(data = expected_df,
+                           ggplot2::aes(x = time_min, y = vo2_expected_scaled),
+                           linetype = "dashed", color = "gray50", linewidth = 0.7,
+                           inherit.aes = FALSE) +
+        ggplot2::annotate("text",
+                          x = max(expected_df$time_min, na.rm = TRUE),
+                          y = expected_df$vo2_expected_scaled[nrow(expected_df)],
+                          label = expected_label,
+                          hjust = 1.1, vjust = -0.5, size = 2.8, color = "gray50")
+    }
   } else {
     p <- ggplot2::ggplot(breaths, ggplot2::aes(x = time_min, y = power_w)) +
-      ggplot2::geom_point(size = 1.2, alpha = 0.6, color = "#1B998B") +
+      ggplot2::geom_point(
+        size = point_size_primary,
+        alpha = point_alpha_primary,
+        color = "#1B998B"
+      ) +
       ggplot2::labs(
         title = if (language == "fr") "Puissance" else "Power",
         x = if (language == "fr") "Temps (min)" else "Time (min)",
@@ -950,7 +1177,8 @@ plot_predicted_comparison <- function(x,
                                       sport = NULL,
                                       level = "recreational",
                                       language = "en",
-                                      show_citation = TRUE) {
+                                      show_citation = TRUE,
+                                      prediction_source = "jones") {
 
   if (!inherits(x, "CpetAnalysis") && !grepl("CpetAnalysis$", class(x)[1])) {
     cli::cli_abort("x must be a CpetAnalysis object")
@@ -964,7 +1192,7 @@ plot_predicted_comparison <- function(x,
   }
 
   # Calculate predicted values
-  predicted <- calculate_predicted_values(participant)
+  predicted <- calculate_predicted_values(participant, prediction_source = prediction_source)
 
   # Get normative data if sport specified
   norms <- NULL

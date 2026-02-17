@@ -636,13 +636,14 @@ CpetAnalysis <- new_class("CpetAnalysis",
 #' @param technician Optional technician name
 #' @param output_format Output format (default "pdf")
 #' @param template Optional path to custom Typst template
+#' @param prediction_source Prediction equation source: "jones" or "prefaut" (default "jones")
 #'
 #' @return A ReportConfig S7 object
 #'
 #' @examples
 #' config <- ReportConfig(
 #'   language = "fr",
-#'   institution = "UCLouvain",
+#'   institution = "Universit\u00e9 de Montr\u00e9al",
 #'   technician = "Dr. Smith"
 #' )
 #'
@@ -664,7 +665,16 @@ ReportConfig <- new_class("ReportConfig",
     logo_path = class_character | NULL,
     technician = class_character | NULL,
     output_format = new_property(class_character, default = "pdf"),
-    template = class_character | NULL
+    template = class_character | NULL,
+    prediction_source = new_property(class_character,
+      default = "jones",
+      validator = function(value) {
+        if (!value %in% c("jones", "prefaut")) {
+          return("prediction_source must be 'jones' or 'prefaut'")
+        }
+        NULL
+      }
+    )
   )
 )
 
@@ -777,7 +787,7 @@ ExerciseQualityCriteria <- new_class("ExerciseQualityCriteria",
 #' @param slope_deviation_pct Percentage deviation from expected slope
 #' @param slope_acceptable Logical indicating if slope is within acceptable range (+/- 15%)
 #' @param r_squared R-squared value from VO2 vs workload regression
-#' @param r_squared_acceptable Logical indicating if R² >= 0.90
+#' @param r_squared_acceptable Logical indicating if R-squared >= 0.90
 #' @param n_stages Number of exercise stages analyzed
 #' @param stage_cv Coefficient of variation of steady-state VO2 within stages (%)
 #' @param stage_cv_acceptable Logical indicating if CV <= 10%
