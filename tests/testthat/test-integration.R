@@ -280,12 +280,12 @@ test_that("report configuration validates correctly", {
   # Valid French config
   config_fr <- ReportConfig(
     language = "fr",
-    institution = "UCLouvain",
+    institution = "Université de Montréal",
     technician = "Dr. Test"
   )
   expect_true(is_s7_class(config_fr, "ReportConfig"))
   expect_equal(config_fr@language, "fr")
-  expect_equal(config_fr@institution, "UCLouvain")
+  expect_equal(config_fr@institution, "Université de Montréal")
 
   # Invalid language should fail
   expect_error(ReportConfig(language = "de"))

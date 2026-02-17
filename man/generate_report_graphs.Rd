@@ -8,7 +8,8 @@ generate_report_graphs(
   analysis,
   language = "en",
   athlete_sport = NULL,
-  athlete_level = "recreational"
+  athlete_level = "recreational",
+  prediction_source = "jones"
 )
 }
 \arguments{
@@ -19,6 +20,8 @@ generate_report_graphs(
 \item{athlete_sport}{Sport for normative comparison (optional)}
 
 \item{athlete_level}{Competitive level}
+
+\item{prediction_source}{Prediction equation source: "jones" or "prefaut"}
 }
 \value{
 List with graph file paths

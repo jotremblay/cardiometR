@@ -4,16 +4,18 @@
 \alias{calculate_predicted_values}
 \title{Calculate Predicted Values}
 \usage{
-calculate_predicted_values(participant)
+calculate_predicted_values(participant, prediction_source = "jones")
 }
 \arguments{
 \item{participant}{Participant object}
+
+\item{prediction_source}{Prediction equation source: "jones" or "prefaut"}
 }
 \value{
 Named list of predicted values
 }
 \description{
 Calculates age/sex-specific predicted maximal values.
-Uses standard prediction equations.
+Supports Jones et al. (1997) and Pr\u00e9faut et al. prediction equations.
 }
 \keyword{internal}

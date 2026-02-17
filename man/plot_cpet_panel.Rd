@@ -10,7 +10,9 @@ plot_cpet_panel(
   show_peaks = TRUE,
   time_axis = "auto",
   language = "en",
-  averaging_window = 30
+  averaging_window = 30,
+  expected_efficiency = 0.2,
+  modality = NULL
 )
 }
 \arguments{
@@ -25,6 +27,12 @@ plot_cpet_panel(
 \item{language}{Language for labels: "en" or "fr" (default "en")}
 
 \item{averaging_window}{Seconds to average at end of each stage (default 30)}
+
+\item{expected_efficiency}{Gross mechanical efficiency for expected VO2 line
+(default 0.20). Set to NULL to hide expected line.}
+
+\item{modality}{Exercise modality: "cycling", "treadmill", or NULL for
+auto-detection from data columns (default NULL)}
 }
 \value{
 A ggplot2 patchwork object with 9 panels

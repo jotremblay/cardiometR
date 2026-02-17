@@ -51,7 +51,7 @@ Can include sport-specific normative data comparisons with citations.
 \examples{
 \dontrun{
 analysis <- analyze_cpet(data)
-config <- ReportConfig(language = "fr", institution = "UCLouvain")
+config <- ReportConfig(language = "fr", institution = "Universit\u00e9 de Montr\u00e9al")
 
 # Standard report with general population comparison
 generate_report(analysis, "patient_report.pdf", config)

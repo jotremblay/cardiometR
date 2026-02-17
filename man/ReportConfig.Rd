@@ -12,7 +12,8 @@ ReportConfig(
   logo_path = character(0),
   technician = character(0),
   output_format = "pdf",
-  template = character(0)
+  template = character(0),
+  prediction_source = "jones"
 )
 }
 \arguments{
@@ -31,6 +32,8 @@ ReportConfig(
 \item{output_format}{Output format (default "pdf")}
 
 \item{template}{Optional path to custom Typst template}
+
+\item{prediction_source}{Prediction equation source: "jones" or "prefaut" (default "jones")}
 }
 \value{
 A ReportConfig S7 object
@@ -41,7 +44,7 @@ Configuration options for PDF report generation.
 \examples{
 config <- ReportConfig(
   language = "fr",
-  institution = "UCLouvain",
+  institution = "Universit\u00e9 de Montr\u00e9al",
   technician = "Dr. Smith"
 )
 

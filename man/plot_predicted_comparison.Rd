@@ -9,7 +9,8 @@ plot_predicted_comparison(
   sport = NULL,
   level = "recreational",
   language = "en",
-  show_citation = TRUE
+  show_citation = TRUE,
+  prediction_source = "jones"
 )
 }
 \arguments{

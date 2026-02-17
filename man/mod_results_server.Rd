@@ -4,7 +4,14 @@
 \alias{mod_results_server}
 \title{Results Module Server}
 \usage{
-mod_results_server(id, language, cpet_data, participant, settings)
+mod_results_server(
+  id,
+  language,
+  cpet_data,
+  participant,
+  settings,
+  prediction_source = shiny::reactive("jones")
+)
 }
 \arguments{
 \item{id}{Module namespace ID.}
@@ -16,6 +23,8 @@ mod_results_server(id, language, cpet_data, participant, settings)
 \item{participant}{Reactive Participant object from participant module.}
 
 \item{settings}{Reactive settings list from settings module.}
+
+\item{prediction_source}{Reactive prediction equation source ("jones" or "prefaut").}
 }
 \value{
 A list with reactive values:

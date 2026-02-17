@@ -4,12 +4,18 @@
 \alias{generate_auto_interpretation}
 \title{Generate Automatic Interpretation}
 \usage{
-generate_auto_interpretation(analysis, language = "en")
+generate_auto_interpretation(
+  analysis,
+  language = "en",
+  prediction_source = "jones"
+)
 }
 \arguments{
 \item{analysis}{CpetAnalysis object}
 
 \item{language}{Language code}
+
+\item{prediction_source}{Prediction equation source: "jones" or "prefaut"}
 }
 \value{
 List with interpretation sections

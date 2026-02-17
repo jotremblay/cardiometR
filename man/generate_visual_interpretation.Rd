@@ -4,12 +4,18 @@
 \alias{generate_visual_interpretation}
 \title{Generate Visual Interpretation Data}
 \usage{
-generate_visual_interpretation(analysis, language = "en")
+generate_visual_interpretation(
+  analysis,
+  language = "en",
+  prediction_source = "jones"
+)
 }
 \arguments{
 \item{analysis}{CpetAnalysis object}
 
 \item{language}{Language code}
+
+\item{prediction_source}{Prediction equation source: "jones" or "prefaut"}
 }
 \value{
 List with visual interpretation elements

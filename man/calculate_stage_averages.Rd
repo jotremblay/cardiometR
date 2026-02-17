@@ -4,12 +4,16 @@
 \alias{calculate_stage_averages}
 \title{Calculate stage averages for CPET data}
 \usage{
-calculate_stage_averages(breaths, window_seconds = 30)
+calculate_stage_averages(breaths, window_seconds = 30, protocol_config = NULL)
 }
 \arguments{
 \item{breaths}{Data frame with breath-by-breath data}
 
 \item{window_seconds}{Averaging window in seconds (default 30)}
+
+\item{protocol_config}{Optional ProtocolConfig S7 object. When provided with
+an \code{increment_size} property, uses that instead of auto-detecting the power
+increment from noisy BxB data.}
 }
 \value{
 Data frame with one row per stage containing averaged values

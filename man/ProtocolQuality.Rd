@@ -16,7 +16,7 @@
 
 \item{r_squared}{R-squared value from VO2 vs workload regression}
 
-\item{r_squared_acceptable}{Logical indicating if R² >= 0.90}
+\item{r_squared_acceptable}{Logical indicating if R-squared >= 0.90}
 
 \item{n_stages}{Number of exercise stages analyzed}
 

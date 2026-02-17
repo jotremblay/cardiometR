@@ -4,12 +4,14 @@
 \alias{create_summary_table}
 \title{Create Summary Table}
 \usage{
-create_summary_table(analysis, language = "en")
+create_summary_table(analysis, language = "en", prediction_source = "jones")
 }
 \arguments{
 \item{analysis}{CpetAnalysis object}
 
 \item{language}{Language code}
+
+\item{prediction_source}{Prediction equation source: "jones" or "prefaut"}
 }
 \value{
 A gt table object

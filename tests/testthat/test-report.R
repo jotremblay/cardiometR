@@ -143,6 +143,135 @@ test_that("calculate_predicted_values differs by sex", {
 })
 
 
+# Préfaut prediction equations tests --------------------------------------
+
+test_that("Préfaut equations: adult male non-obese", {
+  # Obesity threshold: weight > (0.79 * 175) - 60.7 = 77.55, so 75 is non-obese
+  participant <- Participant(
+    id = "X", name = "X", age = 40, sex = "M",
+    height_cm = 175, weight_kg = 75
+  )
+
+  pred <- calculate_predicted_values(participant, prediction_source = "prefaut")
+
+  # VO2max = weight * (50.72 - 0.372 * age) = 75 * (50.72 - 14.88) = 75 * 35.84 = 2688
+  expect_equal(pred$vo2_max, 75 * (50.72 - 0.372 * 40), tolerance = 0.1)
+  # HR max = 210 - 0.65 * 40 = 184
+
+  expect_equal(pred$hr_max, 210 - 0.65 * 40, tolerance = 0.1)
+  # PMT = (vo2max - 300) / 10.3
+  expect_equal(pred$pmt, (pred$vo2_max - 300) / 10.3, tolerance = 0.1)
+  expect_equal(pred$warmup_watts, pred$pmt / 5, tolerance = 0.1)
+  expect_equal(pred$step_watts, round((pred$pmt - pred$warmup_watts) / 10))
+  expect_equal(pred$population, "male")
+})
+
+test_that("Préfaut equations: adult male obese triggers auto-detection", {
+  # Obesity threshold for men: weight > (0.79 * height) - 60.7
+  # (0.79 * 175) - 60.7 = 138.25 - 60.7 = 77.55
+  participant <- Participant(
+    id = "X", name = "X", age = 40, sex = "M",
+    height_cm = 175, weight_kg = 100  # > 77.55
+  )
+
+  pred <- calculate_predicted_values(participant, prediction_source = "prefaut")
+
+  # Should use obese formula: ideal_weight * (50.72 - 0.372 * age)
+  ideal_weight <- (0.79 * 175) - 60.7
+  expected_vo2 <- ideal_weight * (50.72 - 0.372 * 40)
+  expect_equal(pred$vo2_max, expected_vo2, tolerance = 0.1)
+  expect_equal(pred$population, "obese_male")
+})
+
+test_that("Préfaut equations: adult female non-obese", {
+  participant <- Participant(
+    id = "X", name = "X", age = 35, sex = "F",
+    height_cm = 165, weight_kg = 60
+  )
+
+  pred <- calculate_predicted_values(participant, prediction_source = "prefaut")
+
+  # VO2max = (42.8 + weight) * (22.8 - 0.17 * age)
+  expected_vo2 <- (42.8 + 60) * (22.8 - 0.17 * 35)
+  expect_equal(pred$vo2_max, expected_vo2, tolerance = 0.1)
+  expect_equal(pred$population, "female")
+})
+
+test_that("Préfaut equations: adult female obese triggers auto-detection", {
+  # Obesity threshold for women: weight > (0.65 * height) - 42.8
+  # (0.65 * 165) - 42.8 = 107.25 - 42.8 = 64.45
+  participant <- Participant(
+    id = "X", name = "X", age = 35, sex = "F",
+    height_cm = 165, weight_kg = 80  # > 64.45
+  )
+
+  pred <- calculate_predicted_values(participant, prediction_source = "prefaut")
+
+  # Should use obese formula: height * (14.81 - 0.11 * age)
+  expected_vo2 <- 165 * (14.81 - 0.11 * 35)
+  expect_equal(pred$vo2_max, expected_vo2, tolerance = 0.1)
+  expect_equal(pred$population, "obese_female")
+})
+
+test_that("Préfaut equations: pediatric boy", {
+  participant <- Participant(
+    id = "X", name = "X", age = 12, sex = "M",
+    height_cm = 150, weight_kg = 40
+  )
+
+  pred <- calculate_predicted_values(participant, prediction_source = "prefaut")
+
+  # VO2max = (52.8 * weight) - 303.4
+  expected_vo2 <- (52.8 * 40) - 303.4
+  expect_equal(pred$vo2_max, expected_vo2, tolerance = 0.1)
+  expect_equal(pred$population, "boy")
+})
+
+test_that("Préfaut equations: pediatric girl", {
+  participant <- Participant(
+    id = "X", name = "X", age = 14, sex = "F",
+    height_cm = 160, weight_kg = 50
+  )
+
+  pred <- calculate_predicted_values(participant, prediction_source = "prefaut")
+
+  # VO2max = (28.5 * weight) + 288
+  expected_vo2 <- (28.5 * 50) + 288
+  expect_equal(pred$vo2_max, expected_vo2, tolerance = 0.1)
+  expect_equal(pred$population, "girl")
+})
+
+test_that("Préfaut returns extra fields not in Jones", {
+  participant <- Participant(
+    id = "X", name = "X", age = 30, sex = "M",
+    height_cm = 175, weight_kg = 75
+  )
+
+  pred_prefaut <- calculate_predicted_values(participant, prediction_source = "prefaut")
+  pred_jones <- calculate_predicted_values(participant, prediction_source = "jones")
+
+  # Préfaut has extra fields
+  expect_true("pmt" %in% names(pred_prefaut))
+  expect_true("warmup_watts" %in% names(pred_prefaut))
+  expect_true("step_watts" %in% names(pred_prefaut))
+  expect_true("population" %in% names(pred_prefaut))
+
+  # Jones does not have these fields
+  expect_null(pred_jones$pmt)
+  expect_null(pred_jones$population)
+})
+
+test_that("ReportConfig accepts prediction_source", {
+  config <- ReportConfig(prediction_source = "prefaut")
+  expect_equal(config@prediction_source, "prefaut")
+
+  config_default <- ReportConfig()
+  expect_equal(config_default@prediction_source, "jones")
+
+  expect_error(ReportConfig(prediction_source = "invalid"))
+})
+
+
 # generate_auto_interpretation() tests ------------------------------------
 
 test_that("generate_auto_interpretation returns expected structure", {
@@ -189,6 +318,20 @@ test_that("build_template_data includes institution", {
   data <- build_template_data(analysis, config, labels, NULL, NULL)
 
   expect_equal(data$institution, "My Hospital")
+})
+
+test_that("build_template_data fills protocol details from detected/fallback config", {
+  analysis <- create_test_analysis()
+  config <- ReportConfig(language = "en")
+  labels <- get_report_labels("en")
+
+  data <- build_template_data(analysis, config, labels, NULL, NULL)
+
+  expect_true(isTRUE(data$has_protocol_details))
+  expect_true(is.character(data$protocol_modality_label))
+  expect_true(!is.null(data$starting_intensity_display))
+  expect_true(!is.null(data$increment_size_display))
+  expect_true(is.character(data$equipment_model))
 })
 
 

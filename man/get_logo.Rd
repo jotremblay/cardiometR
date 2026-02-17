@@ -14,8 +14,8 @@ Character string with the full path to the logo file
 }
 \description{
 Returns the path to a built-in institution logo for use in reports.
-Available logos: "udem" (UdeM - Ecole de kinesiologie),
-"epic" (Centre EPIC - Institut de Cardiologie de Montreal).
+Available logos: "udem" (UdeM - \u00c9cole de kin\u00e9siologie),
+"epic" (Centre \u00c9PIC - Institut de Cardiologie de Montr\u00e9al).
 }
 \examples{
 # Get UdeM logo
@@ -24,7 +24,7 @@ logo <- get_logo("udem")
 # Use in report config
 \dontrun{
 config <- ReportConfig(
-  institution = "Ecole de kinesiologie, UdeM",
+  institution = "\u00c9cole de kin\u00e9siologie, UdeM",
   logo_path = get_logo("udem")
 )
 }

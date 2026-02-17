@@ -17,6 +17,7 @@ mod_participant_server(id, language, cpet_data)
 A list with reactive values:
 \itemize{
 \item \code{participant}: Reactive Participant object with user edits.
+\item \code{prediction_source}: Reactive prediction equation source ("jones" or "prefaut").
 }
 }
 \description{

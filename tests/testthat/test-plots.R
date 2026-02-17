@@ -152,6 +152,24 @@ test_that("plot_v_slope works with thresholds", {
   expect_s3_class(p, "ggplot")
 })
 
+test_that("plot_v_slope uses stage summary points for CpetAnalysis", {
+  skip_if_not_installed("ggplot2")
+
+  data <- create_plot_test_data()
+  data_with_stages <- extract_stages(data, protocol = "step", stage_duration = 120)
+  stage_summary <- summarize_stages(data_with_stages, window_s = 30)
+
+  analysis <- CpetAnalysis(
+    data = data,
+    stage_summary = stage_summary
+  )
+
+  p <- plot_v_slope(analysis)
+  point_layer_rows <- nrow(ggplot2::ggplot_build(p)$data[[1]])
+
+  expect_equal(point_layer_rows, nrow(stage_summary))
+})
+
 
 # plot_ventilatory_equivalents() tests ------------------------------------
 
@@ -248,6 +266,24 @@ test_that("plot_heart_rate supports different x-axes", {
 
   expect_s3_class(p_time, "ggplot")
   expect_s3_class(p_vo2, "ggplot")
+})
+
+test_that("plot_heart_rate uses stage summary points for CpetAnalysis", {
+  skip_if_not_installed("ggplot2")
+
+  data <- create_plot_test_data()
+  data_with_stages <- extract_stages(data, protocol = "step", stage_duration = 120)
+  stage_summary <- summarize_stages(data_with_stages, window_s = 30)
+
+  analysis <- CpetAnalysis(
+    data = data,
+    stage_summary = stage_summary
+  )
+
+  p <- plot_heart_rate(analysis)
+  point_layer_rows <- nrow(ggplot2::ggplot_build(p)$data[[1]])
+
+  expect_equal(point_layer_rows, nrow(stage_summary))
 })
 
 test_that("plot_heart_rate shows training zones", {
@@ -359,4 +395,82 @@ test_that("All plots work with real COSMED data", {
   expect_no_error(plot_gas_exchange(data))
   expect_no_error(plot_heart_rate(data))
   expect_no_error(plot_power(data))
+})
+
+
+# filter_exercise_data() tests -----------------------------------------------
+
+test_that("filter_exercise_data removes stage 0", {
+  df <- tibble::tibble(
+    time_s = 1:10,
+    vo2_ml = rep(300, 10),
+    stage = c(0, 0, 0, 1, 1, 1, 2, 2, 2, 2)
+  )
+  result <- filter_exercise_data(df)
+  expect_equal(nrow(result), 7)
+  expect_true(all(result$stage > 0))
+})
+
+test_that("filter_exercise_data uses power_w when no stage column", {
+  df <- tibble::tibble(
+    time_s = 1:10,
+    vo2_ml = rep(300, 10),
+    power_w = c(0, 0, 0, 50, 100, 150, 200, 250, 300, 300)
+  )
+  result <- filter_exercise_data(df)
+  expect_equal(nrow(result), 7)
+  expect_true(all(result$power_w > 0))
+})
+
+test_that("filter_exercise_data filters by phase column", {
+  df <- tibble::tibble(
+    time_s = 1:10,
+    vo2_ml = rep(300, 10),
+    phase = c("REST", "REST", "WARMUP", "EXERCISE", "EXERCISE",
+              "EXERCISE", "EXERCISE", "EXERCISE", "EXERCISE", "EXERCISE")
+  )
+  result <- filter_exercise_data(df)
+  expect_equal(nrow(result), 7)  # exercise only (warmup excluded)
+})
+
+test_that("filter_exercise_data returns unchanged data without indicators", {
+  df <- tibble::tibble(
+    time_s = 1:5,
+    vo2_ml = rep(300, 5)
+  )
+  result <- filter_exercise_data(df)
+  expect_equal(nrow(result), 5)
+})
+
+
+# Expected VO2 calculation tests -----------------------------------------------
+
+test_that("calculate_expected_vo2_treadmill returns correct values", {
+  # At 10 km/h, 70 kg: VO2 = (2.209 + 3.163 * 10) * 70 = 33.839 * 70 = 2368.73
+  result <- calculate_expected_vo2_treadmill(speed_kmh = 10, weight_kg = 70)
+  expect_equal(result, (2.209 + 3.163 * 10) * 70, tolerance = 0.01)
+})
+
+test_that("calculate_expected_vo2_treadmill is vectorized", {
+  result <- calculate_expected_vo2_treadmill(speed_kmh = c(8, 10, 12), weight_kg = 70)
+  expect_length(result, 3)
+  expect_true(all(diff(result) > 0))
+})
+
+test_that("calculate_expected_vo2_cycling returns correct values", {
+  expected <- (200 * 0.01433 / (0.20 * 5.05)) * 1000
+  result <- calculate_expected_vo2_cycling(power_w = 200, weight_kg = 70, efficiency = 0.20)
+  expect_equal(result, expected, tolerance = 0.01)
+})
+
+test_that("calculate_expected_vo2_cycling is vectorized", {
+  result <- calculate_expected_vo2_cycling(power_w = c(100, 200, 300), weight_kg = 70)
+  expect_length(result, 3)
+  expect_true(all(diff(result) > 0))
+})
+
+test_that("calculate_expected_vo2_cycling responds to efficiency", {
+  low_eff <- calculate_expected_vo2_cycling(200, 70, efficiency = 0.15)
+  high_eff <- calculate_expected_vo2_cycling(200, 70, efficiency = 0.25)
+  expect_true(low_eff > high_eff)
 })

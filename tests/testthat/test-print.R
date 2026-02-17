@@ -298,7 +298,7 @@ test_that("print.CpetAnalysis returns object invisibly", {
 test_that("print.ReportConfig returns object invisibly", {
   config <- ReportConfig(
     language = "fr",
-    institution = "Centre EPIC",
+    institution = "Centre ÉPIC",
     lab_name = "Exercise Physiology Lab",
     technician = "Dr. Smith"
   )

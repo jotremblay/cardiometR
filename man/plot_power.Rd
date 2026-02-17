@@ -4,12 +4,15 @@
 \alias{plot_power}
 \title{Plot Power Output Response}
 \usage{
-plot_power(x, show_vo2 = TRUE, language = "en")
+plot_power(x, show_vo2 = TRUE, expected_efficiency = 0.2, language = "en")
 }
 \arguments{
 \item{x}{A CpetData object}
 
 \item{show_vo2}{Overlay VO2 on secondary axis}
+
+\item{expected_efficiency}{Gross mechanical efficiency for expected VO2 line
+(default 0.20). Set to NULL to hide expected line.}
 
 \item{language}{Language for labels}
 }
@@ -18,4 +21,6 @@ A ggplot2 object
 }
 \description{
 Plots power output against time with VO2 overlay option.
+When show_vo2 is TRUE and expected_efficiency is provided, overlays
+an expected VO2 dashed line based on mechanical efficiency.
 }
