@@ -398,6 +398,161 @@ normative_lookup <- function(sport, level, sex, age_group) {
 }
 
 
+#' Get CHEER Registry Normative Data for Endurance Athletes
+#'
+#' @description
+#' Returns VO2peak reference values from the Cardiopulmonary Health and
+#' Endurance Exercise Registry (CHEER) for endurance athletes, stratified
+#' by modality (cycling vs. treadmill), sex, and age group.
+#'
+#' CHEER values are systematically higher than FRIEND (general population)
+#' and are the recommended reference for trained endurance athletes.
+#' Age groups follow CHEER conventions: "younger" = 18-30, "older" = 30-45.
+#'
+#' @param modality CPET modality: "cycling" or "treadmill"
+#' @param sex Sex: "M" or "F"
+#' @param age Age in years (classified as younger ≤30 or older >30)
+#'
+#' @return A list with:
+#'   - vo2peak_mean: Mean VO2peak (mL/kg/min)
+#'   - vo2peak_sd: Standard deviation
+#'   - vo2peak_low: Mean − 1 SD
+#'   - vo2peak_high: Mean + 1 SD
+#'   - age_group: CHEER age group label
+#'   - description: Population description
+#'   - citation: Full citation
+#'   - citation_short: Short citation
+#'
+#' @references
+#' Kowalski T, Kasiak P, Chomiuk T, Mamcarz A, Śliz D. Optimizing the
+#' Interpretation of Cardiopulmonary Exercise Testing in Endurance Athletes:
+#' Precision Approach for Health and Performance. Translational Sports Medicine.
+#' 2025;2025:5904935. doi:10.1155/tsm2/5904935
+#'
+#' @examples
+#' # Younger male cyclist
+#' cheer <- get_normative_data_cheer("cycling", "M", 25)
+#'
+#' # Older female treadmill
+#' cheer <- get_normative_data_cheer("treadmill", "F", 38)
+#'
+#' @export
+get_normative_data_cheer <- function(modality = "cycling", sex = "M", age = 30) {
+  modality <- match.arg(tolower(modality), c("cycling", "treadmill"))
+  sex <- match.arg(toupper(sex), c("M", "F"))
+
+  # CHEER age groups: younger = 18-30, older = 30-45
+  age_group <- if (age <= 30) "younger" else "older"
+
+  # VO2peak values (mean ± SD, mL/kg/min) from CHEER registry
+  # Source: Table 1, Kowalski et al. 2025 (TSM 5904935)
+  # RER criterion: ≥ 1.05
+  cheer_values <- list(
+    cycling = list(
+      M = list(
+        younger = list(mean = 56.7, sd = 9.6),
+        older   = list(mean = 52.1, sd = 8.1)
+      ),
+      F = list(
+        younger = list(mean = 44.7, sd = 7.2),
+        older   = list(mean = 37.8, sd = 4.4)
+      )
+    ),
+    treadmill = list(
+      M = list(
+        younger = list(mean = 62.0, sd = 11.1),
+        older   = list(mean = 52.8, sd = 7.6)
+      ),
+      F = list(
+        younger = list(mean = 52.0, sd = 8.6),
+        older   = list(mean = 46.9, sd = 6.7)
+      )
+    )
+  )
+
+  vals <- cheer_values[[modality]][[sex]][[age_group]]
+  age_label <- if (age_group == "younger") "18-30 years" else "30-45 years"
+  modality_label <- if (modality == "cycling") "cycle ergometry" else "treadmill"
+  sex_label <- if (sex == "M") "male" else "female"
+
+  list(
+    vo2peak_mean  = vals$mean,
+    vo2peak_sd    = vals$sd,
+    vo2peak_low   = vals$mean - vals$sd,
+    vo2peak_high  = vals$mean + vals$sd,
+    age_group     = age_label,
+    description   = sprintf(
+      "Endurance athletes, %s, %s, %s (CHEER Registry)",
+      sex_label, age_label, modality_label
+    ),
+    citation = paste0(
+      "Kowalski T, Kasiak P, Chomiuk T, Mamcarz A, Śliz D. ",
+      "Optimizing the Interpretation of Cardiopulmonary Exercise Testing in ",
+      "Endurance Athletes: Precision Approach for Health and Performance. ",
+      "Translational Sports Medicine. 2025;2025:5904935. ",
+      "doi:10.1155/tsm2/5904935"
+    ),
+    citation_short = "Kowalski et al., 2025 (CHEER)"
+  )
+}
+
+
+#' Compare VO2peak Against Both FRIEND and CHEER Registries
+#'
+#' @description
+#' Convenience function that returns a side-by-side comparison of an
+#' athlete's VO2peak against FRIEND (general population) and CHEER
+#' (endurance athlete) reference values.
+#'
+#' @param vo2peak_observed Observed VO2peak in mL/kg/min
+#' @param modality CPET modality: "cycling" or "treadmill"
+#' @param sex Sex: "M" or "F"
+#' @param age Age in years
+#'
+#' @return A tibble with one row per registry and columns:
+#'   registry, vo2peak_ref_mean, vo2peak_ref_sd, z_score, percentile_approx, interpretation
+#'
+#' @examples
+#' compare_vo2peak_registries(58, "cycling", "M", 28)
+#'
+#' @export
+compare_vo2peak_registries <- function(vo2peak_observed, modality = "cycling",
+                                       sex = "M", age = 30) {
+  # CHEER reference
+  cheer <- get_normative_data_cheer(modality, sex, age)
+
+  # FRIEND reference (general population)
+  age_group <- get_age_group(age)
+  friend <- get_friend_percentiles(sex, age_group)
+  # Approximate FRIEND mean/SD from percentiles (p50 ≈ mean, SD ≈ (p75-p25)/1.35)
+  friend_mean <- friend$p50
+  friend_sd   <- (friend$p75 - friend$p25) / 1.35
+
+  z_cheer  <- (vo2peak_observed - cheer$vo2peak_mean) / cheer$vo2peak_sd
+  z_friend <- (vo2peak_observed - friend_mean) / friend_sd
+
+  interpret <- function(z) {
+    dplyr::case_when(
+      z >= 1.5  ~ "well above average",
+      z >= 0.5  ~ "above average",
+      z >= -0.5 ~ "average",
+      z >= -1.5 ~ "below average",
+      TRUE      ~ "well below average"
+    )
+  }
+
+  tibble::tibble(
+    registry          = c("CHEER (endurance athletes)", "FRIEND (general population)"),
+    vo2peak_ref_mean  = c(cheer$vo2peak_mean, friend_mean),
+    vo2peak_ref_sd    = c(cheer$vo2peak_sd, friend_sd),
+    vo2peak_observed  = vo2peak_observed,
+    z_score           = round(c(z_cheer, z_friend), 2),
+    interpretation    = interpret(c(z_cheer, z_friend)),
+    citation_short    = c(cheer$citation_short, "Kaminsky et al., 2015 (FRIEND)")
+  )
+}
+
+
 #' FRIEND Registry Percentiles
 #'
 #' @description

@@ -45,7 +45,7 @@ method(assess_maximal_criteria, CpetData) <- function(x,
 
   if ("hr_bpm" %in% names(breaths) && !all(is.na(breaths$hr_bpm))) {
     peak_hr <- max(breaths$hr_bpm, na.rm = TRUE)
-    predicted_hr_max <- 220 - age
+    predicted_hr_max <- 208 - 0.7 * age  # Tanaka et al. (2001), better for trained athletes
     hr_pct_predicted <- 100 * peak_hr / predicted_hr_max
     hr_met <- hr_pct_predicted >= hr_threshold_pct
   }
