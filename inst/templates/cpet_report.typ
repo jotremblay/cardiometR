@@ -343,6 +343,54 @@
   )
 ]
 
+{{#if has_resting}}
+#v(0.6em)
+#block(breakable: false)[
+  #text(size: 10pt, weight: "semibold")[{{resting_title}}]
+  #v(0.3em)
+  #grid(
+    columns: (1fr, 1fr, 1fr, 1fr, 1fr, 1fr),
+    gutter: 0.5em,
+    align(center)[
+      #text(size: 8pt, fill: luma(110))[VO2]
+      #v(-0.3em)
+      #text(size: 14pt, weight: "bold")[{{resting_vo2}}]
+      #text(size: 8pt)[ mL/min]
+    ],
+    align(center)[
+      #text(size: 8pt, fill: luma(110))[VO2/kg]
+      #v(-0.3em)
+      #text(size: 14pt, weight: "bold")[{{resting_vo2_kg}}]
+      #text(size: 8pt)[ mL/kg/min]
+    ],
+    align(center)[
+      #text(size: 8pt, fill: luma(110))[HR]
+      #v(-0.3em)
+      #text(size: 14pt, weight: "bold")[{{resting_hr}}]
+      #text(size: 8pt)[ bpm]
+    ],
+    align(center)[
+      #text(size: 8pt, fill: luma(110))[VE]
+      #v(-0.3em)
+      #text(size: 14pt, weight: "bold")[{{resting_ve}}]
+      #text(size: 8pt)[ L/min]
+    ],
+    align(center)[
+      #text(size: 8pt, fill: luma(110))[RER]
+      #v(-0.3em)
+      #text(size: 14pt, weight: "bold")[{{resting_rer}}]
+    ],
+    align(center)[
+      #text(size: 8pt, fill: luma(110))[{{resting_duration_label}}]
+      #v(-0.3em)
+      #text(size: 14pt, weight: "bold")[{{resting_duration}}]
+    ]
+  )
+  #v(0.2em)
+  #text(size: 8pt, fill: luma(110))[{{resting_caption}}]
+]
+{{/if}}
+
 {{#if graph_slope}}
 #v(0.6em)
 #block(breakable: false)[

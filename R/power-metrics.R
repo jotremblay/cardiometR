@@ -86,15 +86,32 @@ compute_map_kuipers <- function(stage_summary) {
 #'   [compute_map_kuipers()]).
 #' @param vt2_power Optional numeric: VT2 power in watts. When `NULL`, 85%
 #'   of PPO is used as the submax cutoff.
+#' @param stages Optional stages tibble with `time_s` and `stage`. When
+#'   supplied, breaths before the first exercise stage are excluded so
+#'   seated-rest points don't drag the regression down.
 #' @return A list with `slope`, `intercept`, `slope_ci_low`, `slope_ci_high`,
 #'   `n`, `r_squared`.
 #' @export
-fit_vo2_power_slope <- function(breath_df, stage_summary, vt2_power = NULL) {
+fit_vo2_power_slope <- function(breath_df, stage_summary, vt2_power = NULL,
+                                stages = NULL) {
   stopifnot(inherits(breath_df, "data.frame"))
   if (!all(c("vo2_ml", "power_w") %in% names(breath_df))) {
     return(list(slope = NA_real_, intercept = NA_real_,
                 slope_ci_low = NA_real_, slope_ci_high = NA_real_,
                 n = 0L, r_squared = NA_real_))
+  }
+
+  ex_start <- NA_real_
+  if (!is.null(stages) && is.data.frame(stages) &&
+      all(c("time_s", "stage") %in% names(stages))) {
+    ex_rows <- stages |> dplyr::filter(!is.na(.data$stage), .data$stage > 0)
+    if (nrow(ex_rows) > 0) ex_start <- min(ex_rows$time_s, na.rm = TRUE)
+  }
+  if (is.finite(ex_start) && "time_s" %in% names(breath_df)) {
+    breath_df <- breath_df |> dplyr::filter(.data$time_s >= ex_start)
+  } else if ("power_w" %in% names(breath_df)) {
+    breath_df <- breath_df |>
+      dplyr::filter(is.na(.data$power_w) | .data$power_w > 20)
   }
 
   cutoff <- vt2_power
@@ -147,10 +164,14 @@ fit_vo2_power_slope <- function(breath_df, stage_summary, vt2_power = NULL) {
 #' @param breath_df Averaged or breath-by-breath tibble (may be NULL).
 #' @param participant A Participant S7 object or NULL.
 #' @param settings Shiny settings list (for sport / level selection).
+#' @param stages Stages tibble with `time_s` and `stage` columns (may be NULL).
+#'   When supplied, leading seated-rest breaths are excluded from VT detection
+#'   and from the VO2-Power slope fit, and resting values are computed.
 #' @return The updated CpetAnalysis.
 #' @keywords internal
 populate_phase1_metrics <- function(analysis, stage_summary, breath_df,
-                                    participant = NULL, settings = list()) {
+                                    participant = NULL, settings = list(),
+                                    stages = NULL) {
   map_res <- tryCatch(
     if (!is.null(stage_summary)) compute_map_kuipers(stage_summary) else NULL,
     error = function(e) { cli::cli_warn("MAP/PPO computation failed: {e$message}"); NULL }
@@ -167,12 +188,23 @@ populate_phase1_metrics <- function(analysis, stage_summary, breath_df,
     }
   }
 
+  stages_df <- stages
+  if (is.null(stages_df)) {
+    stages_df <- tryCatch(analysis@data@stages, error = function(e) NULL)
+  }
+
   analysis@vo2_power_slope <- tryCatch(
-    if (!is.null(breath_df)) fit_vo2_power_slope(breath_df, stage_summary) else NULL,
+    if (!is.null(breath_df)) {
+      fit_vo2_power_slope(breath_df, stage_summary, stages = stages_df)
+    } else NULL,
     error = function(e) { cli::cli_warn("VO2-Power slope fit failed: {e$message}"); NULL }
   )
 
-  analysis <- populate_threshold_ranges(analysis, breath_df)
+  analysis <- populate_threshold_ranges(analysis, breath_df, stages = stages_df)
+
+  analysis@resting <- tryCatch({
+    compute_resting_values(data_avg = analysis@data, stages = stages_df)
+  }, error = function(e) { cli::cli_warn("Resting values failed: {e$message}"); NULL })
 
   analysis@steady_state_stages <- tryCatch(
     if (!is.null(breath_df) && !is.null(stage_summary)) {

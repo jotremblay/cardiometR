@@ -9,7 +9,8 @@ populate_phase1_metrics(
   stage_summary,
   breath_df,
   participant = NULL,
-  settings = list()
+  settings = list(),
+  stages = NULL
 )
 }
 \arguments{
@@ -22,6 +23,10 @@ populate_phase1_metrics(
 \item{participant}{A Participant S7 object or NULL.}
 
 \item{settings}{Shiny settings list (for sport / level selection).}
+
+\item{stages}{Stages tibble with \code{time_s} and \code{stage} columns (may be NULL).
+When supplied, leading seated-rest breaths are excluded from VT detection
+and from the VO2-Power slope fit, and resting values are computed.}
 }
 \value{
 The updated CpetAnalysis.

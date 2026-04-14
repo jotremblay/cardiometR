@@ -1383,6 +1383,36 @@ build_phase7_template_data <- function(analysis, language, report_sections) {
   out$ap_ppo_z         <- fmt_z(zs$ppo_z)
   out$ap_ppo_pct       <- fmt_pct(zs$ppo_z)
 
+  # Resting values (gated by athlete_profile section)
+  r <- tryCatch(analysis@resting, error = function(e) NULL)
+  if (has_ap && is.list(r) && length(r) > 0) {
+    dur_s <- as.numeric(r$duration_s %||% NA_real_)
+    out$has_resting     <- TRUE
+    out$resting_title   <- escape_typst(tr("resting_values_title", language))
+    out$resting_vo2     <- fmt_int(r$vo2_rest)
+    out$resting_vo2_kg  <- fmt_num(r$vo2_kg_rest, 1)
+    out$resting_hr      <- fmt_int(r$hr_rest)
+    out$resting_ve      <- fmt_num(r$ve_rest, 1)
+    out$resting_rer     <- fmt_num(r$rer_rest, 2)
+    out$resting_duration <- if (is.finite(dur_s)) {
+      sprintf("%d:%02d", as.integer(dur_s) %/% 60L, as.integer(dur_s) %% 60L)
+    } else "--"
+    out$resting_duration_label <- escape_typst(tr("resting_rest_duration", language))
+    out$resting_caption <- escape_typst(tryCatch(
+      sprintf(tr("resting_values_caption", language),
+              as.integer(round(r$window_s %||% NA_real_)),
+              as.integer(r$n_breaths %||% 0L)),
+      error = function(e) ""
+    ))
+  } else {
+    out$has_resting <- FALSE
+    out$resting_title <- ""
+    out$resting_vo2 <- out$resting_vo2_kg <- out$resting_hr <- "--"
+    out$resting_ve <- out$resting_rer <- out$resting_duration <- "--"
+    out$resting_duration_label <- ""
+    out$resting_caption <- ""
+  }
+
   # VO2-power slope caption
   slope <- analysis@vo2_power_slope
   if (is.list(slope) && !is.null(slope$slope) && length(slope$slope) == 1 &&

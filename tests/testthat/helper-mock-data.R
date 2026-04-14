@@ -113,30 +113,56 @@ create_mock_breath_data <- function(n_breaths = 300,
 #' stage extraction/summary), and populates Phase-1 additive metrics.
 #'
 #' @param n_breaths Number of breaths in the ramp (default 360 -> 12 min @ 2s).
+#' @param with_rest When TRUE (default FALSE), prepend a 180 s seated-rest
+#'   block (90 breaths at 2 s spacing) with power 0, resting VO2 ~350 mL/min,
+#'   HR ~70 bpm. The ramp is appended after the rest block.
 #' @return A CpetAnalysis S7 object with phase-1 slots populated.
 #' @keywords internal
-create_mock_cpet_analysis <- function(n_breaths = 360) {
+create_mock_cpet_analysis <- function(n_breaths = 360, with_rest = FALSE) {
   set.seed(42)
-  time_s <- seq(0, by = 2, length.out = n_breaths)
-  intensity <- pmin(time_s / max(time_s), 1)
-  power_w <- round(intensity * 300)
+  ramp_time <- seq(0, by = 2, length.out = n_breaths)
+  intensity <- pmin(ramp_time / max(ramp_time), 1)
+  ramp_power <- round(intensity * 300)
 
-  breaths <- tibble::tibble(
-    time_s  = time_s,
+  ramp_breaths <- tibble::tibble(
+    time_s  = ramp_time,
     vo2_ml  = 300 + intensity * 2700 + stats::rnorm(n_breaths, 0, 40),
     vco2_ml = 250 + intensity * 3000 + stats::rnorm(n_breaths, 0, 40),
     ve_l    = 10  + intensity * 120  + stats::rnorm(n_breaths, 0, 2),
     bf      = 12  + intensity * 38   + stats::rnorm(n_breaths, 0, 2),
     hr_bpm  = 70  + intensity * 120  + stats::rnorm(n_breaths, 0, 3),
-    power_w = power_w
-  ) |>
+    power_w = ramp_power,
+    peto2_mmhg = 100 + intensity * 15 + stats::rnorm(n_breaths, 0, 2),
+    petco2_mmhg = 40 - intensity * 5  + stats::rnorm(n_breaths, 0, 1)
+  )
+
+  if (isTRUE(with_rest)) {
+    n_rest <- 90L
+    rest_time <- seq(0, by = 2, length.out = n_rest)
+    rest_breaths <- tibble::tibble(
+      time_s  = rest_time,
+      vo2_ml  = 350 + stats::rnorm(n_rest, 0, 15),
+      vco2_ml = 290 + stats::rnorm(n_rest, 0, 15),
+      ve_l    = 12  + stats::rnorm(n_rest, 0, 0.8),
+      bf      = 14  + stats::rnorm(n_rest, 0, 1),
+      hr_bpm  = 70  + stats::rnorm(n_rest, 0, 2),
+      power_w = 0,
+      peto2_mmhg  = 105 + stats::rnorm(n_rest, 0, 1),
+      petco2_mmhg = 38  + stats::rnorm(n_rest, 0, 0.7)
+    )
+    rest_duration <- max(rest_time) + 2
+    ramp_breaths$time_s <- ramp_breaths$time_s + rest_duration
+    breaths <- dplyr::bind_rows(rest_breaths, ramp_breaths)
+  } else {
+    breaths <- ramp_breaths
+  }
+
+  breaths <- breaths |>
     dplyr::mutate(
-      rer        = vco2_ml / vo2_ml,
-      vt_l       = ve_l / bf,
-      ve_vo2     = ve_l * 1000 / vo2_ml,
-      ve_vco2    = ve_l * 1000 / vco2_ml,
-      peto2_mmhg = 100 + intensity * 15 + stats::rnorm(n_breaths, 0, 2),
-      petco2_mmhg = 40 - intensity * 5  + stats::rnorm(n_breaths, 0, 1)
+      rer     = vco2_ml / vo2_ml,
+      vt_l    = ve_l / bf,
+      ve_vo2  = ve_l * 1000 / vo2_ml,
+      ve_vco2 = ve_l * 1000 / vco2_ml
     )
 
   participant <- cardiometR::Participant(
@@ -167,11 +193,18 @@ create_mock_cpet_analysis <- function(n_breaths = 360) {
     error = function(e) NULL
   )
 
+  staged <- tryCatch(
+    cardiometR::extract_stages(data_avg, protocol = "ramp",
+                               stage_duration = 60),
+    error = function(e) NULL
+  )
+  stages_tbl <- if (!is.null(staged)) staged@stages else NULL
   stage_summary <- tryCatch({
-    staged <- cardiometR::extract_stages(data_avg, protocol = "ramp",
-                                         stage_duration = 60)
-    cardiometR::summarize_stages(staged, window_s = 30)
+    if (!is.null(staged)) cardiometR::summarize_stages(staged, window_s = 30) else NULL
   }, error = function(e) NULL)
+  if (!is.null(stages_tbl)) {
+    data_avg@stages <- stages_tbl
+  }
 
   protocol_config <- tryCatch(
     cardiometR::ProtocolConfig(modality = "cycling",
@@ -194,7 +227,8 @@ create_mock_cpet_analysis <- function(n_breaths = 360) {
     stage_summary = stage_summary,
     breath_df = data_avg@breaths,
     participant = participant,
-    settings = list(athlete_sport = "cycling", athlete_level = "recreational")
+    settings = list(athlete_sport = "cycling", athlete_level = "recreational"),
+    stages = stages_tbl
   )
 }
 

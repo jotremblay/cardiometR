@@ -7,7 +7,8 @@
 detect_threshold_range(
   breath_df,
   methods = NULL,
-  smoothing = c("default", "narrow", "wide")
+  smoothing = c("default", "narrow", "wide"),
+  stages = NULL
 )
 }
 \arguments{
@@ -21,6 +22,10 @@ for VT1; \code{"ve_vco2"}, \code{"petco2"} for VT2.}
 \item{smoothing}{Character vector of smoothing presets to vary:
 \code{"narrow"} (~10 s), \code{"default"} (~30 s), \code{"wide"} (~60 s) rolling
 windows on VO2/VCO2/VE.}
+
+\item{stages}{Optional stages tibble with \code{time_s} and \code{stage}. When
+supplied, leading seated-rest breaths (stage 0) are excluded before
+detection so resting values don't shift VT1/VT2 downward.}
 }
 \value{
 A list with elements:

@@ -394,3 +394,8 @@ point: "Point"
 fat_oxidation: "Lipides (%)"
 cho_oxidation: "Glucides (%)"
 metric: "Métrique"
+
+# Valeurs de repos (phase: resting)
+resting_values_title: "Valeurs de repos"
+resting_values_caption: "Moyenne sur %d s de la période de repos initiale (n=%d). Ce n'est pas une mesure de métabolisme de repos — le sujet est sur le vélo."
+resting_rest_duration: "Durée"

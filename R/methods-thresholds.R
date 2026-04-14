@@ -260,10 +260,14 @@ threshold_confidence <- function(n_methods) {
 #'     \item{vt2_values}{Tibble for VT2.}
 #'   }
 #'
+#' @param stages Optional stages tibble with `time_s` and `stage`. When
+#'   supplied, leading seated-rest breaths (stage 0) are excluded before
+#'   detection so resting values don't shift VT1/VT2 downward.
 #' @export
 detect_threshold_range <- function(breath_df,
                                    methods = NULL,
-                                   smoothing = c("default", "narrow", "wide")) {
+                                   smoothing = c("default", "narrow", "wide"),
+                                   stages = NULL) {
   empty <- list(
     vt1_range = NULL, vt2_range = NULL,
     vt1_values = tibble::tibble(method = character(), smoothing = character(), vo2 = numeric()),
@@ -273,6 +277,22 @@ detect_threshold_range <- function(breath_df,
   required <- c("time_s", "vo2_ml", "vco2_ml", "ve_l")
   if (!is.data.frame(breath_df) || !all(required %in% names(breath_df)) || nrow(breath_df) < 20) {
     return(empty)
+  }
+
+  ex_start <- NA_real_
+  if (!is.null(stages) && is.data.frame(stages) &&
+      all(c("time_s", "stage") %in% names(stages))) {
+    ex_rows <- stages |> dplyr::filter(!is.na(.data$stage), .data$stage > 0)
+    if (nrow(ex_rows) > 0) ex_start <- min(ex_rows$time_s, na.rm = TRUE)
+  }
+  if (!is.finite(ex_start) && "power_w" %in% names(breath_df)) {
+    pw <- breath_df$power_w
+    over <- which(!is.na(pw) & pw > 25)
+    if (length(over) > 0) ex_start <- breath_df$time_s[over[1]]
+  }
+  if (is.finite(ex_start)) {
+    breath_df <- breath_df |> dplyr::filter(.data$time_s >= ex_start)
+    if (nrow(breath_df) < 20) return(empty)
   }
 
   vt1_methods_all <- c("v_slope", "ve_vo2", "peto2")
@@ -377,9 +397,14 @@ detect_threshold_range <- function(breath_df,
 #' @param breath_df Breath-by-breath tibble (may be `NULL`).
 #' @return The updated CpetAnalysis.
 #' @keywords internal
-populate_threshold_ranges <- function(analysis, breath_df) {
+populate_threshold_ranges <- function(analysis, breath_df, stages = NULL) {
+  if (is.null(stages)) {
+    stages <- tryCatch(analysis@data@stages, error = function(e) NULL)
+  }
   res <- tryCatch(
-    if (!is.null(breath_df)) detect_threshold_range(breath_df) else NULL,
+    if (!is.null(breath_df)) {
+      detect_threshold_range(breath_df, stages = stages)
+    } else NULL,
     error = function(e) {
       cli::cli_warn("VT range detection failed: {e$message}"); NULL
     }

@@ -4,7 +4,7 @@
 \alias{populate_threshold_ranges}
 \title{Populate VT1/VT2 Range Slots on a CpetAnalysis Object}
 \usage{
-populate_threshold_ranges(analysis, breath_df)
+populate_threshold_ranges(analysis, breath_df, stages = NULL)
 }
 \arguments{
 \item{analysis}{A CpetAnalysis S7 object.}

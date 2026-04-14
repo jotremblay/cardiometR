@@ -629,7 +629,8 @@ CpetAnalysis <- new_class("CpetAnalysis",
     z_scores = class_list | NULL,
     steady_state_stages = class_data.frame | NULL,
     substrate_by_stage = class_data.frame | NULL,
-    cp_fit = class_list | NULL
+    cp_fit = class_list | NULL,
+    resting = class_list | NULL
   )
 )
 

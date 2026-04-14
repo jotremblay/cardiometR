@@ -394,3 +394,8 @@ point: "Point"
 fat_oxidation: "Fat (%)"
 cho_oxidation: "CHO (%)"
 metric: "Metric"
+
+# Resting values (phase: resting)
+resting_values_title: "Resting values"
+resting_values_caption: "%d-s average from leading rest block (n=%d). Not a BMR — subject is on the bike."
+resting_rest_duration: "Duration"

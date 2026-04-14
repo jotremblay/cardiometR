@@ -1517,6 +1517,7 @@ plot_vo2_power_slope <- function(analysis, language = "en", dark = FALSE) {
   pal <- palette_cardiometr()
   breaths <- tryCatch(analysis@data@breaths, error = function(e) NULL)
   stage_summary <- tryCatch(analysis@stage_summary, error = function(e) NULL)
+  stages_df <- tryCatch(analysis@data@stages, error = function(e) NULL)
 
   vt2_power <- tryCatch({
     vt2r <- analysis@vt2_range
@@ -1532,16 +1533,26 @@ plot_vo2_power_slope <- function(analysis, language = "en", dark = FALSE) {
   df <- if (!is.null(breaths) &&
             all(c("vo2_ml", "power_w") %in% names(breaths))) {
     d <- breaths |>
-      dplyr::select("vo2_ml", "power_w") |>
+      dplyr::select(dplyr::any_of(c("time_s", "vo2_ml", "power_w"))) |>
       dplyr::filter(!is.na(.data$vo2_ml), !is.na(.data$power_w),
-                    .data$power_w > 0)
+                    .data$power_w > 20)
+    if (!is.null(stages_df) && is.data.frame(stages_df) &&
+        all(c("time_s", "stage") %in% names(stages_df)) &&
+        "time_s" %in% names(d)) {
+      ex_rows <- stages_df |> dplyr::filter(!is.na(.data$stage), .data$stage > 0)
+      if (nrow(ex_rows) > 0) {
+        ex_start <- min(ex_rows$time_s, na.rm = TRUE)
+        d <- d |> dplyr::filter(.data$time_s >= ex_start)
+      }
+    }
     if (is.finite(cutoff)) dplyr::filter(d, .data$power_w <= cutoff) else d
   } else NULL
 
   fit <- tryCatch(analysis@vo2_power_slope, error = function(e) NULL)
   if (is.null(fit) || !is.finite(fit$slope %||% NA_real_)) {
     fit <- tryCatch(
-      fit_vo2_power_slope(breaths, stage_summary, vt2_power = cutoff),
+      fit_vo2_power_slope(breaths, stage_summary, vt2_power = cutoff,
+                          stages = stages_df),
       error = function(e) NULL
     )
   }

@@ -4,7 +4,7 @@
 \alias{fit_vo2_power_slope}
 \title{Fit VO2-Power Linear Slope (Submax Portion)}
 \usage{
-fit_vo2_power_slope(breath_df, stage_summary, vt2_power = NULL)
+fit_vo2_power_slope(breath_df, stage_summary, vt2_power = NULL, stages = NULL)
 }
 \arguments{
 \item{breath_df}{Breath-by-breath or averaged tibble with \code{vo2_ml} and
@@ -15,6 +15,10 @@ fit_vo2_power_slope(breath_df, stage_summary, vt2_power = NULL)
 
 \item{vt2_power}{Optional numeric: VT2 power in watts. When \code{NULL}, 85\%
 of PPO is used as the submax cutoff.}
+
+\item{stages}{Optional stages tibble with \code{time_s} and \code{stage}. When
+supplied, breaths before the first exercise stage are excluded so
+seated-rest points don't drag the regression down.}
 }
 \value{
 A list with \code{slope}, \code{intercept}, \code{slope_ci_low}, \code{slope_ci_high},

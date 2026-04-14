@@ -27,6 +27,9 @@ mod_results_ui <- function(id, language = "en") {
       shiny::h6(shiny::span(id = ns("peak_title"), tr("detailed_peak_values", language))),
       shiny::uiOutput(ns("peak_display")),
 
+      # Resting values (rendered only when a leading rest block exists)
+      shiny::uiOutput(ns("resting_display")),
+
       shiny::tags$hr(class = "section-divider"),
 
       # Thresholds table (legacy point estimates)
@@ -70,10 +73,12 @@ mod_results_server <- function(id, language, cpet_data, participant, settings,
     shiny::observeEvent(language(), {
       lang <- language()
       ids <- c(ns("results_header"), ns("peak_title"), ns("norm_header"),
-               ns("threshold_title"), ns("stage_title"), ns("export_label"))
+               ns("threshold_title"), ns("stage_title"), ns("export_label"),
+               ns("resting_title"))
       texts <- c(tr("peak_values", lang), tr("detailed_peak_values", lang),
                  tr("normative_comparison", lang), tr("threshold_results", lang),
-                 tr("stage_results", lang), tr("export_csv", lang))
+                 tr("stage_results", lang), tr("export_csv", lang),
+                 tr("resting_values_title", lang))
       session$sendCustomMessage("update_text", as.list(stats::setNames(texts, ids)))
     })
 
@@ -149,10 +154,13 @@ mod_results_server <- function(id, language, cpet_data, participant, settings,
 
           shiny::incProgress(0.2, detail = tr("step_stages", lang))
           stage_summary <- NULL
+          stages_tbl <- NULL
           tryCatch({
             data_with_stages <- extract_stages(data_avg, protocol = s$protocol,
                                                stage_duration = s$stage_duration)
             stage_summary <- summarize_stages(data_with_stages, window_s = s$averaging_window %||% 30)
+            stages_tbl <- tryCatch(data_with_stages@stages, error = function(e) NULL)
+            data_avg@stages <- stages_tbl
           }, error = function(e) {
             shiny::showNotification(
               tr("warning_stages_failed", lang),
@@ -186,7 +194,8 @@ mod_results_server <- function(id, language, cpet_data, participant, settings,
             stage_summary = stage_summary,
             breath_df = data_avg@breaths,
             participant = p,
-            settings = s
+            settings = s,
+            stages = stages_tbl
           )
 
           analysis_obj
@@ -347,6 +356,61 @@ mod_results_server <- function(id, language, cpet_data, participant, settings,
         third,
         stat_cell(tr("ve", lang), fmt(peaks@ve_peak, 1), tr("unit_l_min", lang)),
         stat_cell(tr("rer", lang), fmt(peaks@rer_peak, 2), "")
+      )
+    })
+
+    # -- Resting values (leading on-bike rest block) ---------------------
+
+    output$resting_display <- shiny::renderUI({
+      a <- analysis()
+      lang <- language()
+      if (is.null(a) || !has_resting(a)) return(NULL)
+
+      r <- a@resting
+
+      fmt <- function(x, digits = 1) {
+        if (is.null(x) || !is.finite(x)) "--" else sprintf(paste0("%.", digits, "f"), x)
+      }
+      int_fmt <- function(x) {
+        if (is.null(x) || !is.finite(x)) "--" else as.character(round(x))
+      }
+      dur_fmt <- function(s) {
+        if (is.null(s) || !is.finite(s)) "--"
+        else sprintf("%d:%02d", as.integer(s) %/% 60L, as.integer(s) %% 60L)
+      }
+      stat_cell <- function(label, value, unit) {
+        shiny::div(
+          class = "stat-cell",
+          shiny::div(class = "stat-label", label),
+          shiny::div(class = "stat-value", value),
+          shiny::div(class = "stat-unit", unit)
+        )
+      }
+
+      caption_tpl <- tr("resting_values_caption", lang)
+      caption_txt <- tryCatch(
+        sprintf(caption_tpl,
+                as.integer(round(r$window_s %||% NA_real_)),
+                as.integer(r$n_breaths %||% 0L)),
+        error = function(e) caption_tpl
+      )
+
+      shiny::tagList(
+        shiny::tags$hr(class = "section-divider"),
+        shiny::h6(shiny::span(id = ns("resting_title"),
+                              tr("resting_values_title", lang))),
+        shiny::div(
+          class = "stat-strip",
+          stat_cell("VO2", int_fmt(r$vo2_rest), tr("unit_ml_min", lang)),
+          stat_cell(tr("vo2_kg", lang), fmt(r$vo2_kg_rest, 1),
+                    tr("unit_ml_kg_min", lang)),
+          stat_cell(tr("hr", lang), int_fmt(r$hr_rest), tr("unit_bpm", lang)),
+          stat_cell(tr("ve", lang), fmt(r$ve_rest, 1), tr("unit_l_min", lang)),
+          stat_cell(tr("rer", lang), fmt(r$rer_rest, 2), ""),
+          stat_cell(tr("resting_rest_duration", lang),
+                    dur_fmt(r$duration_s), "m:ss")
+        ),
+        shiny::tags$small(class = "text-muted d-block mt-1", caption_txt)
       )
     })
 
