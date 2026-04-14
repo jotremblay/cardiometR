@@ -6,10 +6,10 @@
 #' @return A Shiny UI element.
 #'
 #' @keywords internal
-mod_plots_ui <- function(id, language = "en") {
+mod_plots_ui <- function(id, language = "en", secondary_id = NULL) {
   ns <- shiny::NS(id)
 
-  bslib::card(
+  plots_card <- bslib::card(
     fill = TRUE,
     bslib::card_header(
       class = "d-flex justify-content-between align-items-center",
@@ -68,6 +68,15 @@ mod_plots_ui <- function(id, language = "en") {
       )
     )
   )
+
+  if (is.null(secondary_id)) {
+    plots_card
+  } else {
+    shiny::tagList(
+      plots_card,
+      mod_results_secondary_ui(secondary_id)
+    )
+  }
 }
 
 #' Plots Module Server

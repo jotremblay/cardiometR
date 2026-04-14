@@ -65,7 +65,13 @@ mod_participant_ui <- function(id, language = "en") {
                            tr("prediction_source", language)
                          ),
                          choices = c("Jones et al. (1997)" = "jones",
-                                     "Pr\u00e9faut et al." = "prefaut"))
+                                     "Pr\u00e9faut et al." = "prefaut"),
+                         width = "100%"),
+      shiny::tags$small(
+        class = "text-muted d-block mt-1",
+        id = ns("prediction_source_help"),
+        tr("prediction_source_help", language)
+      )
     )
   )
 }
@@ -123,10 +129,10 @@ mod_participant_server <- function(id, language, cpet_data) {
         label = tr("submit", lang)
       ))
 
-      # Update prediction source label via JS (target the span inside the label)
+      # Update prediction source label + helper via JS
       session$sendCustomMessage("update_text", as.list(stats::setNames(
-        tr("prediction_source", lang),
-        ns("prediction_source_label")
+        c(tr("prediction_source", lang), tr("prediction_source_help", lang)),
+        c(ns("prediction_source_label"), ns("prediction_source_help"))
       )))
     })
 
@@ -208,68 +214,39 @@ mod_participant_server <- function(id, language, cpet_data) {
       # Calculate BMI
       bmi <- round(p@weight_kg / (p@height_cm / 100)^2, 1)
 
+      stat_cell <- function(label, value, unit = "") {
+        shiny::div(
+          class = "stat-cell",
+          shiny::div(class = "stat-label", label),
+          shiny::div(class = "stat-value", value),
+          if (nzchar(unit)) shiny::div(class = "stat-unit", unit)
+        )
+      }
+      sex_label <- switch(p@sex,
+                          "M" = tr("male", lang),
+                          "F" = tr("female", lang),
+                          "O" = tr("other", lang))
+
       shiny::tagList(
         # Name prominently displayed
         shiny::h5(class = "mb-3", p@name),
 
-        # Key metrics as small value boxes
-        bslib::layout_columns(
-          col_widths = c(6, 6),
-          fill = FALSE,
-
-          bslib::value_box(
-            title = tr("participant_age", lang),
-            value = paste(p@age, tr("unit_years", lang)),
-            showcase = shiny::icon("calendar"),
-            theme = "light",
-            height = "100px"
-          ),
-          bslib::value_box(
-            title = tr("participant_sex", lang),
-            value = switch(p@sex,
-                           "M" = tr("male", lang),
-                           "F" = tr("female", lang),
-                           "O" = tr("other", lang)),
-            showcase = shiny::icon("venus-mars"),
-            theme = "light",
-            height = "100px"
-          )
-        ),
-
-        bslib::layout_columns(
-          col_widths = c(6, 6),
-          fill = FALSE,
-
-          bslib::value_box(
-            title = tr("participant_height", lang),
-            value = paste(p@height_cm, "cm"),
-            showcase = shiny::icon("ruler-vertical"),
-            theme = "light",
-            height = "100px"
-          ),
-          bslib::value_box(
-            title = tr("participant_weight", lang),
-            value = paste(p@weight_kg, "kg"),
-            showcase = shiny::icon("weight-scale"),
-            theme = "light",
-            height = "100px"
-          )
-        ),
-
-        # BMI and sport
         shiny::div(
-          class = "d-flex gap-3 mt-3 pt-2 border-top small text-muted",
-          shiny::span(
-            shiny::tags$strong("BMI"), " ",
-            paste(bmi, "kg/m\u00B2")
-          ),
-          if (!is.null(p@sport) && nchar(p@sport) > 0) {
-            shiny::span(
-              shiny::tags$strong(tr("participant_sport", lang)), " ",
-              p@sport
-            )
-          }
-        )
+          class = "stat-strip",
+          stat_cell(tr("participant_age", lang), as.character(p@age),
+                    tr("unit_years", lang)),
+          stat_cell(tr("participant_sex", lang), sex_label),
+          stat_cell(tr("participant_height", lang), as.character(p@height_cm), "cm"),
+          stat_cell(tr("participant_weight", lang), as.character(p@weight_kg), "kg"),
+          stat_cell("BMI", as.character(bmi), "kg/m\u00B2")
+        ),
+
+        if (!is.null(p@sport) && nchar(p@sport) > 0) {
+          shiny::div(
+            class = "small text-muted mt-2",
+            shiny::tags$strong(tr("participant_sport", lang)), " ", p@sport
+          )
+        }
       )
     })
 

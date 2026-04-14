@@ -4,7 +4,7 @@
 \alias{mod_plots_ui}
 \title{Plots Module UI}
 \usage{
-mod_plots_ui(id, language = "en")
+mod_plots_ui(id, language = "en", secondary_id = NULL)
 }
 \arguments{
 \item{id}{Module namespace ID.}

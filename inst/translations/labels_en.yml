@@ -325,6 +325,7 @@ data_type: "Data Type"
 
 # Prediction Equations
 prediction_source: "Prediction equations"
+prediction_source_help: "Used for percent-predicted calculations."
 prediction_jones: "Jones et al. (1997)"
 prediction_prefaut: "Préfaut et al."
 population_label: "Population"

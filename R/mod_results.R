@@ -23,54 +23,29 @@ mod_results_ui <- function(id, language = "en") {
 
       shiny::tags$hr(class = "section-divider"),
 
-      # Detailed peak values
+      # Compact peak stat-strip (VO2/kg, HR, Power/Speed, VE, QR)
       shiny::h6(shiny::span(id = ns("peak_title"), tr("detailed_peak_values", language))),
       shiny::uiOutput(ns("peak_display")),
 
       shiny::tags$hr(class = "section-divider"),
 
-      # Normative comparison (strip plot + VO2-Power slope)
-      bslib::card(
-        bslib::card_header(
-          shiny::icon("chart-line"),
-          shiny::span(id = ns("norm_header"), tr("normative_comparison", language))
-        ),
-        bslib::card_body(
-          shiny::uiOutput(ns("norms_info")),
-          shiny::plotOutput(ns("zscore_strip_plot"), height = "200px"),
-          shiny::plotOutput(ns("vo2_power_slope_plot"), height = "240px")
-        )
-      ),
-
-      shiny::tags$hr(class = "section-divider"),
-
       # Thresholds table (legacy point estimates)
       shiny::h6(shiny::span(id = ns("threshold_title"), tr("threshold_results", language))),
-      shiny::uiOutput(ns("threshold_display")),
-
-      # Estimates & caveats accordion
-      shiny::uiOutput(ns("estimates_accordion")),
-
-      shiny::tags$hr(class = "section-divider"),
-
-      # Stage summary table
-      shiny::h6(shiny::span(id = ns("stage_title"), tr("stage_results", language))),
-      DT::dataTableOutput(ns("stage_table")),
-      shiny::downloadButton(
-        ns("download_data"),
-        label = shiny::tagList(
-          shiny::icon("file-csv"),
-          shiny::span(id = ns("export_label"), tr("export_csv", language))
-        ),
-        class = "btn-outline-secondary btn-sm mt-2"
-      ),
-
-      shiny::tags$hr(class = "section-divider"),
-
-      # Longitudinal panel
-      shiny::uiOutput(ns("longitudinal_panel"))
+      shiny::uiOutput(ns("threshold_display"))
     )
   )
+}
+
+#' Secondary right-column output slot produced by mod_results_server.
+#'
+#' Exposes the normative-comparison card, estimates accordion, stage table,
+#' and longitudinal panel so mod_plots_ui can render them under the 9-panel.
+#'
+#' @param id Namespace id of the results module.
+#' @keywords internal
+mod_results_secondary_ui <- function(id) {
+  ns <- shiny::NS(id)
+  shiny::uiOutput(ns("secondary_right"))
 }
 
 #' Results Module Server
@@ -342,67 +317,75 @@ mod_results_server <- function(id, language, cpet_data, participant, settings,
         (!is.null(a@protocol_config) && a@protocol_config@modality == "treadmill") ||
         ("speed_kmh" %in% names(a@data@breaths))
 
-      bslib::layout_column_wrap(
-        width = 1 / 3,
-        fill = FALSE,
-        gap = "1rem",
-        bslib::value_box(
-          title = tr("vo2_kg", lang),
-          value = sprintf("%.1f", peaks@vo2_kg_peak),
-          showcase = shiny::icon("lungs"),
-          theme = "primary",
-          shiny::p(tr("unit_ml_kg_min", lang))
-        ),
-        bslib::layout_columns(
-          col_widths = c(6, 6),
-          fill = FALSE,
-          bslib::value_box(
-            title = tr("hr", lang),
-            value = if (!is.null(peaks@hr_peak)) round(peaks@hr_peak) else "--",
-            showcase = shiny::icon("heart-pulse"),
-            theme = "danger",
-            shiny::p(tr("unit_bpm", lang)),
-            min_height = "120px"
-          ),
-          if (is_treadmill) {
-            bslib::value_box(
-              title = tr("speed", lang),
-              value = if (!is.null(peaks@speed_peak)) sprintf("%.1f", peaks@speed_peak) else "--",
-              showcase = shiny::icon("person-running"),
-              theme = "success",
-              shiny::p(tr("unit_kmh", lang)),
-              min_height = "120px"
-            )
-          } else {
-            bslib::value_box(
-              title = tr("power", lang),
-              value = if (!is.null(peaks@power_peak)) round(peaks@power_peak) else "--",
-              showcase = shiny::icon("bolt"),
-              theme = "success",
-              shiny::p(tr("unit_watts", lang)),
-              min_height = "120px"
-            )
-          }
-        ),
-        bslib::layout_columns(
-          col_widths = c(6, 6),
-          fill = FALSE,
-          bslib::value_box(
-            title = tr("ve", lang),
-            value = sprintf("%.1f", peaks@ve_peak),
-            showcase = shiny::icon("wind"),
-            theme = bslib::value_box_theme(bg = "var(--bs-tertiary-bg)", fg = "var(--bs-body-color)"),
-            shiny::p(tr("unit_l_min", lang)),
-            min_height = "120px"
-          ),
-          bslib::value_box(
-            title = tr("rer", lang),
-            value = sprintf("%.2f", peaks@rer_peak),
-            showcase = shiny::icon("lungs"),
-            theme = if (peaks@rer_peak >= 1.10) "warning" else bslib::value_box_theme(bg = "var(--bs-tertiary-bg)", fg = "var(--bs-body-color)"),
-            min_height = "120px"
-          )
+      fmt <- function(x, digits = 1) {
+        if (is.null(x) || !is.finite(x)) "--" else sprintf(paste0("%.", digits, "f"), x)
+      }
+      int_fmt <- function(x) {
+        if (is.null(x) || !is.finite(x)) "--" else as.character(round(x))
+      }
+
+      stat_cell <- function(label, value, unit) {
+        shiny::div(
+          class = "stat-cell",
+          shiny::div(class = "stat-label", label),
+          shiny::div(class = "stat-value", value),
+          shiny::div(class = "stat-unit", unit)
         )
+      }
+
+      third <- if (is_treadmill) {
+        stat_cell(tr("speed", lang), fmt(peaks@speed_peak, 1), tr("unit_kmh", lang))
+      } else {
+        stat_cell(tr("power", lang), int_fmt(peaks@power_peak), tr("unit_watts", lang))
+      }
+
+      shiny::div(
+        class = "stat-strip",
+        stat_cell(tr("vo2_kg", lang), fmt(peaks@vo2_kg_peak, 1),
+                  tr("unit_ml_kg_min", lang)),
+        stat_cell(tr("hr", lang), int_fmt(peaks@hr_peak), tr("unit_bpm", lang)),
+        third,
+        stat_cell(tr("ve", lang), fmt(peaks@ve_peak, 1), tr("unit_l_min", lang)),
+        stat_cell(tr("rer", lang), fmt(peaks@rer_peak, 2), "")
+      )
+    })
+
+    # -- Secondary right-column slot (rendered inside mod_plots_ui) ------
+    output$secondary_right <- shiny::renderUI({
+      a <- analysis()
+      lang <- language()
+      if (is.null(a)) return(NULL)
+
+      shiny::tagList(
+        bslib::card(
+          bslib::card_header(
+            shiny::icon("chart-line"),
+            shiny::span(id = ns("norm_header"), tr("normative_comparison", lang))
+          ),
+          bslib::card_body(
+            shiny::uiOutput(ns("norms_info")),
+            shiny::plotOutput(ns("zscore_strip_plot"), height = "200px"),
+            shiny::plotOutput(ns("vo2_power_slope_plot"), height = "240px")
+          )
+        ),
+        shiny::uiOutput(ns("estimates_accordion")),
+        bslib::accordion(
+          open = TRUE,
+          bslib::accordion_panel(
+            title = tr("stage_results", lang),
+            icon = shiny::icon("table"),
+            DT::dataTableOutput(ns("stage_table")),
+            shiny::downloadButton(
+              ns("download_data"),
+              label = shiny::tagList(
+                shiny::icon("file-csv"),
+                shiny::span(id = ns("export_label"), tr("export_csv", lang))
+              ),
+              class = "btn-outline-secondary btn-sm mt-2"
+            )
+          )
+        ),
+        shiny::uiOutput(ns("longitudinal_panel"))
       )
     })
 

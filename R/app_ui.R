@@ -38,15 +38,21 @@ app_ui <- function() {
     id = "main_navbar",
     title = shiny::div(
       class = "app-brand",
-      shiny::img(
-        src = "cardiometR/Ec-_kinesiologie_-act_-phy_officiel-RVB.png",
-        alt = "UdeM Logo",
-        class = "app-logo app-logo-udem"
+      shiny::span(
+        class = "app-logo-plate",
+        shiny::img(
+          src = "cardiometR/Ec-_kinesiologie_-act_-phy_officiel-RVB.png",
+          alt = "UdeM Logo",
+          class = "app-logo app-logo-udem"
+        )
       ),
-      shiny::img(
-        src = "cardiometR/lpeba_logo.svg",
-        alt = "LPEBA Logo",
-        class = "app-logo app-logo-lab"
+      shiny::span(
+        class = "app-logo-plate",
+        shiny::img(
+          src = "cardiometR/lpeba_logo.svg",
+          alt = "LPEBA Logo",
+          class = "app-logo app-logo-lab"
+        )
       ),
       shiny::span(class = "app-brand-title", tr("app_title", lang))
     ),
@@ -135,9 +141,9 @@ app_ui <- function() {
       icon = shiny::icon("chart-line"),
       app_page(
         bslib::layout_columns(
-          col_widths = c(4, 8),
+          col_widths = c(5, 7),
           mod_results_ui("results", lang),
-          mod_plots_ui("plots", lang)
+          mod_plots_ui("plots", lang, secondary_id = "results")
         )
       )
     ),
