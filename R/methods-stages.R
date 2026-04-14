@@ -187,7 +187,8 @@ extract_stages_from_power <- function(breaths, protocol, stage_duration) {
           ),
           stage = if (has_phase_col) {
             dplyr::if_else(
-              !is.na(phase) & tolower(as.character(phase)) == "rest",
+              !is.na(phase) & tolower(as.character(phase)) %in%
+                c("rest", "warmup", "warm-up", "warm up", "recovery", "cooldown", "cool-down", "cool down", "cool"),
               0L,
               stage
             )
