@@ -754,7 +754,9 @@ build_template_data <- function(analysis, config, labels, clinical_notes, interp
   template_data <- c(template_data, visual_interp)
 
   # Phase 7: athlete profile / estimates & caveats / longitudinal section data
-  phase7 <- build_phase7_template_data(analysis, language, report_sections)
+  phase7 <- build_phase7_template_data(analysis, language, report_sections,
+                                       athlete_sport = athlete_sport,
+                                       athlete_level = athlete_level)
   template_data <- c(template_data, phase7)
 
   # Add clinical notes
@@ -1334,7 +1336,9 @@ generate_report_graphs <- function(analysis, language = "en",
 
 # Build template data for athlete-profile, longitudinal and estimates-&-caveats
 # sections. Returns a list merged into the main template data.
-build_phase7_template_data <- function(analysis, language, report_sections) {
+build_phase7_template_data <- function(analysis, language, report_sections,
+                                       athlete_sport = NULL,
+                                       athlete_level = "recreational") {
   out <- list()
   want <- function(key) is.null(report_sections) || key %in% report_sections
 
@@ -1572,6 +1576,141 @@ build_phase7_template_data <- function(analysis, language, report_sections) {
                     error = function(e) NULL)
   out$has_longitudinal <- isTRUE(has_long) && !is.null(prior) &&
     (is.data.frame(prior) && nrow(prior) > 0)
+
+  # Population-norms comparison table (phase: norms)
+  pn_want <- want("population_norms")
+  out$has_population_norms <- FALSE
+  out$pn_section_title    <- escape_typst(tr("section_population_norms", language))
+  out$pn_description      <- ""
+  out$pn_citation_short   <- ""
+  out$pn_sd_note          <- ""
+  out$pn_rows_content     <- ""
+  out$pn_label_metric     <- escape_typst(tr("metric", language))
+  out$pn_label_patient    <- escape_typst(tr("label_value", language))
+  out$pn_label_mean       <- escape_typst(tr("norms_mean", language))
+  out$pn_label_band       <- escape_typst(tr("norms_band", language))
+  out$pn_label_zpct       <- escape_typst(tr("norms_zscore_percentile", language))
+
+  if (isTRUE(pn_want)) {
+    sport_for_norms <- if (!is.null(athlete_sport) && nzchar(athlete_sport) &&
+                           athlete_sport != "general") athlete_sport else "general"
+    level_for_norms <- athlete_level %||% "recreational"
+    stratum <- tryCatch(
+      get_normative_data(sport = sport_for_norms, level = level_for_norms,
+                         sex = participant@sex, age = participant@age),
+      error = function(e) NULL
+    )
+    modality <- tryCatch(analysis@protocol_config@modality,
+                         error = function(e) "cycling")
+    if (is.null(modality) || !length(modality)) modality <- "cycling"
+
+    fmt_val <- function(x, d) {
+      if (is.null(x) || length(x) != 1) return("--")
+      if (is.na(x) || !is.finite(x)) return("--")
+      if (d == 0) as.character(round(as.numeric(x)))
+      else formatC(as.numeric(x), digits = d, format = "f")
+    }
+    fmt_band <- function(low, high, d) {
+      if (is.null(low) || is.null(high) || length(low) != 1 || length(high) != 1) return("--")
+      if (is.na(low) || is.na(high) || !is.finite(low) || !is.finite(high)) return("--")
+      sprintf("%s – %s", fmt_val(low, d), fmt_val(high, d))
+    }
+    fmt_zpct <- function(z_entry) {
+      if (is.null(z_entry)) return("--")
+      z <- if (is.list(z_entry)) z_entry$z else z_entry
+      p <- if (is.list(z_entry)) z_entry$percentile else NA_real_
+      if (!is.numeric(z) || !is.finite(z)) return("--")
+      sprintf("%+.2f · p%.0f", as.numeric(z), as.numeric(p))
+    }
+
+    rows <- character(0)
+    sd_sources <- character(0)
+    add_row <- function(label, patient, low, high, mean, z_entry, decimals = 1) {
+      rows <<- c(rows, sprintf(
+        "[%s], [%s], [%s], [%s], [%s]",
+        escape_typst(label),
+        fmt_val(patient, decimals),
+        fmt_val(mean, decimals),
+        fmt_band(low, high, decimals),
+        fmt_zpct(z_entry)
+      ))
+      if (is.list(z_entry) && !is.null(z_entry$sd_source) &&
+          !is.na(z_entry$sd_source)) {
+        sd_sources <<- unique(c(sd_sources, as.character(z_entry$sd_source)))
+      }
+    }
+
+    zs <- analysis@z_scores %||% list()
+    peaks <- analysis@peaks
+
+    if (!is.null(stratum)) {
+      # VO2peak — always shown
+      add_row(
+        label = paste0(tr("vo2_kg", language), " (mL/kg/min)"),
+        patient = tryCatch(peaks@vo2_kg_peak, error = function(e) NA_real_),
+        low = stratum$vo2max_low,
+        high = stratum$vo2max_high,
+        mean = stratum$vo2max_typical,
+        z_entry = zs$vo2_peak_z, decimals = 1
+      )
+
+      if (identical(modality, "treadmill")) {
+        add_row(
+          label = tr("peak_speed", language),
+          patient = tryCatch(peaks@speed_peak, error = function(e) NA_real_),
+          low = NA, high = NA, mean = NA,
+          z_entry = zs$speed_peak_z, decimals = 1
+        )
+      } else {
+        add_row(
+          label = paste0(tr("aerobic_power", language), " (W/kg)"),
+          patient = analysis@map_per_kg %||% NA_real_,
+          low = stratum$map_per_kg_low %||% NA_real_,
+          high = stratum$map_per_kg_high %||% NA_real_,
+          mean = stratum$map_per_kg_typical %||% NA_real_,
+          z_entry = zs$map_per_kg_z, decimals = 2
+        )
+        add_row(
+          label = paste0(tr("peak_power", language), " (W)"),
+          patient = analysis@ppo_watts %||% NA_real_,
+          low = NA, high = NA, mean = NA,
+          z_entry = zs$ppo_z, decimals = 0
+        )
+        if (!is.null(stratum$efficiency_typical)) {
+          ge_val <- NA_real_
+          sbs <- tryCatch(analysis@substrate_by_stage, error = function(e) NULL)
+          if (is.data.frame(sbs) && "gross_efficiency_pct" %in% names(sbs)) {
+            ge_val <- suppressWarnings(max(sbs$gross_efficiency_pct, na.rm = TRUE))
+            if (!is.finite(ge_val)) ge_val <- NA_real_
+          }
+          add_row(
+            label = paste0(tr("gross_efficiency", language), " (%)"),
+            patient = ge_val,
+            low = stratum$efficiency_low,
+            high = stratum$efficiency_high,
+            mean = stratum$efficiency_typical,
+            z_entry = NULL, decimals = 1
+          )
+        }
+      }
+
+      out$has_population_norms <- length(rows) > 0
+      out$pn_description    <- escape_typst(stratum$description %||% "")
+      out$pn_citation_short <- escape_typst(stratum$citation_short %||% "")
+      out$pn_rows_content   <- paste(rows, collapse = ",\n    ")
+
+      sd_msg <- NULL
+      if ("tabulated" %in% sd_sources) {
+        sd_msg <- c(sd_msg, tr("norms_sd_tabulated", language))
+      }
+      if ("estimated" %in% sd_sources) {
+        sd_msg <- c(sd_msg, tr("norms_sd_estimated", language))
+      }
+      out$pn_sd_note <- escape_typst(paste(sd_msg, collapse = " "))
+    } else {
+      out$pn_description <- escape_typst(tr("norms_no_stratum", language))
+    }
+  }
 
   out
 }

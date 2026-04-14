@@ -404,3 +404,12 @@ resting_values_caption: "Moyenne sur %d s de la période de repos initiale (n=%d
 resting_values_caption_cycling: "Moyenne sur %d s de la période de repos initiale (n=%d). Ce n'est pas une mesure de métabolisme de repos — le sujet est sur le vélo."
 resting_values_caption_treadmill: "Moyenne sur %d s de la période de repos initiale (n=%d). Ce n'est pas une mesure de métabolisme de repos — le sujet est sur le tapis roulant."
 resting_rest_duration: "Durée"
+
+# Comparaison aux données normatives (rapport)
+section_population_norms: "Comparaison à la population"
+norms_mean: "Moyenne"
+norms_band: "Intervalle (bas–haut)"
+norms_zscore_percentile: "z · centile"
+norms_sd_tabulated: "SD tabulée."
+norms_sd_estimated: "SD estimée à partir de l'intervalle publié (haut−bas)/3.29."
+norms_no_stratum: "Aucun stratum sélectionné; configurer le sport et le niveau."

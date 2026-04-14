@@ -176,7 +176,7 @@ mod_settings_ui <- function(id, language = "en") {
             label = NULL,
             choices = stats::setNames(
               c("pretest", "protocol_details", "stage_table", "economy", "thresholds", "graphs", "clinical_notes",
-                "athlete_profile", "longitudinal", "estimates_caveats"),
+                "athlete_profile", "population_norms", "longitudinal", "estimates_caveats"),
               c(tr("section_pretest_toggle", language),
                 tr("section_protocol_toggle", language),
                 tr("section_stage_table_toggle", language),
@@ -185,10 +185,12 @@ mod_settings_ui <- function(id, language = "en") {
                 tr("section_graphs_toggle", language),
                 tr("section_clinical_notes_toggle", language),
                 tr("report_section_athlete_profile", language),
+                tr("section_population_norms", language),
                 tr("report_section_longitudinal", language),
                 tr("report_section_estimates_caveats", language))
             ),
-            selected = c("protocol_details", "stage_table", "athlete_profile", "estimates_caveats")
+            selected = c("protocol_details", "stage_table", "athlete_profile",
+                         "population_norms", "estimates_caveats")
           )
         )
       )
@@ -286,7 +288,8 @@ mod_settings_server <- function(id, language, cpet_data = shiny::reactive(NULL))
         },
         athlete_level = input$athlete_level %||% "recreational",
         report_sections = input$report_sections %||% c("protocol_details", "stage_table",
-                                                        "athlete_profile", "estimates_caveats"),
+                                                        "athlete_profile", "population_norms",
+                                                        "estimates_caveats"),
         gross_efficiency = input$gross_efficiency %||% 20
       )
     })
@@ -403,7 +406,7 @@ mod_settings_server <- function(id, language, cpet_data = shiny::reactive(NULL))
       shiny::updateCheckboxGroupInput(session, "report_sections",
         choices = stats::setNames(
           c("pretest", "protocol_details", "stage_table", "economy", "thresholds", "graphs", "clinical_notes",
-            "athlete_profile", "longitudinal", "estimates_caveats"),
+            "athlete_profile", "population_norms", "longitudinal", "estimates_caveats"),
           c(tr("section_pretest_toggle", lang),
             tr("section_protocol_toggle", lang),
             tr("section_stage_table_toggle", lang),
@@ -412,6 +415,7 @@ mod_settings_server <- function(id, language, cpet_data = shiny::reactive(NULL))
             tr("section_graphs_toggle", lang),
             tr("section_clinical_notes_toggle", lang),
             tr("report_section_athlete_profile", lang),
+            tr("section_population_norms", lang),
             tr("report_section_longitudinal", lang),
             tr("report_section_estimates_caveats", lang))
         ),

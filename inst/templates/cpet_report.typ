@@ -449,6 +449,35 @@
 
 #v(0.8em)
 
+{{#if has_population_norms}}
+#grid(
+  columns: (auto, 1fr),
+  gutter: 0.5em,
+  align(horizon)[👥],
+  heading(level: 1)[{{pn_section_title}}]
+)
+#block(breakable: false)[
+  #text(size: 9pt, fill: luma(90), style: "italic")[{{pn_description}} — {{pn_citation_short}}]
+  #v(0.3em)
+  #table(
+    columns: (2fr, 1fr, 1fr, 1.3fr, 1.3fr),
+    inset: (x: 8pt, y: 5pt),
+    stroke: none,
+    fill: (col, row) => if row == 0 { primary } else if calc.odd(row) { luma(250) } else { white },
+    align: (left, center, center, center, center),
+    [#text(weight: "bold", fill: white)[{{pn_label_metric}}]],
+    [#text(weight: "bold", fill: white)[{{pn_label_patient}}]],
+    [#text(weight: "bold", fill: white)[{{pn_label_mean}}]],
+    [#text(weight: "bold", fill: white)[{{pn_label_band}}]],
+    [#text(weight: "bold", fill: white)[{{pn_label_zpct}}]],
+    {{pn_rows_content}}
+  )
+  #v(0.3em)
+  #text(size: 8pt, fill: luma(120))[{{pn_sd_note}}]
+]
+#v(0.8em)
+{{/if}}
+
 // Stage-by-Stage Results (optional)
 {{#if has_stage_table}}
 #grid(

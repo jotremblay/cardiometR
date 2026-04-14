@@ -404,3 +404,12 @@ resting_values_caption: "%d-s average from leading rest block (n=%d). Not a BMR 
 resting_values_caption_cycling: "%d-s average from leading rest block (n=%d). Not a BMR — subject is on the bike."
 resting_values_caption_treadmill: "%d-s average from leading rest block (n=%d). Not a BMR — subject is on the treadmill."
 resting_rest_duration: "Duration"
+
+# Population normative comparison (report)
+section_population_norms: "Population norms"
+norms_mean: "Mean"
+norms_band: "Band (low–high)"
+norms_zscore_percentile: "z · percentile"
+norms_sd_tabulated: "SD from published tables."
+norms_sd_estimated: "SD estimated from the published range (high−low)/3.29."
+norms_no_stratum: "No stratum selected; configure sport and level."
