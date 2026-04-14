@@ -4,12 +4,14 @@
 \alias{check_maximal_effort}
 \title{Check Maximal Effort Indicators}
 \usage{
-check_maximal_effort(breaths, age)
+check_maximal_effort(breaths, age, language = "en")
 }
 \arguments{
 \item{breaths}{Breath data tibble}
 
 \item{age}{Participant age}
+
+\item{language}{Language code for messages ("en" or "fr").}
 }
 \value{
 List with info messages about effort level

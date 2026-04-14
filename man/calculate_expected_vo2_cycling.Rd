@@ -4,21 +4,28 @@
 \alias{calculate_expected_vo2_cycling}
 \title{Calculate expected VO2 for cycling exercise}
 \usage{
-calculate_expected_vo2_cycling(power_w, weight_kg, efficiency = 0.2)
+calculate_expected_vo2_cycling(power_w, weight_kg, slope_ml_per_w = 10.8)
 }
 \arguments{
-\item{power_w}{Power output in watts (numeric vector)}
+\item{power_w}{Power output in watts (numeric vector).}
 
-\item{weight_kg}{Body weight in kilograms (not used in calculation but
-included for API consistency with treadmill function)}
+\item{weight_kg}{Body mass in kilograms; used for the resting/unloaded
+component.}
 
-\item{efficiency}{Gross mechanical efficiency as a proportion (default 0.20)}
+\item{slope_ml_per_w}{Slope of the VO2-Power relation, in mL.O2.W-1.min-1.
+Defaults to the ACSM value of \code{10.8} (range 8-12 across elite to
+low-efficiency riders).}
 }
 \value{
-Numeric vector of expected VO2 values in mL/min
+Numeric vector of expected VO2 values in mL/min.
 }
 \description{
-Calculates expected VO2 from cycling power output using metabolic
-efficiency. The formula converts mechanical power to metabolic cost:
-VO2 (mL/min) = (power_w * 0.01433 / (efficiency * 5.05)) * 1000.
+Calculates the expected metabolic cost (VO2, mL/min) of upright cycle
+ergometry from the externally measured power output. Uses the ACSM
+metabolic equation for leg cycling (ACSM Guidelines, 10th ed., Chap. 6):
+\code{VO2 (mL/min) = 10.8 * power_w + 7 * body_mass_kg}. The first term
+captures the near-linear slope of measured VO2 versus work rate
+(~ 10-11 mL.W-1.min-1 across the 18-25 \% gross-efficiency range), and
+the second term approximates unloaded pedaling plus resting metabolism
+(~ 3.5 mL.kg-1.min-1 x body mass).
 }

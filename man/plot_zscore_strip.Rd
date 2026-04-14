@@ -15,17 +15,19 @@ plot_zscore_strip(
 \item{analysis}{A CpetAnalysis S7 object (uses \verb{@z_scores}).}
 
 \item{metrics}{Character vector of metric keys drawn from
-\code{analysis@z_scores} (strip the \verb{_z} suffix — e.g. \code{"vo2_peak"}
+\code{analysis@z_scores} (strip the \verb{_z} suffix -- e.g. \code{"vo2_peak"}
 maps to \code{vo2_peak_z}).}
 
 \item{language}{Language code.}
+
+\item{dark}{Logical; use the dark \code{theme_cardiometr_dark()} theme.}
 }
 \value{
 A ggplot2 object.
 }
 \description{
-Horizontal strip plot: one row per metric. Shows a grey μ±1 SD band
-(in z-units), dashed LLN/ULN at ±1.645, the patient's z as a coloured dot,
+Horizontal strip plot: one row per metric. Shows a grey u+/-1 SD band
+(in z-units), dashed LLN/ULN at +/-1.645, the patient's z as a coloured dot,
 and a right-aligned annotation with z and percentile. Metrics without a
 valid z-score are rendered with a subdued placeholder label.
 }

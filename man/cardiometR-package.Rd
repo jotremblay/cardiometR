@@ -6,7 +6,7 @@
 \alias{cardiometR-package}
 \title{cardiometR: Cardiopulmonary Exercise Testing Analysis with S7 Classes}
 \description{
-Import, process, and report cardiopulmonary exercise testing (CPET) data from COSMED Quark CPET metabolic carts. Uses S7 classes for type-safe data structures. Includes a Shiny application for interactive analysis and bilingual (English/French) PDF report generation via Typst.
+Import, analyze, and report cardiopulmonary exercise testing (CPET) data from COSMED Quark CPET metabolic carts. Provides S7 classes for type-safe physiological data structures, peak and ventilatory threshold detection following ATS/ACCP guidelines, test-quality assessment, an interactive Shiny application, and bilingual (English/French) PDF report generation via Typst.
 }
 \seealso{
 Useful links:

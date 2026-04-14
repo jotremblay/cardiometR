@@ -29,24 +29,6 @@
 #' # Get norms for recreational female runner
 #' norms <- get_normative_data("running", "recreational", "F", 45)
 #'
-#' Default Sport for a Given Modality
-#'
-#' Map the CPET modality to the most appropriate default sport stratum when
-#' the user has not explicitly picked one. Cycle ergometry → cycling,
-#' treadmill → running, anything else → general.
-#'
-#' @param modality Character, typically `"cycling"` or `"treadmill"`.
-#' @return Sport key for [get_normative_data()].
-#' @keywords internal
-#' @export
-default_sport_for_modality <- function(modality) {
-  m <- tolower(as.character(modality %||% ""))
-  if (identical(m, "treadmill")) "running"
-  else if (identical(m, "cycling")) "cycling"
-  else "general"
-}
-
-
 #' @export
 get_normative_data <- function(sport = "general",
                                level = "recreational",
@@ -65,6 +47,24 @@ get_normative_data <- function(sport = "general",
   norms <- normative_lookup(sport, level, sex, age_group)
 
   norms
+}
+
+
+#' Default Sport for a Given Modality
+#'
+#' Map the CPET modality to the most appropriate default sport stratum when
+#' the user has not explicitly picked one. Cycle ergometry -> cycling,
+#' treadmill -> running, anything else -> general.
+#'
+#' @param modality Character, typically `"cycling"` or `"treadmill"`.
+#' @return Sport key for [get_normative_data()].
+#' @keywords internal
+#' @export
+default_sport_for_modality <- function(modality) {
+  m <- tolower(as.character(modality %||% ""))
+  if (identical(m, "treadmill")) "running"
+  else if (identical(m, "cycling")) "cycling"
+  else "general"
 }
 
 
@@ -459,12 +459,12 @@ normative_lookup <- function(sport, level, sex, age_group) {
 #'
 #' @param modality CPET modality: "cycling" or "treadmill"
 #' @param sex Sex: "M" or "F"
-#' @param age Age in years (classified as younger ≤30 or older >30)
+#' @param age Age in years (classified as younger <=30 or older >30)
 #'
 #' @return A list with:
 #'   - vo2peak_mean: Mean VO2peak (mL/kg/min)
 #'   - vo2peak_sd: Standard deviation
-#'   - vo2peak_low: Mean − 1 SD
+#'   - vo2peak_low: Mean ? 1 SD
 #'   - vo2peak_high: Mean + 1 SD
 #'   - age_group: CHEER age group label
 #'   - description: Population description
@@ -472,7 +472,7 @@ normative_lookup <- function(sport, level, sex, age_group) {
 #'   - citation_short: Short citation
 #'
 #' @references
-#' Kowalski T, Kasiak P, Chomiuk T, Mamcarz A, Śliz D. Optimizing the
+#' Kowalski T, Kasiak P, Chomiuk T, Mamcarz A, Sliz D. Optimizing the
 #' Interpretation of Cardiopulmonary Exercise Testing in Endurance Athletes:
 #' Precision Approach for Health and Performance. Translational Sports Medicine.
 #' 2025;2025:5904935. doi:10.1155/tsm2/5904935
@@ -492,9 +492,9 @@ get_normative_data_cheer <- function(modality = "cycling", sex = "M", age = 30) 
   # CHEER age groups: younger = 18-30, older = 30-45
   age_group <- if (age <= 30) "younger" else "older"
 
-  # VO2peak values (mean ± SD, mL/kg/min) from CHEER registry
+  # VO2peak values (mean +/- SD, mL/kg/min) from CHEER registry
   # Source: Table 1, Kowalski et al. 2025 (TSM 5904935)
-  # RER criterion: ≥ 1.05
+  # RER criterion: >= 1.05
   cheer_values <- list(
     cycling = list(
       M = list(
@@ -534,7 +534,7 @@ get_normative_data_cheer <- function(modality = "cycling", sex = "M", age = 30) 
       sex_label, age_label, modality_label
     ),
     citation = paste0(
-      "Kowalski T, Kasiak P, Chomiuk T, Mamcarz A, Śliz D. ",
+      "Kowalski T, Kasiak P, Chomiuk T, Mamcarz A, \u015aliz D. ",
       "Optimizing the Interpretation of Cardiopulmonary Exercise Testing in ",
       "Endurance Athletes: Precision Approach for Health and Performance. ",
       "Translational Sports Medicine. 2025;2025:5904935. ",
@@ -572,7 +572,7 @@ compare_vo2peak_registries <- function(vo2peak_observed, modality = "cycling",
   # FRIEND reference (general population)
   age_group <- get_age_group(age)
   friend <- get_friend_percentiles(sex, age_group)
-  # Approximate FRIEND mean/SD from percentiles (p50 ≈ mean, SD ≈ (p75-p25)/1.35)
+  # Approximate FRIEND mean/SD from percentiles (p50 ~ mean, SD ~ (p75-p25)/1.35)
   friend_mean <- friend$p50
   friend_sd   <- (friend$p75 - friend$p25) / 1.35
 
@@ -737,7 +737,7 @@ format_citation <- function(citation, language = "en", style = "short") {
 #'
 #' @param value Numeric observation (scalar).
 #' @param stratum A list as returned by [get_normative_data()].
-#' @param metric One of `"vo2max"`, `"map_per_kg"`, `"efficiency"` — selects
+#' @param metric One of `"vo2max"`, `"map_per_kg"`, `"efficiency"` -- selects
 #'   which stratum typical/low/high values are used.
 #' @return A list with `z`, `percentile`, and `sd_source` (one of
 #'   `"tabulated"` or `"estimated"`).

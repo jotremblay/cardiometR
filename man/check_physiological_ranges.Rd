@@ -4,12 +4,14 @@
 \alias{check_physiological_ranges}
 \title{Check Physiological Plausibility}
 \usage{
-check_physiological_ranges(breaths, participant)
+check_physiological_ranges(breaths, participant, language = "en")
 }
 \arguments{
 \item{breaths}{Breath data tibble}
 
 \item{participant}{Participant S7 object}
+
+\item{language}{Language code for messages ("en" or "fr").}
 }
 \value{
 List with errors, warnings, info

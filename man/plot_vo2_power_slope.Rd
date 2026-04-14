@@ -10,6 +10,8 @@ plot_vo2_power_slope(analysis, language = "en", dark = FALSE)
 \item{analysis}{A CpetAnalysis S7 object.}
 
 \item{language}{Language code (\code{"en"} or \code{"fr"}).}
+
+\item{dark}{Logical; use the dark \code{theme_cardiometr_dark()} theme.}
 }
 \value{
 A ggplot2 object.
@@ -18,7 +20,7 @@ A ggplot2 object.
 Scatter of VO2 vs Power over the submax portion of the test with a linear
 fit and 95\% confidence ribbon. Submax cutoff is VT2 (from
 \code{analysis@vt2_range[1]}) when available, else 85\% of \code{analysis@ppo_watts}.
-The slope ± 95\% CI (mL·min^-1·W^-1) is shown as a caption.
+The slope +/- 95\% CI (mL.min^-1.W^-1) is shown as a caption.
 }
 \examples{
 \dontrun{

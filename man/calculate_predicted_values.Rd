@@ -16,6 +16,6 @@ Named list of predicted values
 }
 \description{
 Calculates age/sex-specific predicted maximal values.
-Supports Jones et al. (1997) and Pr\u00e9faut et al. prediction equations.
+Supports Jones et al. (1997) and Prefaut et al. prediction equations.
 }
 \keyword{internal}

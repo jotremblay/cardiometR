@@ -4,10 +4,12 @@
 \alias{check_data_completeness}
 \title{Check Data Completeness}
 \usage{
-check_data_completeness(breaths)
+check_data_completeness(breaths, language = "en")
 }
 \arguments{
 \item{breaths}{Breath data tibble}
+
+\item{language}{Language code for messages ("en" or "fr").}
 }
 \value{
 List with warnings, info

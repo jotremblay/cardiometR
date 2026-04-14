@@ -4,12 +4,14 @@
 \alias{check_aberrant_breaths}
 \title{Check for Aberrant Breaths}
 \usage{
-check_aberrant_breaths(breaths, threshold = 3)
+check_aberrant_breaths(breaths, threshold = 3, language = "en")
 }
 \arguments{
 \item{breaths}{Breath data tibble}
 
 \item{threshold}{SD threshold for outlier detection}
+
+\item{language}{Language code for messages ("en" or "fr").}
 }
 \value{
 List with warnings, info

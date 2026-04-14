@@ -11,7 +11,7 @@ z_score(value, stratum, metric = c("vo2max", "map_per_kg", "efficiency"))
 
 \item{stratum}{A list as returned by \code{\link[=get_normative_data]{get_normative_data()}}.}
 
-\item{metric}{One of \code{"vo2max"}, \code{"map_per_kg"}, \code{"efficiency"} — selects
+\item{metric}{One of \code{"vo2max"}, \code{"map_per_kg"}, \code{"efficiency"} -- selects
 which stratum typical/low/high values are used.}
 }
 \value{

@@ -24,6 +24,9 @@ or NULL for general population only (default NULL)}
 \item{language}{Language for labels: "en" or "fr" (default "en")}
 
 \item{show_citation}{Logical; show citation below plot (default TRUE)}
+
+\item{prediction_source}{Prediction equation source: \code{"jones"} (default)
+or \code{"prefaut"}.}
 }
 \value{
 A ggplot2 object with citation attributes for bibliography

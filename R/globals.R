@@ -58,5 +58,9 @@ utils::globalVariables(c(
   "norm_typical",
   "Predicted",
   "Value",
-  "% Predicted"
+  "% Predicted",
+
+  # Plot aes() mappings
+  "slope",
+  "vo2_expected"
 ))

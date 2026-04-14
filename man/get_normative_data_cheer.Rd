@@ -11,14 +11,14 @@ get_normative_data_cheer(modality = "cycling", sex = "M", age = 30)
 
 \item{sex}{Sex: "M" or "F"}
 
-\item{age}{Age in years (classified as younger ≤30 or older >30)}
+\item{age}{Age in years (classified as younger <=30 or older >30)}
 }
 \value{
 A list with:
 \itemize{
 \item vo2peak_mean: Mean VO2peak (mL/kg/min)
 \item vo2peak_sd: Standard deviation
-\item vo2peak_low: Mean − 1 SD
+\item vo2peak_low: Mean ? 1 SD
 \item vo2peak_high: Mean + 1 SD
 \item age_group: CHEER age group label
 \item description: Population description
@@ -44,7 +44,7 @@ cheer <- get_normative_data_cheer("treadmill", "F", 38)
 
 }
 \references{
-Kowalski T, Kasiak P, Chomiuk T, Mamcarz A, Śliz D. Optimizing the
+Kowalski T, Kasiak P, Chomiuk T, Mamcarz A, Sliz D. Optimizing the
 Interpretation of Cardiopulmonary Exercise Testing in Endurance Athletes:
 Precision Approach for Health and Performance. Translational Sports Medicine.
 2025;2025:5904935. doi:10.1155/tsm2/5904935

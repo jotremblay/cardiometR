@@ -57,22 +57,22 @@ calculate_expected_vo2_treadmill <- function(speed_kmh, weight_kg) {
 #' Calculate expected VO2 for cycling exercise
 #'
 #' @description
-#' Calculates the expected metabolic cost (V̇O₂, mL/min) of upright cycle
+#' Calculates the expected metabolic cost (VO2, mL/min) of upright cycle
 #' ergometry from the externally measured power output. Uses the ACSM
 #' metabolic equation for leg cycling (ACSM Guidelines, 10th ed., Chap. 6):
 #' `VO2 (mL/min) = 10.8 * power_w + 7 * body_mass_kg`. The first term
-#' captures the near-linear slope of measured V̇O₂ versus work rate
-#' (≈ 10–11 mL·W⁻¹·min⁻¹ across the 18–25 % gross-efficiency range), and
+#' captures the near-linear slope of measured VO2 versus work rate
+#' (~ 10-11 mL.W-1.min-1 across the 18-25 % gross-efficiency range), and
 #' the second term approximates unloaded pedaling plus resting metabolism
-#' (≈ 3.5 mL·kg⁻¹·min⁻¹ × body mass).
+#' (~ 3.5 mL.kg-1.min-1 x body mass).
 #'
 #' @param power_w Power output in watts (numeric vector).
 #' @param weight_kg Body mass in kilograms; used for the resting/unloaded
 #'   component.
-#' @param slope_ml_per_w Slope of the V̇O₂–Power relation, in mL·O₂·W⁻¹·min⁻¹.
-#'   Defaults to the ACSM value of `10.8` (range 8–12 across elite to
+#' @param slope_ml_per_w Slope of the VO2-Power relation, in mL.O2.W-1.min-1.
+#'   Defaults to the ACSM value of `10.8` (range 8-12 across elite to
 #'   low-efficiency riders).
-#' @return Numeric vector of expected V̇O₂ values in mL/min.
+#' @return Numeric vector of expected VO2 values in mL/min.
 #' @export
 calculate_expected_vo2_cycling <- function(power_w, weight_kg,
                                            slope_ml_per_w = 10.8) {
@@ -269,6 +269,8 @@ resolve_plot_data <- function(x, prefer_stage_summary = FALSE) {
 #'   (default 0.20). Set to NULL to hide expected line.
 #' @param modality Exercise modality: "cycling", "treadmill", or NULL for
 #'   auto-detection from data columns (default NULL)
+#' @param dark Logical; use the dark `theme_cardiometr_dark()` theme
+#'   (default FALSE).
 #'
 #' @return A ggplot2 patchwork object with 9 panels
 #'
@@ -408,9 +410,9 @@ plot_cpet_panel <- function(x,
       ggplot2::geom_point(size = 2.5, alpha = 0.9, color = "#2E86AB") +
       ggplot2::geom_line(color = "#2E86AB", linewidth = 0.8, alpha = 0.6) +
       ggplot2::labs(
-        title = if (language == "fr") "Pouls O₂ vs Puissance" else "O₂ Pulse vs Power",
+        title = if (language == "fr") "Pouls O\u2082 vs Puissance" else "O\u2082 Pulse vs Power",
         x = if (language == "fr") "Puissance (W)" else "Power (W)",
-        y = if (language == "fr") "V̇O₂/FC (mL/batt)" else "V̇O₂/HR (mL/beat)"
+        y = if (language == "fr") "V\u0307O\u2082/FC (mL/batt)" else "V\u0307O\u2082/HR (mL/beat)"
       ) +
       theme_cpet
   } else if ("hr_bpm" %in% names(stage_avg) && !all(is.na(stage_avg$hr_bpm))) {
@@ -420,9 +422,9 @@ plot_cpet_panel <- function(x,
       ggplot2::geom_point(size = 2.5, alpha = 0.9, color = "#2E86AB") +
       ggplot2::geom_line(color = "#2E86AB", linewidth = 0.8, alpha = 0.6) +
       ggplot2::labs(
-        title = if (language == "fr") "Pouls O₂" else "O₂ Pulse",
+        title = if (language == "fr") "Pouls O\u2082" else "O\u2082 Pulse",
         x = time_label,
-        y = if (language == "fr") "V̇O₂/FC (mL/batt)" else "V̇O₂/HR (mL/beat)"
+        y = if (language == "fr") "V\u0307O\u2082/FC (mL/batt)" else "V\u0307O\u2082/HR (mL/beat)"
       ) +
       theme_cpet
   } else {
@@ -441,9 +443,9 @@ plot_cpet_panel <- function(x,
       ggplot2::geom_smooth(method = "lm", se = TRUE, color = "#E94F37",
                            fill = "#E94F37", alpha = 0.2, linewidth = 1) +
       ggplot2::labs(
-        title = if (language == "fr") "V̇O₂ vs Puissance" else "V̇O₂ vs Power",
+        title = if (language == "fr") "V\u0307O\u2082 vs Puissance" else "V\u0307O\u2082 vs Power",
         x = if (language == "fr") "Puissance (W)" else "Power (W)",
-        y = "V̇O₂ (mL/min)"
+        y = "V\u0307O\u2082 (mL/min)"
       ) +
       theme_cpet
 
@@ -521,9 +523,9 @@ plot_cpet_panel <- function(x,
       ggplot2::geom_point(size = 2.5, alpha = 0.9, color = "#E94F37") +
       ggplot2::geom_line(color = "#E94F37", linewidth = 0.8, alpha = 0.6) +
       ggplot2::labs(
-        title = if (language == "fr") "V̇O₂" else "V̇O₂",
+        title = if (language == "fr") "V\u0307O\u2082" else "V\u0307O\u2082",
         x = time_label,
-        y = "V̇O₂ (mL/min)"
+        y = "V\u0307O\u2082 (mL/min)"
       ) +
       theme_cpet
     if (!is.null(peak_point) && length(peak_point$time_plot) > 0 &&
@@ -555,8 +557,8 @@ plot_cpet_panel <- function(x,
     ggplot2::geom_smooth(method = "lm", se = TRUE, color = "#1B998B",
                          fill = "#1B998B", alpha = 0.2, linewidth = 1) +
     ggplot2::labs(
-      title = "V̇E vs V̇CO₂",
-      x = "V̇CO₂ (mL/min)",
+      title = "V\u0307E vs V\u0307CO\u2082",
+      x = "V\u0307CO\u2082 (mL/min)",
       y = "VE (L/min)"
     ) +
     theme_cpet
@@ -570,8 +572,8 @@ plot_cpet_panel <- function(x,
                          fill = "#6B4C9A", alpha = 0.2, linewidth = 1) +
     ggplot2::labs(
       title = "V-Slope",
-      x = "V̇O₂ (mL/min)",
-      y = "V̇CO₂ (mL/min)"
+      x = "V\u0307O\u2082 (mL/min)",
+      y = "V\u0307CO\u2082 (mL/min)"
     ) +
     theme_cpet
 
@@ -602,11 +604,11 @@ plot_cpet_panel <- function(x,
     ggplot2::geom_line(linewidth = 0.8, alpha = 0.6) +
     ggplot2::scale_color_manual(
       values = c("VE/VO2" = "#2E86AB", "VE/VCO2" = "#E94F37"),
-      labels = c("V̇E/V̇O₂", "V̇E/V̇CO₂")
+      labels = c("V\u0307E/V\u0307O\u2082", "V\u0307E/V\u0307CO\u2082")
     ) +
     ggplot2::labs(
       title = if (language == "fr") "\u00c9quivalents ventilatoires" else "Ventilatory Equivalents",
-      x = "V̇O₂ (mL/min)",
+      x = "V\u0307O\u2082 (mL/min)",
       y = NULL,
       color = NULL
     ) +
@@ -622,8 +624,8 @@ plot_cpet_panel <- function(x,
     ggplot2::geom_line(color = "#F77F00", linewidth = 0.8, alpha = 0.6) +
     ggplot2::geom_hline(yintercept = 1.0, linetype = "dashed", color = "gray50", linewidth = 0.8) +
     ggplot2::labs(
-      title = "RER vs V̇O₂",
-      x = "V̇O₂ (mL/min)",
+      title = "RER vs V\u0307O\u2082",
+      x = "V\u0307O\u2082 (mL/min)",
       y = "RER"
     ) +
     theme_cpet
@@ -651,11 +653,11 @@ plot_cpet_panel <- function(x,
       ggplot2::geom_line(linewidth = 0.8, alpha = 0.6) +
       ggplot2::scale_color_manual(
         values = c("PETO2" = "#2E86AB", "PETCO2" = "#E94F37"),
-        labels = c("PₑₜO₂", "PₑₜCO₂")
+        labels = c("P\u2091\u209cO\u2082", "P\u2091\u209cCO\u2082")
       ) +
       ggplot2::labs(
-        title = if (language == "fr") "PₑₜO₂/PₑₜCO₂" else "PₑₜO₂/PₑₜCO₂",
-        x = "V̇O₂ (mL/min)",
+        title = if (language == "fr") "P\u2091\u209cO\u2082/P\u2091\u209cCO\u2082" else "P\u2091\u209cO\u2082/P\u2091\u209cCO\u2082",
+        x = "V\u0307O\u2082 (mL/min)",
         y = "mmHg",
         color = NULL
       ) +
@@ -671,9 +673,9 @@ plot_cpet_panel <- function(x,
         ggplot2::geom_point(size = 2.5, alpha = 0.9, color = "#6B4C9A") +
         ggplot2::geom_line(color = "#6B4C9A", linewidth = 0.8, alpha = 0.6) +
         ggplot2::labs(
-          title = if (language == "fr") "Pouls O₂" else "O₂ Pulse",
-          x = "V̇O₂ (mL/min)",
-          y = "V̇O₂/HR (mL/beat)"
+          title = if (language == "fr") "Pouls O\u2082" else "O\u2082 Pulse",
+          x = "V\u0307O\u2082 (mL/min)",
+          y = "V\u0307O\u2082/HR (mL/beat)"
         ) +
         theme_cpet
     } else {
@@ -829,9 +831,9 @@ plot_v_slope <- function(x,
   p <- ggplot2::ggplot(breaths, ggplot2::aes(x = vo2_ml, y = vco2_ml)) +
     ggplot2::geom_point(size = point_size, alpha = point_alpha, color = "#2E86AB") +
     ggplot2::labs(
-      title = if (language == "fr") "V-Slope (V̇CO₂ vs V̇O₂)" else "V-Slope (V̇CO₂ vs V̇O₂)",
-      x = "V̇O₂ (mL/min)",
-      y = "V̇CO₂ (mL/min)"
+      title = if (language == "fr") "V-Slope (V\u0307CO\u2082 vs V\u0307O\u2082)" else "V-Slope (V\u0307CO\u2082 vs V\u0307O\u2082)",
+      x = "V\u0307O\u2082 (mL/min)",
+      y = "V\u0307CO\u2082 (mL/min)"
     ) +
     ggplot2::theme_minimal() +
     ggplot2::theme(
@@ -914,7 +916,7 @@ plot_ventilatory_equivalents <- function(x,
   # Set x-axis
   if (x_axis == "vo2") {
     x_var <- "vo2_ml"
-    x_label <- "V̇O₂ (mL/min)"
+    x_label <- "V\u0307O\u2082 (mL/min)"
   } else {
     x_var <- "time_min"
     x_label <- if (language == "fr") "Temps (min)" else "Time (min)"
@@ -925,7 +927,7 @@ plot_ventilatory_equivalents <- function(x,
     ggplot2::scale_color_manual(
       values = c("VE/VO2" = "#2E86AB", "VE/VCO2" = "#E94F37"),
       name = NULL,
-      labels = c("V̇E/V̇O₂", "V̇E/V̇CO₂")
+      labels = c("V\u0307E/V\u0307O\u2082", "V\u0307E/V\u0307CO\u2082")
     ) +
     ggplot2::labs(
       title = if (language == "fr") "\u00c9quivalents ventilatoires" else "Ventilatory Equivalents",
@@ -1074,7 +1076,7 @@ plot_heart_rate <- function(x,
   # Set x-axis
   if (x_axis == "vo2") {
     x_var <- "vo2_ml"
-    x_label <- "V̇O₂ (mL/min)"
+    x_label <- "V\u0307O\u2082 (mL/min)"
   } else {
     x_var <- "time_min"
     x_label <- if (language == "fr") "Temps (min)" else "Time (min)"
@@ -1151,9 +1153,9 @@ plot_power <- function(x,
   point_alpha_secondary <- if (plot_data$using_stage_summary) 0.7 else 0.4
 
   if (show_vo2) {
-    # V̇O₂ vs Power scatter with cycling-economy iso-lines. Each line is
-    # V̇O₂ = slope · P + 7 · body_mass, parameterised by an iso-slope in
-    # mL O₂ per watt (cycling economy). The 8–12 mL/W range spans typical
+    # VO2 vs Power scatter with cycling-economy iso-lines. Each line is
+    # VO2 = slope . P + 7 . body_mass, parameterised by an iso-slope in
+    # mL O2 per watt (cycling economy). The 8-12 mL/W range spans typical
     # trained-to-recreational cyclists (lower slope = higher efficiency).
     power_range <- range(breaths$power_w, na.rm = TRUE)
     resting <- 7 * (weight_kg %||% 75)
@@ -1185,12 +1187,12 @@ plot_power <- function(x,
       ) +
       ggplot2::scale_color_viridis_d(
         option = "plasma", end = 0.85, direction = -1,
-        name = if (language == "fr") "Économie" else "Economy"
+        name = if (language == "fr") "\u00c9conomie" else "Economy"
       ) +
       ggplot2::labs(
-        title = if (language == "fr") "V̇O₂ vs Puissance" else "V̇O₂ vs Power",
+        title = if (language == "fr") "V\u0307O\u2082 vs Puissance" else "V\u0307O\u2082 vs Power",
         x = if (language == "fr") "Puissance (W)" else "Power (W)",
-        y = "V̇O₂ (mL/min)"
+        y = "V\u0307O\u2082 (mL/min)"
       ) +
       ggplot2::theme_minimal() +
       ggplot2::theme(
@@ -1233,6 +1235,8 @@ plot_power <- function(x,
 #' @param level Competitive level: "elite", "competitive", "recreational" (default "recreational")
 #' @param language Language for labels: "en" or "fr" (default "en")
 #' @param show_citation Logical; show citation below plot (default TRUE)
+#' @param prediction_source Prediction equation source: `"jones"` (default)
+#'   or `"prefaut"`.
 #'
 #' @return A ggplot2 object with citation attributes for bibliography
 #'
@@ -1320,9 +1324,9 @@ plot_predicted_comparison <- function(x,
   }
 
   # Build comparison data - VO2max only for main comparison
-  labels_en <- "V̇O₂max
+  labels_en <- "V\u0307O\u2082max
 (mL/kg/min)"
-  labels_fr <- "V̇O₂max
+  labels_fr <- "V\u0307O\u2082max
 (mL/kg/min)"
 
   # Create data frame for VO2max plot
@@ -1511,10 +1515,11 @@ plot_predicted_comparison <- function(x,
 #' Scatter of VO2 vs Power over the submax portion of the test with a linear
 #' fit and 95% confidence ribbon. Submax cutoff is VT2 (from
 #' `analysis@vt2_range[1]`) when available, else 85% of `analysis@ppo_watts`.
-#' The slope ± 95% CI (mL·min^-1·W^-1) is shown as a caption.
+#' The slope +/- 95% CI (mL.min^-1.W^-1) is shown as a caption.
 #'
 #' @param analysis A CpetAnalysis S7 object.
 #' @param language Language code (`"en"` or `"fr"`).
+#' @param dark Logical; use the dark `theme_cardiometr_dark()` theme.
 #' @return A ggplot2 object.
 #' @examples
 #' \dontrun{
@@ -1614,7 +1619,7 @@ plot_vo2_power_slope <- function(analysis, language = "en", dark = FALSE) {
     ggplot2::labs(
       title = tr("vo2_power_slope_title", language),
       x = if (language == "fr") "Puissance (W)" else "Power (W)",
-      y = "V̇O₂ (mL/min)",
+      y = "V\u0307O\u2082 (mL/min)",
       caption = caption
     ) +
     theme_cardiometr(dark = dark)
@@ -1624,16 +1629,17 @@ plot_vo2_power_slope <- function(analysis, language = "en", dark = FALSE) {
 #' Plot Z-Score Strip for Key Metrics
 #'
 #' @description
-#' Horizontal strip plot: one row per metric. Shows a grey μ±1 SD band
-#' (in z-units), dashed LLN/ULN at ±1.645, the patient's z as a coloured dot,
+#' Horizontal strip plot: one row per metric. Shows a grey u+/-1 SD band
+#' (in z-units), dashed LLN/ULN at +/-1.645, the patient's z as a coloured dot,
 #' and a right-aligned annotation with z and percentile. Metrics without a
 #' valid z-score are rendered with a subdued placeholder label.
 #'
 #' @param analysis A CpetAnalysis S7 object (uses `@z_scores`).
 #' @param metrics Character vector of metric keys drawn from
-#'   `analysis@z_scores` (strip the `_z` suffix — e.g. `"vo2_peak"`
+#'   `analysis@z_scores` (strip the `_z` suffix -- e.g. `"vo2_peak"`
 #'   maps to `vo2_peak_z`).
 #' @param language Language code.
+#' @param dark Logical; use the dark `theme_cardiometr_dark()` theme.
 #' @return A ggplot2 object.
 #' @examples
 #' \dontrun{
@@ -1646,7 +1652,7 @@ plot_zscore_strip <- function(analysis,
                               dark = FALSE) {
   pal <- palette_cardiometr()
   zs <- tryCatch(analysis@z_scores, error = function(e) NULL)
-  # Early bail-out: no z-score data at all → placeholder gg (never NULL)
+  # Early bail-out: no z-score data at all -> placeholder gg (never NULL)
   has_any_z <- is.list(zs) && length(zs) > 0 && any(vapply(zs, function(e) {
     z <- if (is.list(e)) e$z else e
     is.numeric(z) && length(z) >= 1 && is.finite(z[1])
@@ -1733,7 +1739,7 @@ plot_zscore_strip <- function(analysis,
 #'
 #' @description
 #' Dumbbell comparator across VO2peak, MAP/kg and PPO for a current vs prior
-#' test. A typical-error band (±3 percent per Hopkins 2001) is shaded around
+#' test. A typical-error band (+/-3 percent per Hopkins 2001) is shaded around
 #' the prior value; the current value is coloured as "beyond typical error"
 #' when the change exceeds the band, otherwise as "within noise". Returns
 #' `NULL` when `prior_analysis` is NULL.
@@ -1741,6 +1747,7 @@ plot_zscore_strip <- function(analysis,
 #' @param current_analysis A CpetAnalysis S7 object (required).
 #' @param prior_analysis A CpetAnalysis S7 object, or NULL.
 #' @param language Language code.
+#' @param dark Logical; use the dark `theme_cardiometr_dark()` theme.
 #' @return A ggplot2 object, or NULL when no prior test is supplied.
 #' @examples
 #' \dontrun{
@@ -1772,7 +1779,7 @@ plot_longitudinal_delta <- function(current_analysis,
     m)
 
   metrics <- c("vo2_peak", "map_per_kg", "ppo")
-  typical_error <- 0.03  # Hopkins 2001, ±3 percent
+  typical_error <- 0.03  # Hopkins 2001, \u00b13 percent
 
   df <- purrr::map_dfr(metrics, function(m) {
     prior <- get_metric(prior_analysis, m)

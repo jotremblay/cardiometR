@@ -458,8 +458,9 @@ test_that("calculate_expected_vo2_treadmill is vectorized", {
 })
 
 test_that("calculate_expected_vo2_cycling returns correct values", {
-  expected <- (200 * 0.01433 / (0.20 * 5.05)) * 1000
-  result <- calculate_expected_vo2_cycling(power_w = 200, weight_kg = 70, efficiency = 0.20)
+  # ACSM leg-cycling: VO2 = slope * power + 7 * body_mass
+  expected <- 10.8 * 200 + 7 * 70
+  result <- calculate_expected_vo2_cycling(power_w = 200, weight_kg = 70)
   expect_equal(result, expected, tolerance = 0.01)
 })
 
@@ -469,8 +470,8 @@ test_that("calculate_expected_vo2_cycling is vectorized", {
   expect_true(all(diff(result) > 0))
 })
 
-test_that("calculate_expected_vo2_cycling responds to efficiency", {
-  low_eff <- calculate_expected_vo2_cycling(200, 70, efficiency = 0.15)
-  high_eff <- calculate_expected_vo2_cycling(200, 70, efficiency = 0.25)
-  expect_true(low_eff > high_eff)
+test_that("calculate_expected_vo2_cycling responds to slope", {
+  low_slope <- calculate_expected_vo2_cycling(200, 70, slope_ml_per_w = 9)
+  high_slope <- calculate_expected_vo2_cycling(200, 70, slope_ml_per_w = 12)
+  expect_true(high_slope > low_slope)
 })

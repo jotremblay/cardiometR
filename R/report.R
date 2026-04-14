@@ -23,13 +23,15 @@ report_graph_cache <- new.env(parent = emptyenv())
 #' @param report_sections Optional character vector of sections to include
 #'   (e.g., c("protocol_details", "stage_table", "thresholds", "graphs")).
 #'   When NULL, all sections with data are included.
+#' @param signature_date Optional Date stamped next to the physician signature
+#'   (defaults to `Sys.Date()`).
 #'
 #' @return Invisibly returns the output file path
 #'
 #' @examples
 #' \dontrun{
 #' analysis <- analyze_cpet(data)
-#' config <- ReportConfig(language = "fr", institution = "Universit\u00e9 de Montr\u00e9al")
+#' config <- ReportConfig(language = "fr", institution = "Universite de Montreal")
 #'
 #' # Standard report with general population comparison
 #' generate_report(analysis, "patient_report.pdf", config)
@@ -807,7 +809,7 @@ build_template_data <- function(analysis, config, labels, clinical_notes, interp
   template_data
 }
 
-# Row index of the stage_summary entry nearest 70% of V̇O₂peak, filtered so
+# Row index of the stage_summary entry nearest 70% of VO2peak, filtered so
 # `required` column (e.g. "power_w" or "speed_kmh") is positive and finite.
 # Returns NA_integer_ when inputs are unusable.
 submax_stage_idx <- function(analysis, peaks, required) {
@@ -858,7 +860,7 @@ split_header_text <- function(text, split_word = "et") {
 #'
 #' @description
 #' Calculates age/sex-specific predicted maximal values.
-#' Supports Jones et al. (1997) and Pr\u00e9faut et al. prediction equations.
+#' Supports Jones et al. (1997) and Prefaut et al. prediction equations.
 #'
 #' @param participant Participant object
 #' @param prediction_source Prediction equation source: "jones" or "prefaut"
@@ -1521,7 +1523,7 @@ build_phase7_template_data <- function(analysis, language, report_sections,
   has_vt <- any(is.finite(c(vt1r, vt2r, vt1_point, vt2_point)))
   out$has_vt_block <- has_vt
 
-  # VT-range table i18n labels (must be explicitly forwarded — tr() keys
+  # VT-range table i18n labels (must be explicitly forwarded -- tr() keys
   # are not auto-merged into template_data)
   out$vt_range        <- escape_typst(tr("vt_range", language))
   out$vt_range_title  <- escape_typst(tr("vt_range", language))
@@ -1531,7 +1533,7 @@ build_phase7_template_data <- function(analysis, language, report_sections,
   out$high            <- escape_typst(tr("high", language))
   out$point           <- escape_typst(tr("point", language))
 
-  # FTP range — cycling-only (meaningless for treadmill tests)
+  # FTP range -- cycling-only (meaningless for treadmill tests)
   map_w <- analysis@map_watts %||% NA_real_
   is_scalar_num <- function(v) is.numeric(v) && length(v) == 1 && !is.na(v) && is.finite(v)
   if (!is_treadmill && is_scalar_num(map_w)) {
@@ -1546,7 +1548,7 @@ build_phase7_template_data <- function(analysis, language, report_sections,
   out$ftp_range  <- escape_typst(tr("ftp_range", language))
   out$ftp_caveat <- escape_typst(tr("ftp_caveat", language))
 
-  # CP and substrate explainer text/title — only render blocks when
+  # CP and substrate explainer text/title -- only render blocks when
   # content is non-empty (avoids blank colored bars on page 3)
   cp_title    <- tr("cp_explainer_title", language)
   cp_text     <- tr("cp_explainer", language)
@@ -1634,7 +1636,7 @@ build_phase7_template_data <- function(analysis, language, report_sections,
       level_lc <- tolower(level %||% "recreational")
       sex_lc <- toupper(sex %||% "M")
       ag <- if (!is.null(age) && is.finite(age)) {
-        paste0(10L * (as.integer(age) %/% 10L), "–",
+        paste0(10L * (as.integer(age) %/% 10L), "\u2013",
                10L * (as.integer(age) %/% 10L) + 9L, " ",
                if (identical(lang, "fr")) "ans" else "yr")
       } else ""
@@ -1658,14 +1660,14 @@ build_phase7_template_data <- function(analysis, language, report_sections,
     fmt_band <- function(low, high, d) {
       if (is.null(low) || is.null(high) || length(low) != 1 || length(high) != 1) return("--")
       if (is.na(low) || is.na(high) || !is.finite(low) || !is.finite(high)) return("--")
-      sprintf("%s – %s", fmt_val(low, d), fmt_val(high, d))
+      sprintf("%s \u2013 %s", fmt_val(low, d), fmt_val(high, d))
     }
     fmt_zpct <- function(z_entry) {
       if (is.null(z_entry)) return("--")
       z <- if (is.list(z_entry)) z_entry$z else z_entry
       p <- if (is.list(z_entry)) z_entry$percentile else NA_real_
       if (!is.numeric(z) || !is.finite(z)) return("--")
-      sprintf("%+.2f · p%.0f", as.numeric(z), as.numeric(p))
+      sprintf("%+.2f \u00b7 p%.0f", as.numeric(z), as.numeric(p))
     }
 
     rows <- character(0)
@@ -1691,7 +1693,7 @@ build_phase7_template_data <- function(analysis, language, report_sections,
     if (!is.null(stratum)) {
       weight_kg <- tryCatch(participant@weight_kg, error = function(e) NA_real_)
 
-      # VO2peak — always shown, Unicode subscript for VO2
+      # VO2peak -- always shown, Unicode subscript for VO2
       add_row(
         label = "VO\u2082 (mL/kg/min)",
         patient = tryCatch(peaks@vo2_kg_peak, error = function(e) NA_real_),
@@ -1738,7 +1740,7 @@ build_phase7_template_data <- function(analysis, language, report_sections,
           mean = stratum$map_per_kg_typical %||% NA_real_,
           z_entry = zs$map_per_kg_z, decimals = 2
         )
-        # PPO in absolute W — derive stratum mean/band from W/kg * body mass
+        # PPO in absolute W -- derive stratum mean/band from W/kg * body mass
         ppo_low <- if (is.numeric(stratum$map_per_kg_low)   && is.numeric(weight_kg) && is.finite(weight_kg)) stratum$map_per_kg_low   * weight_kg else NA_real_
         ppo_high <- if (is.numeric(stratum$map_per_kg_high) && is.numeric(weight_kg) && is.finite(weight_kg)) stratum$map_per_kg_high  * weight_kg else NA_real_
         ppo_mean <- if (is.numeric(stratum$map_per_kg_typical) && is.numeric(weight_kg) && is.finite(weight_kg)) stratum$map_per_kg_typical * weight_kg else NA_real_
@@ -2361,8 +2363,8 @@ has_lactate <- "lactate_mmol" %in% names(stage_summary) &&
 #'
 #' @description
 #' Returns the path to a built-in institution logo for use in reports.
-#' Available logos: "udem" (UdeM - \u00c9cole de kin\u00e9siologie),
-#' "epic" (Centre \u00c9PIC - Institut de Cardiologie de Montr\u00e9al).
+#' Available logos: "udem" (UdeM - Ecole de kinesiologie),
+#' "epic" (Centre EPIC - Institut de Cardiologie de Montreal).
 #'
 #' @param institution Institution identifier: "udem" or "epic"
 #'
@@ -2375,7 +2377,7 @@ has_lactate <- "lactate_mmol" %in% names(stage_summary) &&
 #' # Use in report config
 #' \dontrun{
 #' config <- ReportConfig(
-#'   institution = "\u00c9cole de kin\u00e9siologie, UdeM",
+#'   institution = "Ecole de kinesiologie, UdeM",
 #'   logo_path = get_logo("udem")
 #' )
 #' }

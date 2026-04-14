@@ -4,7 +4,7 @@
 \alias{check_rest_phase}
 \title{Check Rest Phase Adequacy}
 \usage{
-check_rest_phase(breaths, min_duration, weight_kg)
+check_rest_phase(breaths, min_duration, weight_kg, language = "en")
 }
 \arguments{
 \item{breaths}{Breath data tibble}
@@ -12,6 +12,8 @@ check_rest_phase(breaths, min_duration, weight_kg)
 \item{min_duration}{Minimum rest duration in minutes}
 
 \item{weight_kg}{Participant weight for predicted resting VO2}
+
+\item{language}{Language code for messages ("en" or "fr").}
 }
 \value{
 List with errors, warnings, info

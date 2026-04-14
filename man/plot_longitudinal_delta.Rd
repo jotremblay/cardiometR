@@ -17,13 +17,15 @@ plot_longitudinal_delta(
 \item{prior_analysis}{A CpetAnalysis S7 object, or NULL.}
 
 \item{language}{Language code.}
+
+\item{dark}{Logical; use the dark \code{theme_cardiometr_dark()} theme.}
 }
 \value{
 A ggplot2 object, or NULL when no prior test is supplied.
 }
 \description{
 Dumbbell comparator across VO2peak, MAP/kg and PPO for a current vs prior
-test. A typical-error band (±3 percent per Hopkins 2001) is shaded around
+test. A typical-error band (+/-3 percent per Hopkins 2001) is shaded around
 the prior value; the current value is coloured as "beyond typical error"
 when the change exceeds the band, otherwise as "within noise". Returns
 \code{NULL} when \code{prior_analysis} is NULL.

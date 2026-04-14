@@ -6,18 +6,19 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 <!-- badges: end -->
 
-An R package for analyzing **Cardiopulmonary Exercise Testing (CPET)** data from COSMED Quark CPET metabolic carts. Features type-safe S7 classes, interactive Shiny analysis, and bilingual (English/French) PDF report generation.
+Analyze **Cardiopulmonary Exercise Testing (CPET)** data from COSMED Quark metabolic carts in R — type-safe S7 data structures, ATS/ACCP-based peak and threshold detection, a Shiny clinical interface, and bilingual (EN/FR) Typst PDF reports.
 
 ## Features
 
-- **Import** COSMED Quark CPET Excel exports with automatic parsing
-- **S7 Classes** for type-safe CPET data structures with validation
-- **Peak Detection** using rolling averages per ATS/ACCP guidelines
-- **Quality Assessment** of test effort and data quality
-- **9-Panel Visualization** following clinical CPET display standards
-- **Shiny Application** for interactive clinical analysis
-- **PDF Reports** via Typst with bilingual support (EN/FR)
-- **Normative Data** comparison for athletes
+- Import COSMED Quark Excel exports with automatic parsing
+- S7 classes with built-in physiological validation
+- Peak detection via rolling averages (ATS/ACCP)
+- Ventilatory threshold methods: V-slope, VE/VO2, VE/VCO2, end-tidal gases
+- Test-quality and maximal-effort assessment
+- Nine-panel clinical CPET plot
+- Interactive Shiny app with EN/FR toggle
+- Typst-based PDF reports (bilingual)
+- Normative comparison against athlete and general-population registries
 
 ## Installation
 
@@ -151,6 +152,7 @@ quality@overall_grade
 
 - **Vignette**: `vignette("introduction", package = "cardiometR")`
 - **Function reference**: See `?cardiometR` for package help
+- **Translations**: `inst/translations/labels_{en,fr}.yml`
 
 ## References
 
@@ -169,6 +171,6 @@ MIT License. See [LICENSE](LICENSE) for details.
 ## Citation
 
 ```
-Tremblay J (2024). cardiometR: Cardiopulmonary Exercise Testing Analysis with S7 Classes.
+Tremblay J (2026). cardiometR: Cardiopulmonary Exercise Testing Analysis with S7 Classes.
 R package version 0.1.0. https://github.com/jotremblay/cardiometR
 ```

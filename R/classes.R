@@ -657,7 +657,7 @@ CpetAnalysis <- new_class("CpetAnalysis",
 #' @examples
 #' config <- ReportConfig(
 #'   language = "fr",
-#'   institution = "Universit\u00e9 de Montr\u00e9al",
+#'   institution = "Universite de Montreal",
 #'   technician = "Dr. Smith"
 #' )
 #'

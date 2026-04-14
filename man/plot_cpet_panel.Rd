@@ -34,6 +34,9 @@ plot_cpet_panel(
 
 \item{modality}{Exercise modality: "cycling", "treadmill", or NULL for
 auto-detection from data columns (default NULL)}
+
+\item{dark}{Logical; use the dark \code{theme_cardiometr_dark()} theme
+(default FALSE).}
 }
 \value{
 A ggplot2 patchwork object with 9 panels

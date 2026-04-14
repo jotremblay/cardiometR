@@ -39,6 +39,9 @@ generate_report(
 \item{report_sections}{Optional character vector of sections to include
 (e.g., c("protocol_details", "stage_table", "thresholds", "graphs")).
 When NULL, all sections with data are included.}
+
+\item{signature_date}{Optional Date stamped next to the physician signature
+(defaults to \code{Sys.Date()}).}
 }
 \value{
 Invisibly returns the output file path
@@ -51,7 +54,7 @@ Can include sport-specific normative data comparisons with citations.
 \examples{
 \dontrun{
 analysis <- analyze_cpet(data)
-config <- ReportConfig(language = "fr", institution = "Universit\u00e9 de Montr\u00e9al")
+config <- ReportConfig(language = "fr", institution = "Universite de Montreal")
 
 # Standard report with general population comparison
 generate_report(analysis, "patient_report.pdf", config)

@@ -25,3 +25,10 @@ Thumbs.db
 # Temporary files
 *.tmp
 *.bak
+tmp/
+
+# Claude Code
+.claude/tsc-cache/
+
+# Local report outputs (dev artifacts)
+/cpet_report*.pdf

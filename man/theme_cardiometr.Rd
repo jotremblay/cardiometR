@@ -24,6 +24,8 @@ strong axis titles, subtle panel grid, white background, and 0.8 lwd
 axis lines. Designed to read well under light and dark UI surfaces.
 }
 \examples{
+\dontrun{
 library(ggplot2)
 ggplot(mtcars, aes(wt, mpg)) + geom_point() + theme_cardiometr()
+}
 }

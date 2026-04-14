@@ -41,8 +41,10 @@ palette_cardiometr <- function() {
 #'   light-on-white theme used by Typst PDF reports.
 #' @return A ggplot2 theme object.
 #' @examples
+#' \dontrun{
 #' library(ggplot2)
 #' ggplot(mtcars, aes(wt, mpg)) + geom_point() + theme_cardiometr()
+#' }
 #' @export
 theme_cardiometr <- function(base_size = 12, dark = FALSE) {
   if (isTRUE(dark)) {

@@ -22,6 +22,7 @@ get_rating <- function(score, poor_label = "poor") {
 # assess_maximal_criteria --------------------------------------------------
 
 #' @rdname assess_maximal_criteria
+#' @name assess_maximal_criteria-CpetData
 method(assess_maximal_criteria, CpetData) <- function(x,
                                                        rpe = NULL,
                                                        lactate = NULL,
@@ -187,6 +188,7 @@ detect_vo2_plateau <- function(breaths, threshold = 150, window_s = 30) {
 # assess_protocol_quality --------------------------------------------------
 
 #' @rdname assess_protocol_quality
+#' @name assess_protocol_quality-CpetData
 method(assess_protocol_quality, CpetData) <- function(x,
                                                        modality = "auto",
                                                        expected_slope = NULL,
@@ -512,6 +514,7 @@ analyze_stage_consistency <- function(breaths) {
 # assess_data_quality ------------------------------------------------------
 
 #' @rdname assess_data_quality
+#' @name assess_data_quality-CpetData
 method(assess_data_quality, CpetData) <- function(x,
                                                    aberrant_threshold = 3,
                                                    ...) {
@@ -862,6 +865,7 @@ generate_data_quality_recommendations <- function(pct_aberrant, pct_missing_hr,
 # assess_quality -----------------------------------------------------------
 
 #' @rdname assess_quality
+#' @name assess_quality-CpetData
 method(assess_quality, CpetData) <- function(x, rpe = NULL, lactate = NULL, ...) {
   # Get individual assessments
   exercise_criteria <- assess_maximal_criteria(x, rpe = rpe, lactate = lactate)

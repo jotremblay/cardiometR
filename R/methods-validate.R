@@ -29,7 +29,7 @@ method(validate, CpetData) <- function(x,
   if (nrow(breaths) < 10) {
     errors <- c(errors, vmsg(language,
       "Insufficient data: fewer than 10 breaths recorded",
-      "Données insuffisantes : moins de 10 cycles respiratoires enregistrés"))
+      "Donn\u00e9es insuffisantes : moins de 10 cycles respiratoires enregistr\u00e9s"))
   }
 
   # 2. Check test duration
@@ -37,12 +37,12 @@ method(validate, CpetData) <- function(x,
   if (test_duration_min < 5) {
     warnings <- c(warnings, vmsg(language,
       "Short test duration: %.1f minutes (minimum 5-8 min recommended)",
-      "Durée du test courte : %.1f minutes (minimum 5 à 8 min recommandé)",
+      "Dur\u00e9e du test courte : %.1f minutes (minimum 5 \u00e0 8 min recommand\u00e9)",
       test_duration_min))
   }
   info <- c(info, vmsg(language,
     "Test duration: %.1f minutes",
-    "Durée du test : %.1f minutes",
+    "Dur\u00e9e du test : %.1f minutes",
     test_duration_min))
 
   # 3. Check for rest phase
@@ -101,13 +101,13 @@ check_rest_phase <- function(breaths, min_duration, weight_kg, language = "en") 
     if (nrow(rest_data) == 0) {
       warnings <- c(warnings, vmsg(language,
         "No REST phase identified in data",
-        "Aucune phase de repos identifiée dans les données"))
+        "Aucune phase de repos identifi\u00e9e dans les donn\u00e9es"))
     } else {
       rest_duration <- (max(rest_data$time_s) - min(rest_data$time_s)) / 60
       if (rest_duration < min_duration) {
         warnings <- c(warnings, vmsg(language,
           "Rest phase duration (%.1f min) is less than recommended (%.0f min)",
-          "Durée de la phase de repos (%.1f min) inférieure à la recommandation (%.0f min)",
+          "Dur\u00e9e de la phase de repos (%.1f min) inf\u00e9rieure \u00e0 la recommandation (%.0f min)",
           rest_duration, min_duration))
       }
 
