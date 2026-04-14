@@ -10,7 +10,8 @@ mod_results_server(
   cpet_data,
   participant,
   settings,
-  prediction_source = shiny::reactive("jones")
+  prediction_source = shiny::reactive("jones"),
+  dark_mode = shiny::reactive(FALSE)
 )
 }
 \arguments{

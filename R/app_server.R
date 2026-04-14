@@ -67,6 +67,11 @@ language <- shiny::reactiveVal(getOption("cardiometR.language", "fr"))
   settings_result <- mod_settings_server("settings", language,
                                          cpet_data = upload_result$cpet_data)
 
+  # Reactive: dark-mode flag for plots (TRUE when bslib input_dark_mode == "dark")
+  dark_mode <- shiny::reactive({
+    isTRUE(input$dark_mode == "dark")
+  })
+
   # ---- Module: Results ----
   # Returns: list(analysis = reactive())
   results_result <- mod_results_server(
@@ -75,7 +80,8 @@ language <- shiny::reactiveVal(getOption("cardiometR.language", "fr"))
     cpet_data = upload_result$cpet_data,
     participant = participant_result$participant,
     settings = settings_result$settings,
-    prediction_source = participant_result$prediction_source
+    prediction_source = participant_result$prediction_source,
+    dark_mode = dark_mode
   )
 
   # ---- Module: Plots ----
@@ -84,7 +90,8 @@ language <- shiny::reactiveVal(getOption("cardiometR.language", "fr"))
     "plots",
     language,
     analysis = results_result$analysis,
-    settings = settings_result$settings
+    settings = settings_result$settings,
+    dark_mode = dark_mode
   )
 
   # ---- Module: Quality ----

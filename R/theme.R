@@ -35,28 +35,51 @@ palette_cardiometr <- function() {
 #' axis lines. Designed to read well under light and dark UI surfaces.
 #'
 #' @param base_size Base font size (default 12).
+#' @param dark If `TRUE`, emit a dark-mode variant (transparent panel
+#'   backgrounds, light axis/text colours) so ggplot output reads on a
+#'   dark Shiny shell. Default `FALSE` is identical to the original
+#'   light-on-white theme used by Typst PDF reports.
 #' @return A ggplot2 theme object.
 #' @examples
 #' library(ggplot2)
 #' ggplot(mtcars, aes(wt, mpg)) + geom_point() + theme_cardiometr()
 #' @export
-theme_cardiometr <- function(base_size = 12) {
+theme_cardiometr <- function(base_size = 12, dark = FALSE) {
+  if (isTRUE(dark)) {
+    bg    <- "#212529"
+    fg    <- "#E5E7EB"
+    grid  <- "#3A4149"
+    axis  <- "#9AA0A6"
+  } else {
+    bg    <- "white"
+    fg    <- "#1f2d3d"
+    grid  <- "#E5E7EB"
+    axis  <- "#374151"
+  }
   ggplot2::theme_minimal(base_size = base_size, base_family = "") |>
     (\(th) th + ggplot2::theme(
-      text = ggplot2::element_text(family = "Inter, Helvetica, Arial, sans-serif"),
-      plot.background = ggplot2::element_rect(fill = "white", color = NA),
-      panel.background = ggplot2::element_rect(fill = "white", color = NA),
-      panel.grid.major = ggplot2::element_line(color = "#E5E7EB", linewidth = 0.3),
+      text = ggplot2::element_text(
+        family = "Inter, Helvetica, Arial, sans-serif",
+        color = fg
+      ),
+      plot.background = ggplot2::element_rect(fill = bg, color = NA),
+      panel.background = ggplot2::element_rect(fill = bg, color = NA),
+      panel.grid.major = ggplot2::element_line(color = grid, linewidth = 0.3),
       panel.grid.minor = ggplot2::element_blank(),
-      axis.line = ggplot2::element_line(color = "#374151", linewidth = 0.8),
-      axis.ticks = ggplot2::element_line(color = "#374151", linewidth = 0.6),
-      axis.title = ggplot2::element_text(face = "bold"),
+      axis.line = ggplot2::element_line(color = axis, linewidth = 0.8),
+      axis.ticks = ggplot2::element_line(color = axis, linewidth = 0.6),
+      axis.text = ggplot2::element_text(color = fg),
+      axis.title = ggplot2::element_text(face = "bold", color = fg),
       axis.title.x = ggplot2::element_text(margin = ggplot2::margin(t = 6)),
       axis.title.y = ggplot2::element_text(margin = ggplot2::margin(r = 6)),
-      plot.title = ggplot2::element_text(face = "bold"),
+      plot.title = ggplot2::element_text(face = "bold", color = fg),
+      plot.subtitle = ggplot2::element_text(color = fg),
+      plot.caption = ggplot2::element_text(color = fg),
       legend.position = "bottom",
-      legend.background = ggplot2::element_rect(fill = "white", color = NA),
-      strip.text = ggplot2::element_text(face = "bold")
+      legend.background = ggplot2::element_rect(fill = bg, color = NA),
+      legend.text = ggplot2::element_text(color = fg),
+      legend.title = ggplot2::element_text(color = fg),
+      strip.text = ggplot2::element_text(face = "bold", color = fg)
     ))()
 }
 

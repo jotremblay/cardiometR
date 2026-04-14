@@ -7,7 +7,8 @@
 plot_zscore_strip(
   analysis,
   metrics = c("vo2_peak", "map_per_kg", "ppo"),
-  language = "en"
+  language = "en",
+  dark = FALSE
 )
 }
 \arguments{

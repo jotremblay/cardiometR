@@ -280,7 +280,8 @@ plot_cpet_panel <- function(x,
                             language = "en",
                             averaging_window = 30,
                             expected_efficiency = 0.20,
-                            modality = NULL) {
+                            modality = NULL,
+                            dark = FALSE) {
   if (!requireNamespace("patchwork", quietly = TRUE)) {
     cli::cli_abort(c(
       "The {.pkg patchwork} package is required for the 9-panel plot",
@@ -363,7 +364,7 @@ plot_cpet_panel <- function(x,
   }
 
   # Common theme - cardiometR palette, tuned to panel size
-  theme_cpet <- theme_cardiometr(base_size = 9) +
+  theme_cpet <- theme_cardiometr(base_size = 9, dark = dark) +
     ggplot2::theme(
       axis.title = ggplot2::element_text(size = 8, face = "bold"),
       axis.text = ggplot2::element_text(size = 7),
@@ -771,13 +772,18 @@ plot_cpet_panel <- function(x,
     nrow = 3
   )
 
+  bg_fill <- if (isTRUE(dark)) "#212529" else "white"
+  title_col <- if (isTRUE(dark)) "#E5E7EB" else "#1f2d3d"
   combined +
     patchwork::plot_annotation(
       title = sprintf("%s - %s",
                       data@participant@name,
                       as.character(data@metadata@test_date)),
       theme = ggplot2::theme(
-        plot.title = ggplot2::element_text(size = 11, face = "bold", hjust = 0.5)
+        plot.title = ggplot2::element_text(size = 11, face = "bold",
+                                           hjust = 0.5, color = title_col),
+        plot.background = ggplot2::element_rect(fill = bg_fill, color = NA),
+        panel.background = ggplot2::element_rect(fill = bg_fill, color = NA)
       )
     )
 }
@@ -1507,7 +1513,7 @@ plot_predicted_comparison <- function(x,
 #' plot_vo2_power_slope(analysis, language = "en")
 #' }
 #' @export
-plot_vo2_power_slope <- function(analysis, language = "en") {
+plot_vo2_power_slope <- function(analysis, language = "en", dark = FALSE) {
   pal <- palette_cardiometr()
   breaths <- tryCatch(analysis@data@breaths, error = function(e) NULL)
   stage_summary <- tryCatch(analysis@stage_summary, error = function(e) NULL)
@@ -1575,7 +1581,7 @@ plot_vo2_power_slope <- function(analysis, language = "en") {
       y = expression(VO[2]~(mL/min)),
       caption = caption
     ) +
-    theme_cardiometr()
+    theme_cardiometr(dark = dark)
 }
 
 
@@ -1600,7 +1606,8 @@ plot_vo2_power_slope <- function(analysis, language = "en") {
 #' @export
 plot_zscore_strip <- function(analysis,
                               metrics = c("vo2_peak", "map_per_kg", "ppo"),
-                              language = "en") {
+                              language = "en",
+                              dark = FALSE) {
   pal <- palette_cardiometr()
   zs <- tryCatch(analysis@z_scores, error = function(e) NULL)
 
@@ -1653,14 +1660,17 @@ plot_zscore_strip <- function(analysis,
     ggplot2::geom_text(data = annot,
                        ggplot2::aes(x = max(x_range), label = .data$label),
                        hjust = 1, vjust = -0.7, size = 3,
-                       color = ifelse(is.finite(annot$z), "black", "gray60")) +
+                       color = ifelse(
+                         is.finite(annot$z),
+                         if (isTRUE(dark)) "#E5E7EB" else "black",
+                         "gray60")) +
     ggplot2::scale_x_continuous(limits = x_range) +
     ggplot2::labs(
       x = tr("z_score_axis", language),
       y = NULL,
       title = NULL
     ) +
-    theme_cardiometr()
+    theme_cardiometr(dark = dark)
 }
 
 
@@ -1684,7 +1694,8 @@ plot_zscore_strip <- function(analysis,
 #' @export
 plot_longitudinal_delta <- function(current_analysis,
                                     prior_analysis,
-                                    language = "en") {
+                                    language = "en",
+                                    dark = FALSE) {
   if (is.null(prior_analysis)) return(NULL)
   pal <- palette_cardiometr()
 
@@ -1758,5 +1769,5 @@ plot_longitudinal_delta <- function(current_analysis,
       x = NULL, y = NULL,
       caption = tr("typical_error_band", language)
     ) +
-    theme_cardiometr()
+    theme_cardiometr(dark = dark)
 }

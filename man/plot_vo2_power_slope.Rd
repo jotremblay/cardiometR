@@ -4,7 +4,7 @@
 \alias{plot_vo2_power_slope}
 \title{Plot VO2-Power Submax Slope}
 \usage{
-plot_vo2_power_slope(analysis, language = "en")
+plot_vo2_power_slope(analysis, language = "en", dark = FALSE)
 }
 \arguments{
 \item{analysis}{A CpetAnalysis S7 object.}

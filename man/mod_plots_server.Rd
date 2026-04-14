@@ -4,7 +4,13 @@
 \alias{mod_plots_server}
 \title{Plots Module Server}
 \usage{
-mod_plots_server(id, language, analysis, settings = NULL)
+mod_plots_server(
+  id,
+  language,
+  analysis,
+  settings = NULL,
+  dark_mode = shiny::reactive(FALSE)
+)
 }
 \arguments{
 \item{id}{Module namespace ID.}

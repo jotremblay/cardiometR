@@ -12,7 +12,8 @@ plot_cpet_panel(
   language = "en",
   averaging_window = 30,
   expected_efficiency = 0.2,
-  modality = NULL
+  modality = NULL,
+  dark = FALSE
 )
 }
 \arguments{

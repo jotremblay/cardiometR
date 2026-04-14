@@ -4,10 +4,15 @@
 \alias{theme_cardiometr}
 \title{cardiometR ggplot2 Theme}
 \usage{
-theme_cardiometr(base_size = 12)
+theme_cardiometr(base_size = 12, dark = FALSE)
 }
 \arguments{
 \item{base_size}{Base font size (default 12).}
+
+\item{dark}{If \code{TRUE}, emit a dark-mode variant (transparent panel
+backgrounds, light axis/text colours) so ggplot output reads on a
+dark Shiny shell. Default \code{FALSE} is identical to the original
+light-on-white theme used by Typst PDF reports.}
 }
 \value{
 A ggplot2 theme object.

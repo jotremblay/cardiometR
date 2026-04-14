@@ -78,7 +78,8 @@ mod_plots_ui <- function(id, language = "en") {
 #' @param settings Reactive settings list from settings module (optional).
 #'
 #' @keywords internal
-mod_plots_server <- function(id, language, analysis, settings = NULL) {
+mod_plots_server <- function(id, language, analysis, settings = NULL,
+                              dark_mode = shiny::reactive(FALSE)) {
   shiny::moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
@@ -87,6 +88,7 @@ mod_plots_server <- function(id, language, analysis, settings = NULL) {
       a <- analysis()
       shiny::req(a)
       lang <- language()
+      dark <- isTRUE(dark_mode())
 
       # Extract settings if available
       sport <- NULL
@@ -108,7 +110,7 @@ mod_plots_server <- function(id, language, analysis, settings = NULL) {
 
       switch(input$plot_type,
         panel = plot_cpet_panel(a, language = lang, averaging_window = avg_window,
-          expected_efficiency = gross_efficiency, modality = modality),
+          expected_efficiency = gross_efficiency, modality = modality, dark = dark),
         vslope = plot_v_slope(a, language = lang),
         vent_eq = plot_ventilatory_equivalents(a, language = lang),
         gas = plot_gas_exchange(a, language = lang),
@@ -126,7 +128,7 @@ mod_plots_server <- function(id, language, analysis, settings = NULL) {
       p <- current_plot()
       shiny::req(p)
       p
-    }, res = 96)
+    }, res = 96, bg = "transparent")
 
     # Render interactive plot (all other types)
     output$interactive_plot <- plotly::renderPlotly({

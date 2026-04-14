@@ -4,7 +4,12 @@
 \alias{plot_longitudinal_delta}
 \title{Plot Longitudinal Delta Between Two CPET Tests}
 \usage{
-plot_longitudinal_delta(current_analysis, prior_analysis, language = "en")
+plot_longitudinal_delta(
+  current_analysis,
+  prior_analysis,
+  language = "en",
+  dark = FALSE
+)
 }
 \arguments{
 \item{current_analysis}{A CpetAnalysis S7 object (required).}

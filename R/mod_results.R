@@ -87,7 +87,8 @@ mod_results_ui <- function(id, language = "en") {
 #'
 #' @keywords internal
 mod_results_server <- function(id, language, cpet_data, participant, settings,
-                               prediction_source = shiny::reactive("jones")) {
+                               prediction_source = shiny::reactive("jones"),
+                               dark_mode = shiny::reactive(FALSE)) {
   shiny::moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
@@ -293,6 +294,7 @@ mod_results_server <- function(id, language, cpet_data, participant, settings,
           value = if (is.finite(vo2_kg)) sprintf("%.1f", vo2_kg) else "--",
           showcase = shiny::icon("heart-pulse"),
           theme = "primary",
+          min_height = "150px",
           shiny::p(tr("unit_ml_kg_min", lang)),
           fmt_z_line(zs$vo2_peak_z, lang)
         ),
@@ -303,7 +305,8 @@ mod_results_server <- function(id, language, cpet_data, participant, settings,
           ),
           value = if (is.finite(map_kg)) sprintf("%.2f", map_kg) else "--",
           showcase = shiny::icon("bolt-lightning"),
-          theme = "light",
+          theme = bslib::value_box_theme(bg = "var(--bs-tertiary-bg)", fg = "var(--bs-body-color)"),
+          min_height = "150px",
           shiny::p("W/kg"),
           fmt_z_line(zs$map_per_kg_z, lang)
         ),
@@ -314,7 +317,8 @@ mod_results_server <- function(id, language, cpet_data, participant, settings,
           ),
           value = if (is.finite(ppo)) as.character(round(ppo)) else "--",
           showcase = shiny::icon("mountain"),
-          theme = "light",
+          theme = bslib::value_box_theme(bg = "var(--bs-tertiary-bg)", fg = "var(--bs-body-color)"),
+          min_height = "150px",
           shiny::p(tr("unit_watts", lang)),
           shiny::tags$small(
             class = "text-muted d-block",
@@ -387,7 +391,7 @@ mod_results_server <- function(id, language, cpet_data, participant, settings,
             title = tr("ve", lang),
             value = sprintf("%.1f", peaks@ve_peak),
             showcase = shiny::icon("wind"),
-            theme = "light",
+            theme = bslib::value_box_theme(bg = "var(--bs-tertiary-bg)", fg = "var(--bs-body-color)"),
             shiny::p(tr("unit_l_min", lang)),
             min_height = "120px"
           ),
@@ -395,7 +399,7 @@ mod_results_server <- function(id, language, cpet_data, participant, settings,
             title = tr("rer", lang),
             value = sprintf("%.2f", peaks@rer_peak),
             showcase = shiny::icon("lungs"),
-            theme = if (peaks@rer_peak >= 1.10) "warning" else "light",
+            theme = if (peaks@rer_peak >= 1.10) "warning" else bslib::value_box_theme(bg = "var(--bs-tertiary-bg)", fg = "var(--bs-body-color)"),
             min_height = "120px"
           )
         )
@@ -432,14 +436,16 @@ mod_results_server <- function(id, language, cpet_data, participant, settings,
       shiny::req(a)
       plot_zscore_strip(a,
                         metrics = c("vo2_peak", "map_per_kg", "ppo"),
-                        language = language())
-    })
+                        language = language(),
+                        dark = isTRUE(dark_mode()))
+    }, bg = "transparent")
 
     output$vo2_power_slope_plot <- shiny::renderPlot({
       a <- analysis()
       shiny::req(a)
-      plot_vo2_power_slope(a, language = language())
-    })
+      plot_vo2_power_slope(a, language = language(),
+                           dark = isTRUE(dark_mode()))
+    }, bg = "transparent")
 
     # -- Thresholds table (legacy) ---------------------------------------
 
@@ -492,29 +498,51 @@ mod_results_server <- function(id, language, cpet_data, participant, settings,
       lang <- language()
       if (is.null(a)) return(NULL)
 
-      # 1. VT ranges
+      # 1. VT ranges (enriched with method/smoothing per endpoint)
       vt1_r <- a@vt1_range
       vt2_r <- a@vt2_range
+      vt_details <- tryCatch(
+        detect_threshold_range(a@data@breaths),
+        error = function(e) NULL
+      )
+      endpoint_label <- function(values_df, end = c("low", "high")) {
+        end <- match.arg(end)
+        if (is.null(values_df) || !nrow(values_df)) return("--")
+        v <- values_df$vo2
+        idx <- if (end == "low") which.min(v) else which.max(v)
+        if (!length(idx)) return("--")
+        sprintf("%s / %s", values_df$method[idx], values_df$smoothing[idx])
+      }
+      vt1_low_lbl  <- endpoint_label(vt_details$vt1_values, "low")
+      vt1_high_lbl <- endpoint_label(vt_details$vt1_values, "high")
+      vt2_low_lbl  <- endpoint_label(vt_details$vt2_values, "low")
+      vt2_high_lbl <- endpoint_label(vt_details$vt2_values, "high")
       vt_table <- shiny::tags$table(
         class = "table table-sm",
         shiny::tags$thead(shiny::tags$tr(
           shiny::tags$th(""),
           shiny::tags$th("Low"),
+          shiny::tags$th(tr("vt_method_low", lang)),
           shiny::tags$th("High"),
+          shiny::tags$th(tr("vt_method_high", lang)),
           shiny::tags$th("Point")
         )),
         shiny::tags$tbody(
           shiny::tags$tr(
             shiny::tags$td(shiny::strong(tr("vt1", lang))),
             shiny::tags$td(if (length(vt1_r) >= 1 && is.finite(vt1_r[1])) round(vt1_r[1]) else "--"),
+            shiny::tags$td(shiny::tags$small(class = "text-muted", vt1_low_lbl)),
             shiny::tags$td(if (length(vt1_r) >= 2 && is.finite(vt1_r[2])) round(vt1_r[2]) else "--"),
+            shiny::tags$td(shiny::tags$small(class = "text-muted", vt1_high_lbl)),
             shiny::tags$td(if (!is.null(a@thresholds) && !is.null(a@thresholds@vt1_vo2) &&
                                !is.na(a@thresholds@vt1_vo2)) round(a@thresholds@vt1_vo2) else "--")
           ),
           shiny::tags$tr(
             shiny::tags$td(shiny::strong(tr("vt2", lang))),
             shiny::tags$td(if (length(vt2_r) >= 1 && is.finite(vt2_r[1])) round(vt2_r[1]) else "--"),
+            shiny::tags$td(shiny::tags$small(class = "text-muted", vt2_low_lbl)),
             shiny::tags$td(if (length(vt2_r) >= 2 && is.finite(vt2_r[2])) round(vt2_r[2]) else "--"),
+            shiny::tags$td(shiny::tags$small(class = "text-muted", vt2_high_lbl)),
             shiny::tags$td(if (!is.null(a@thresholds) && !is.null(a@thresholds@vt2_vo2) &&
                                !is.na(a@thresholds@vt2_vo2)) round(a@thresholds@vt2_vo2) else "--")
           )
@@ -754,8 +782,9 @@ mod_results_server <- function(id, language, cpet_data, participant, settings,
       prior_peaks <- a@peaks
       prior_peaks@vo2_kg_peak <- as.numeric(latest$vo2_peak[1])
       prior_stub@peaks <- prior_peaks
-      plot_longitudinal_delta(a, prior_stub, language = language())
-    })
+      plot_longitudinal_delta(a, prior_stub, language = language(),
+                              dark = isTRUE(dark_mode()))
+    }, bg = "transparent")
 
     list(
       analysis = analysis

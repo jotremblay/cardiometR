@@ -276,6 +276,18 @@
   vertical-align: middle;
 }
 
+/* Dark-mode plot surfaces: let transparent ggplot render onto card bg */
+[data-bs-theme="dark"] .shiny-plot-output,
+[data-bs-theme="dark"] .plot-container {
+  background: transparent;
+}
+
+/* Popovers wrap on narrow viewports */
+.popover {
+  max-width: min(360px, 92vw);
+}
+.popover-body { word-wrap: break-word; }
+
 @media (prefers-reduced-motion: reduce) {
   .progress-bar,
   .upload-dropzone,

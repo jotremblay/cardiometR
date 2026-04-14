@@ -56,6 +56,8 @@ app_ui <- function() {
     # Global app styles/scripts
     header = shiny::tagList(
       app_css_dep,
+      shiny::tags$link(rel = "shortcut icon", type = "image/png",
+                       href = "cardiometr_www/favicon.png"),
       shiny::tags$script(shiny::HTML("
         Shiny.addCustomMessageHandler('update_nav_labels', function(labels) {
           document.querySelectorAll('.nav-link[data-value]').forEach(function(el) {
