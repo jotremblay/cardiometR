@@ -21,3 +21,10 @@ A ggplot2 object
 \description{
 Plots heart rate against time or VO2 with optional target zones.
 }
+\examples{
+\dontrun{
+file <- system.file("extdata", "example_cosmed.xlsx", package = "cardiometR")
+plot_heart_rate(read_cpet(file), show_zones = TRUE)
+}
+
+}

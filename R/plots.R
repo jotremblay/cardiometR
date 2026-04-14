@@ -816,6 +816,13 @@ plot_cpet_panel <- function(x,
 #'
 #' @return A ggplot2 object
 #'
+#' @examples
+#' \dontrun{
+#' file <- system.file("extdata", "example_cosmed.xlsx", package = "cardiometR")
+#' data <- read_cpet(file)
+#' plot_v_slope(data)
+#' }
+#'
 #' @export
 plot_v_slope <- function(x,
                          thresholds = NULL,
@@ -879,6 +886,12 @@ plot_v_slope <- function(x,
 #' @param language Language for labels
 #'
 #' @return A ggplot2 object
+#'
+#' @examples
+#' \dontrun{
+#' file <- system.file("extdata", "example_cosmed.xlsx", package = "cardiometR")
+#' plot_ventilatory_equivalents(read_cpet(file))
+#' }
 #'
 #' @export
 plot_ventilatory_equivalents <- function(x,
@@ -963,6 +976,12 @@ plot_ventilatory_equivalents <- function(x,
 #' @param language Language for labels
 #'
 #' @return A ggplot2 object
+#'
+#' @examples
+#' \dontrun{
+#' file <- system.file("extdata", "example_cosmed.xlsx", package = "cardiometR")
+#' plot_gas_exchange(read_cpet(file))
+#' }
 #'
 #' @export
 plot_gas_exchange <- function(x,
@@ -1057,6 +1076,12 @@ plot_gas_exchange <- function(x,
 #'
 #' @return A ggplot2 object
 #'
+#' @examples
+#' \dontrun{
+#' file <- system.file("extdata", "example_cosmed.xlsx", package = "cardiometR")
+#' plot_heart_rate(read_cpet(file), show_zones = TRUE)
+#' }
+#'
 #' @export
 plot_heart_rate <- function(x,
                             x_axis = "time",
@@ -1130,6 +1155,12 @@ plot_heart_rate <- function(x,
 #' @param language Language for labels
 #'
 #' @return A ggplot2 object
+#'
+#' @examples
+#' \dontrun{
+#' file <- system.file("extdata", "example_cosmed.xlsx", package = "cardiometR")
+#' plot_power(read_cpet(file))
+#' }
 #'
 #' @export
 plot_power <- function(x,

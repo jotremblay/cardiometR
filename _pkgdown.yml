@@ -1,4 +1,4 @@
-url: https://youruser.github.io/cardiometR/
+url: https://jotremblay.github.io/cardiometR/
 
 template:
   bootstrap: 5
@@ -28,8 +28,6 @@ navbar:
         - text: CPET Analysis
         - text: S7 Classes
           href: articles/s7-classes.html
-        - text: Visualization
-          href: articles/visualization.html
         - text: Report Generation
           href: articles/reports.html
         - text: "---"
@@ -109,7 +107,6 @@ articles:
   - title: Advanced Topics
     contents:
       - s7-classes
-      - visualization
       - reports
       - shiny-app
 

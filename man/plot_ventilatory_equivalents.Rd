@@ -26,3 +26,10 @@ A ggplot2 object
 \description{
 Plots VE/VO2 and VE/VCO2 against time or VO2 for threshold detection.
 }
+\examples{
+\dontrun{
+file <- system.file("extdata", "example_cosmed.xlsx", package = "cardiometR")
+plot_ventilatory_equivalents(read_cpet(file))
+}
+
+}

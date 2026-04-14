@@ -1,0 +1,103 @@
+---
+title: "Generating PDF Reports"
+format: html
+vignette: >
+  %\VignetteIndexEntry{Generating PDF Reports}
+  %\VignetteEngine{quarto::html}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r}
+#| label: setup
+#| include: false
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", eval = FALSE)
+```
+
+`cardiometR` uses [Typst](https://typst.app) via the
+[`typr`](https://cran.r-project.org/package=typr) package to compile
+clinical PDF reports. Reports are fully bilingual (English / French) and
+can include normative comparisons against FRIEND and CHEER registries.
+
+## Minimal report
+
+```{r}
+library(cardiometR)
+
+file     <- system.file("extdata", "example_cosmed.xlsx", package = "cardiometR")
+data     <- read_cpet(file)
+analysis <- CpetAnalysis(
+  data       = average(data, method = "rolling", window = 30),
+  peaks      = find_peaks(average(data)),
+  thresholds = detect_thresholds(average(data))
+)
+
+config <- ReportConfig(language = "en")
+
+generate_report(analysis, output_file = "cpet_report.pdf", config = config)
+```
+
+## ReportConfig options
+
+```{r}
+config <- ReportConfig(
+  language          = "fr",                            # "en" or "fr"
+  institution       = "Universite de Montreal",
+  lab_name          = "LPEBA",
+  lab_url           = "https://lpeba.umontreal.ca",
+  logo_path         = get_logo("udem"),                # or any file path
+  technician        = "Dr. Smith",
+  prediction_source = "jones"                          # "jones" or "prefaut"
+)
+```
+
+Built-in logos are available for `"udem"` and `"epic"` via `get_logo()`.
+Pass any image path for a custom logo.
+
+## Normative comparison in reports
+
+Adding `athlete_sport` and `athlete_level` enables a side-by-side
+comparison against the relevant endurance-athlete registry:
+
+```{r}
+# Elite cyclist
+generate_report(analysis, "cyclist_report.pdf", config,
+                athlete_sport = "cycling", athlete_level = "elite")
+
+# Recreational runner
+generate_report(analysis, "runner_report.pdf", config,
+                athlete_sport = "running", athlete_level = "recreational")
+```
+
+Valid combinations: `sport ∈ {"cycling", "running", "triathlon"}`,
+`level ∈ {"elite", "competitive", "recreational"}`.
+
+## Selecting sections
+
+When you only need a subset of the report, pass `report_sections`:
+
+```{r}
+generate_report(analysis, "short.pdf", config,
+                report_sections = c("protocol_details", "thresholds", "graphs"))
+```
+
+Any section with missing data is omitted silently.
+
+## Clinical notes and interpretation
+
+`clinical_notes` accepts plain text; `interpretation` accepts a list of
+named interpretation sections that the template renders verbatim.
+
+```{r}
+generate_report(analysis, "full.pdf", config,
+                clinical_notes = "No symptoms during exercise.",
+                interpretation = list(
+                  aerobic   = "Maximal effort achieved (RER 1.18).",
+                  cardiovascular = "Normal chronotropic response."
+                ))
+```
+
+## Bilingual labels
+
+Report labels live in `inst/translations/labels_{en,fr}.yml`. To add a
+new label, add it to both files (the test suite enforces key parity),
+then reference it from the Typst template via the `tr()` helper.

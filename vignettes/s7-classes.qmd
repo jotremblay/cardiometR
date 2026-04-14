@@ -1,0 +1,86 @@
+---
+title: "S7 Classes"
+format: html
+vignette: >
+  %\VignetteIndexEntry{S7 Classes}
+  %\VignetteEngine{quarto::html}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r}
+#| label: setup
+#| include: false
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+```
+
+cardiometR uses [S7](https://rconsortium.github.io/S7/) classes so that every
+piece of CPET data carries a validated type. Properties are accessed with
+the `@` operator — never `$`.
+
+## Class hierarchy
+
+| Class | Role | Key properties |
+|-------|------|----------------|
+| `Participant` | Patient demographics | `id`, `age`, `sex`, `height_cm`, `weight_kg`, `sport` |
+| `CpetMetadata` | Test information | `test_date`, `device`, `protocol`, `modality` |
+| `CpetData` | Breath-by-breath container | `breaths`, `participant`, `metadata` |
+| `PeakValues` | Maximal values | `vo2_peak`, `vo2_kg_peak`, `hr_peak`, `rer_peak`, `ve_peak` |
+| `Thresholds` | Ventilatory thresholds | `vt1`, `vt2`, `methods_used` |
+| `CpetAnalysis` | Combined analysis object | `data`, `peaks`, `thresholds`, `quality` |
+| `ReportConfig` | PDF report settings | `language`, `institution`, `lab_name`, `logo_path` |
+
+Quality assessment classes (`ExerciseQualityCriteria`, `ProtocolQuality`,
+`DataQualityReport`, `QualityAssessment`) live alongside and are populated
+by `assess_quality()`.
+
+## Loading data into S7 objects
+
+```{r}
+#| eval: false
+library(cardiometR)
+
+file <- system.file("extdata", "example_cosmed.xlsx", package = "cardiometR")
+data <- read_cpet(file)
+
+class(data)
+#> <cardiometR::CpetData>
+
+data@participant@age
+data@metadata@test_date
+nrow(data@breaths)
+```
+
+## Chaining into an analysis
+
+```{r}
+#| eval: false
+averaged <- average(data, method = "rolling", window = 30)
+peaks    <- find_peaks(averaged)
+thr      <- detect_thresholds(averaged)
+quality  <- assess_quality(data, rpe = 18, lactate = 9.5)
+
+analysis <- CpetAnalysis(
+  data       = averaged,
+  peaks      = peaks,
+  thresholds = thr,
+  quality    = quality
+)
+
+analysis@peaks@vo2_kg_peak
+analysis@thresholds@vt1
+analysis@quality@overall_grade
+```
+
+## Why S7?
+
+* **Validation on construction** — invalid data (e.g., age outside a
+  plausible range) fails at the constructor, not deep inside analysis
+  code.
+* **Generic dispatch** — `plot()`, `print()`, `validate()`, `average()`,
+  `find_peaks()`, `detect_thresholds()` all dispatch on class, so the
+  same verbs work on raw `CpetData` and on `CpetAnalysis`.
+* **Forward compatibility** — S7 is the R Consortium successor to S4 and
+  R6 for heterogeneous, typed data.
+
+See `?S7::new_class` and `vignette("S7", package = "S7")` for the class
+system itself.

@@ -29,3 +29,10 @@ A ggplot2 object
 \description{
 Plots VO2, VCO2, and RER against time with optional smoothing.
 }
+\examples{
+\dontrun{
+file <- system.file("extdata", "example_cosmed.xlsx", package = "cardiometR")
+plot_gas_exchange(read_cpet(file))
+}
+
+}

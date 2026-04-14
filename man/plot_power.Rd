@@ -24,3 +24,10 @@ Plots power output against time with VO2 overlay option.
 When show_vo2 is TRUE and expected_efficiency is provided, overlays
 an expected VO2 dashed line based on mechanical efficiency.
 }
+\examples{
+\dontrun{
+file <- system.file("extdata", "example_cosmed.xlsx", package = "cardiometR")
+plot_power(read_cpet(file))
+}
+
+}

@@ -36,7 +36,7 @@ knitr::opts_chunk$set(
 #| eval: false
 # Install from GitHub
 # install.packages("pak")
-pak::pak("youruser/cardiometR")
+pak::pak("jotremblay/cardiometR")
 ```
 
 ## Quick Start

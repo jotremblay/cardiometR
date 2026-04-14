@@ -11,6 +11,7 @@ Description: Import, analyze, and report cardiopulmonary exercise testing
     (English/French) PDF report generation via Typst.
 License: MIT + file LICENSE
 Encoding: UTF-8
+Language: en-US
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.3
 Imports:

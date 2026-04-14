@@ -1,0 +1,82 @@
+---
+title: "Using the Shiny App"
+format: html
+vignette: >
+  %\VignetteIndexEntry{Using the Shiny App}
+  %\VignetteEngine{quarto::html}
+  %\VignetteEncoding{UTF-8}
+---
+
+The `cardiometR` Shiny app is a clinical front-end for the analysis
+pipeline. It runs entirely locally; no data leaves the machine.
+
+## Launching
+
+```{r}
+#| eval: false
+library(cardiometR)
+
+run_app()                    # French interface (default)
+run_app(language = "en")     # English interface
+```
+
+The language toggle in the navbar is persistent within the session.
+
+## Workflow
+
+The app is organized into five tabs that mirror the analysis pipeline:
+
+1. **Upload** — drag-and-drop or browse for a COSMED Quark `.xlsx` export.
+   After a successful read, the app auto-navigates to **Configure**.
+2. **Configure** — review and edit participant demographics (age, sex,
+   height, weight, sport/activity) and protocol details (modality,
+   stages, prediction source).
+3. **Results** — peak values, ventilatory thresholds, stage-by-stage
+   table, nine-panel CPET plot, and (when configured) normative
+   comparison against FRIEND / CHEER registries.
+4. **Quality** — test quality grade (A–D) based on RER, heart-rate
+   response, plateau detection, plus optional RPE and lactate.
+5. **Report** — generate the bilingual PDF. Choose sections, add
+   clinical notes, and download.
+
+## Common tasks
+
+**Edit participant after upload** — on the **Configure** tab, click the
+pencil icon next to the participant card, edit, and save.
+
+**Switch language mid-session** — use the language button in the
+top-right of the navbar. All labels, table headers, and plot captions
+update, including those passed to `plot_cpet_panel()`.
+
+**Generate a comparative report for an elite cyclist** — set
+sport = "Cycling" and level = "Elite" on the **Configure** tab, then
+hit Generate on the **Report** tab.
+
+## Input file requirements
+
+* COSMED Quark CPET `.xlsx` or `.xls` export.
+* Sheet with breath-by-breath data including at minimum: `time_s`,
+  `VO2 (mL/min)`, `VCO2 (mL/min)`, `VE (L/min)`, `HR (bpm)`.
+* Power (`Power (W)`) or speed (`Speed (km/h)`) needed for ergometer vs
+  treadmill protocols respectively.
+
+If the file fails validation, the **Upload** tab surfaces the reason
+(missing columns, empty test, unparseable date, etc.).
+
+## Adding a new translation key
+
+All user-facing strings route through `tr(key, language)`. To add a key:
+
+1. Add it to `inst/translations/labels_en.yml` and
+   `inst/translations/labels_fr.yml` (identical keys required — the test
+   suite enforces parity).
+2. Reference it in the module with `tr("my_key", language())`.
+
+## Extending the app
+
+Each tab is a self-contained module in `R/mod_<name>.R` (UI + server).
+To add a new section, create a new `mod_<area>.R`, add a tab to
+`R/app_ui.R::app_ui()`, and wire the server call in
+`R/app_server.R::app_server()`. Follow the existing conventions:
+`moduleServer()` returns a list of reactives for downstream tabs, and
+every data-dependent observer starts with `shiny::req()`.

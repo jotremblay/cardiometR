@@ -22,3 +22,11 @@ A ggplot2 object
 Creates a V-slope plot (VCO2 vs VO2) with optional threshold markers.
 Used for visual verification of ventilatory threshold detection.
 }
+\examples{
+\dontrun{
+file <- system.file("extdata", "example_cosmed.xlsx", package = "cardiometR")
+data <- read_cpet(file)
+plot_v_slope(data)
+}
+
+}
