@@ -1,5 +1,20 @@
 # cardiometR (development version)
 
+# cardiometR 0.6.0
+
+* Added `NEWS.md`, `CONTRIBUTING.md`, and R-CMD-check GitHub Action.
+* New vignettes: `s7-classes`, `reports`, `shiny-app`.
+* Added `@examples` to the individual plot functions
+  (`plot_v_slope`, `plot_ventilatory_equivalents`, `plot_gas_exchange`,
+  `plot_heart_rate`, `plot_power`).
+* Shiny: guard `mod_participant` save-edits with `req(cpet_data())`,
+  route error toast through `tr("error_label")`, wrap hardcoded
+  "Info" / "Breaths" via `tr()`, switch settings-badge tracking from
+  `observe()` to `observeEvent()`.
+* Documentation: fixed pkgdown URL, removed broken navbar link to
+  non-existent visualization vignette, added `Language: en-US` to
+  `DESCRIPTION`.
+
 # cardiometR 0.1.0
 
 Initial public release.

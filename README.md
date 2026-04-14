@@ -172,5 +172,5 @@ MIT License. See [LICENSE](LICENSE) for details.
 
 ```
 Tremblay J (2026). cardiometR: Cardiopulmonary Exercise Testing Analysis with S7 Classes.
-R package version 0.1.0. https://github.com/jotremblay/cardiometR
+R package version 0.6.0. https://github.com/jotremblay/cardiometR
 ```
