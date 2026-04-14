@@ -297,13 +297,13 @@
       width: 100%
     )[
       #align(center)[
-        #text(size: 9pt, weight: "semibold", fill: luma(80))[{{aerobic_capacity}}]
+        #text(size: 9pt, weight: "semibold", fill: luma(80))[{{ap_card1_label}}]
         #v(0.2em)
-        #text(size: 22pt, weight: "bold", fill: primary)[{{ap_vo2_kg}}]
+        #text(size: 22pt, weight: "bold", fill: primary)[{{ap_card1_value}}]
         #v(0.1em)
-        #text(size: 8pt, fill: luma(110))[mL·kg⁻¹·min⁻¹]
+        #text(size: 8pt, fill: luma(110))[{{ap_card1_unit}}]
         #v(0.3em)
-        #text(size: 8pt)[{{z_score}} {{ap_vo2_z}} · {{ap_vo2_pct}}]
+        #text(size: 8pt)[{{ap_card1_zline}}]
       ]
     ],
     block(
@@ -314,13 +314,13 @@
       width: 100%
     )[
       #align(center)[
-        #text(size: 9pt, weight: "semibold", fill: luma(80))[{{aerobic_power}}]
+        #text(size: 9pt, weight: "semibold", fill: luma(80))[{{ap_card2_label}}]
         #v(0.2em)
-        #text(size: 22pt, weight: "bold", fill: accent)[{{ap_map_kg}}]
+        #text(size: 22pt, weight: "bold", fill: accent)[{{ap_card2_value}}]
         #v(0.1em)
-        #text(size: 8pt, fill: luma(110))[W/kg]
+        #text(size: 8pt, fill: luma(110))[{{ap_card2_unit}}]
         #v(0.3em)
-        #text(size: 8pt)[{{z_score}} {{ap_map_z}} · {{ap_map_pct}}]
+        #text(size: 8pt)[{{ap_card2_zline}}]
       ]
     ],
     block(
@@ -331,13 +331,13 @@
       width: 100%
     )[
       #align(center)[
-        #text(size: 9pt, weight: "semibold", fill: luma(80))[{{peak_power}}]
+        #text(size: 9pt, weight: "semibold", fill: luma(80))[{{ap_card3_label}}]
         #v(0.2em)
-        #text(size: 22pt, weight: "bold", fill: warning)[{{ap_ppo}}]
+        #text(size: 22pt, weight: "bold", fill: warning)[{{ap_card3_value}}]
         #v(0.1em)
-        #text(size: 8pt, fill: luma(110))[W · k={{ap_kuipers}}]
+        #text(size: 8pt, fill: luma(110))[{{ap_card3_unit}}]
         #v(0.3em)
-        #text(size: 8pt)[{{z_score}} {{ap_ppo_z}} · {{ap_ppo_pct}}]
+        #text(size: 8pt)[{{ap_card3_zline}}]
       ]
     ]
   )
@@ -416,84 +416,9 @@
 #v(0.8em)
 {{/if}}
 
-// Peak Values - keep together on one page
-#block(breakable: false)[
-  #grid(
-    columns: (auto, 1fr),
-    gutter: 0.5em,
-    align(horizon)[⛰️],
-    heading(level: 1)[{{section_peak_values}}]
-  )
-
-  #grid(
-    columns: (1fr, 1fr, 1fr),
-    gutter: 1em,
-    // VO2 Peak Card
-    block(
-      fill: primary.lighten(92%),
-      stroke: (top: 3pt + primary),
-      inset: 1em,
-      radius: (bottom: 6pt),
-      width: 100%
-    )[
-      #align(center)[
-        #text(size: 28pt, weight: "bold", fill: primary)[{{vo2_peak_value}}]
-        #v(0.2em)
-        #text(size: 9pt, weight: "semibold")[{{label_vo2_peak}}]
-        #v(0.3em)
-        #box(
-          fill: primary.lighten(80%),
-          inset: (x: 0.6em, y: 0.3em),
-          radius: 3pt
-        )[#text(size: 8pt, fill: primary.darken(20%))[{{vo2_peak_percent}} {{label_predicted}}]]
-      ]
-    ],
-    // HR Peak Card
-    block(
-      fill: danger.lighten(92%),
-      stroke: (top: 3pt + danger),
-      inset: 1em,
-      radius: (bottom: 6pt),
-      width: 100%
-    )[
-      #align(center)[
-        #text(size: 28pt, weight: "bold", fill: danger)[{{hr_peak_value}}]
-        #v(0.2em)
-        #text(size: 9pt, weight: "semibold")[{{label_hr_peak}}]
-        #v(0.3em)
-        #box(
-          fill: danger.lighten(80%),
-          inset: (x: 0.6em, y: 0.3em),
-          radius: 3pt
-        )[#text(size: 8pt, fill: danger.darken(20%))[{{hr_peak_percent}} {{label_predicted}}]]
-      ]
-    ],
-    // Power Peak Card
-    block(
-      fill: accent.lighten(92%),
-      stroke: (top: 3pt + accent),
-      inset: 1em,
-      radius: (bottom: 6pt),
-      width: 100%
-    )[
-      #align(center)[
-        #text(size: 28pt, weight: "bold", fill: accent)[{{power_peak_value}}]
-        #v(0.2em)
-        #text(size: 9pt, weight: "semibold")[{{label_power_peak}}]
-        #v(0.3em)
-        #box(
-          fill: accent.lighten(80%),
-          inset: (x: 0.6em, y: 0.3em),
-          radius: 3pt
-        )[#text(size: 8pt, fill: accent.darken(20%))[{{power_peak_wkg}} W/kg]]
-      ]
-    ]
-  )
-]
-
-#v(0.8em)
-
-// Detailed Results Table - keep together on one page
+// Detailed Results Table — keep together on one page
+// (Formerly preceded by a 3-card "Peak Values" block that duplicated
+// the front-page athlete profile; removed to avoid redundancy.)
 #block(breakable: false)[
   == {{section_detailed_results}}
 
@@ -512,7 +437,7 @@
     [{{label_ve_peak}}], [#text(weight: "semibold")[{{ve_peak}}]], [{{ve_predicted}}], [#text(weight: "bold", fill: primary)[{{ve_percent}}%]],
     [{{label_hr_peak_row}}], [#text(weight: "semibold")[{{hr_peak}}]], [{{hr_predicted}}], [#text(weight: "bold", fill: primary)[{{hr_percent}}%]],
     [{{label_rer_peak}}], [#text(weight: "semibold")[{{rer_peak}}]], [—], [—],
-    [{{label_power_peak_row}}], [#text(weight: "semibold")[{{power_peak}}]], [{{power_predicted}}], [#text(weight: "bold", fill: primary)[{{power_percent}}%]],
+    [{{label_power_peak_row}}], [#text(weight: "semibold")[{{power_peak}}]], [{{power_predicted}}], [#text(weight: "bold", fill: primary)[{{power_percent}}]],
     [{{label_o2_pulse}}], [#text(weight: "semibold")[{{o2_pulse}}]], [{{o2_pulse_predicted}}], [#text(weight: "bold", fill: primary)[{{o2_pulse_percent}}%]],
   )
 
@@ -835,6 +760,7 @@
 
   // VT range
   {{#if has_vt_block}}
+  == {{vt_range_title}}
   #block(
     fill: luma(252),
     stroke: (left: 3pt + warning),
@@ -880,7 +806,8 @@
   #v(0.6em)
   {{/if}}
 
-  // CP explainer
+  // CP explainer (only when content present and modality applies)
+  {{#if has_cp_explainer}}
   #block(
     fill: luma(252),
     stroke: (left: 3pt + primary),
@@ -893,8 +820,10 @@
     #text(size: 9pt)[{{cp_explainer}}]
   ]
   #v(0.6em)
+  {{/if}}
 
   // Substrate oxidation
+  {{#if has_substrate_explainer}}
   #block(
     fill: luma(252),
     stroke: (left: 3pt + success),
@@ -920,6 +849,7 @@
     #text(size: 9pt)[{{substrate_explainer}}]
     {{/if}}
   ]
+  {{/if}}
 ]
 #v(0.8em)
 {{/if}}

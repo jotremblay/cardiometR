@@ -478,20 +478,59 @@ mod_results_server <- function(id, language, cpet_data, participant, settings,
       )
     })
 
+    is_treadmill_reactive <- shiny::reactive({
+      a <- analysis()
+      if (is.null(a)) return(FALSE)
+      tryCatch(!is.null(a@protocol_config) &&
+                 a@protocol_config@modality == "treadmill",
+               error = function(e) FALSE)
+    })
+
     output$zscore_strip_plot <- shiny::renderPlot({
       a <- analysis()
       shiny::req(a)
-      plot_zscore_strip(a,
-                        metrics = c("vo2_peak", "map_per_kg", "ppo"),
-                        language = language(),
-                        dark = isTRUE(dark_mode()))
+      tryCatch(
+        plot_zscore_strip(a,
+                          metrics = c("vo2_peak", "map_per_kg", "ppo"),
+                          language = language(),
+                          dark = isTRUE(dark_mode())),
+        error = function(e) {
+          ggplot2::ggplot() +
+            ggplot2::annotate("text", x = 0.5, y = 0.5,
+                              label = tr("insufficient_stratum_data", language()),
+                              color = "gray50") +
+            theme_cardiometr(dark = isTRUE(dark_mode()))
+        }
+      )
     }, bg = "transparent")
 
     output$vo2_power_slope_plot <- shiny::renderPlot({
       a <- analysis()
       shiny::req(a)
-      plot_vo2_power_slope(a, language = language(),
-                           dark = isTRUE(dark_mode()))
+      # Hide VO2-Power slope for treadmill (no power_w); plot fn also returns
+      # a placeholder in that case — belt and suspenders.
+      if (isTRUE(is_treadmill_reactive())) {
+        return(
+          ggplot2::ggplot() +
+            ggplot2::annotate("text", x = 0.5, y = 0.5,
+                              label = tr("insufficient_stratum_data", language()),
+                              color = "gray50") +
+            theme_cardiometr(dark = isTRUE(dark_mode())) +
+            ggplot2::theme(axis.text = ggplot2::element_blank(),
+                           axis.ticks = ggplot2::element_blank())
+        )
+      }
+      tryCatch(
+        plot_vo2_power_slope(a, language = language(),
+                             dark = isTRUE(dark_mode())),
+        error = function(e) {
+          ggplot2::ggplot() +
+            ggplot2::annotate("text", x = 0.5, y = 0.5,
+                              label = tr("insufficient_stratum_data", language()),
+                              color = "gray50") +
+            theme_cardiometr(dark = isTRUE(dark_mode()))
+        }
+      )
     }, bg = "transparent")
 
     # -- Thresholds table (legacy) ---------------------------------------

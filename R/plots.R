@@ -1515,7 +1515,24 @@ plot_predicted_comparison <- function(x,
 #' @export
 plot_vo2_power_slope <- function(analysis, language = "en", dark = FALSE) {
   pal <- palette_cardiometr()
+  placeholder <- function(msg = tr("insufficient_stratum_data", language)) {
+    ggplot2::ggplot() +
+      ggplot2::annotate("text", x = 0.5, y = 0.5, label = msg,
+                        color = "gray50", size = 4) +
+      ggplot2::scale_x_continuous(limits = c(0, 1)) +
+      ggplot2::scale_y_continuous(limits = c(0, 1)) +
+      ggplot2::labs(title = tr("vo2_power_slope_title", language),
+                    x = NULL, y = NULL) +
+      theme_cardiometr(dark = dark) +
+      ggplot2::theme(axis.text = ggplot2::element_blank(),
+                     axis.ticks = ggplot2::element_blank())
+  }
   breaths <- tryCatch(analysis@data@breaths, error = function(e) NULL)
+  # Bail out for tests without power_w (e.g. treadmill): return placeholder gg
+  if (is.null(breaths) || !"power_w" %in% names(breaths) ||
+      !any(is.finite(breaths$power_w))) {
+    return(placeholder())
+  }
   stage_summary <- tryCatch(analysis@stage_summary, error = function(e) NULL)
   stages_df <- tryCatch(analysis@data@stages, error = function(e) NULL)
 
@@ -1621,6 +1638,25 @@ plot_zscore_strip <- function(analysis,
                               dark = FALSE) {
   pal <- palette_cardiometr()
   zs <- tryCatch(analysis@z_scores, error = function(e) NULL)
+  # Early bail-out: no z-score data at all → placeholder gg (never NULL)
+  has_any_z <- is.list(zs) && length(zs) > 0 && any(vapply(zs, function(e) {
+    z <- if (is.list(e)) e$z else e
+    is.numeric(z) && length(z) >= 1 && is.finite(z[1])
+  }, logical(1)))
+  if (!has_any_z) {
+    return(
+      ggplot2::ggplot() +
+        ggplot2::annotate("text", x = 0.5, y = 0.5,
+                          label = tr("insufficient_stratum_data", language),
+                          color = "gray50", size = 4) +
+        ggplot2::scale_x_continuous(limits = c(0, 1)) +
+        ggplot2::scale_y_continuous(limits = c(0, 1)) +
+        ggplot2::labs(x = NULL, y = NULL) +
+        theme_cardiometr(dark = dark) +
+        ggplot2::theme(axis.text = ggplot2::element_blank(),
+                       axis.ticks = ggplot2::element_blank())
+    )
+  }
 
   label_for <- function(m) {
     switch(m,

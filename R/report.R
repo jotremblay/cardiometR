@@ -512,12 +512,11 @@ build_template_data <- function(analysis, config, labels, clinical_notes, interp
       } else if (!is.null(peaks@power_peak)) {
         round(peaks@power_peak, 0)
       } else "-",
-      power_predicted = if (is_treadmill) "-" else round(predicted$power_max, 0),
-      power_percent = if (is_treadmill) {
-        "-"
-      } else if (!is.null(peaks@power_peak)) {
-        round(100 * peaks@power_peak / predicted$power_max, 0)
-      } else "-",
+      # Peak power/speed predictions from Jones/Wasserman formulas are not
+      # validated for ramp-protocol peak values; suppress to avoid nonsense
+      # percentages (e.g. 23 %Pred for a 358 W test vs 1576 W "predicted").
+      power_predicted = "\u2014",
+      power_percent = "\u2014",
       o2_pulse = if (!is.null(peaks@hr_peak) && peaks@hr_peak > 0) {
         round(peaks@vo2_peak / peaks@hr_peak, 1)
       } else "-",
@@ -1383,6 +1382,45 @@ build_phase7_template_data <- function(analysis, language, report_sections) {
   out$ap_ppo_z         <- fmt_z(zs$ppo_z)
   out$ap_ppo_pct       <- fmt_pct(zs$ppo_z)
 
+  # Modality-aware card set: card1 always VO2/kg. Cards 2 and 3 depend on
+  # modality so the same Typst block renders meaningful values on both
+  # cycling (MAP/kg, PPO) and treadmill (peak speed, peak HR).
+  modality <- tryCatch(analysis@protocol_config@modality, error = function(e) NULL)
+  is_treadmill <- identical(modality, "treadmill")
+
+  out$ap_card1_label <- escape_typst(tr("aerobic_capacity", language))
+  out$ap_card1_value <- out$ap_vo2_kg
+  out$ap_card1_unit  <- "mL/kg/min"
+  out$ap_card1_zline <- sprintf("%s %s \u00b7 %s",
+                                tr("z_score", language),
+                                out$ap_vo2_z, out$ap_vo2_pct)
+
+  if (is_treadmill) {
+    speed_peak <- tryCatch(peaks@speed_peak, error = function(e) NA_real_)
+    hr_peak    <- tryCatch(peaks@hr_peak, error = function(e) NA_real_)
+    out$ap_card2_label <- escape_typst(tr("peak_speed", language))
+    out$ap_card2_value <- fmt_num(speed_peak, 1)
+    out$ap_card2_unit  <- tr("unit_kmh", language)
+    out$ap_card2_zline <- ""
+    out$ap_card3_label <- escape_typst(tr("peak_hr", language))
+    out$ap_card3_value <- fmt_int(hr_peak)
+    out$ap_card3_unit  <- tr("unit_bpm", language)
+    out$ap_card3_zline <- ""
+  } else {
+    out$ap_card2_label <- escape_typst(tr("aerobic_power", language))
+    out$ap_card2_value <- out$ap_map_kg
+    out$ap_card2_unit  <- "W/kg"
+    out$ap_card2_zline <- sprintf("%s %s \u00b7 %s",
+                                  tr("z_score", language),
+                                  out$ap_map_z, out$ap_map_pct)
+    out$ap_card3_label <- escape_typst(tr("peak_power", language))
+    out$ap_card3_value <- out$ap_ppo
+    out$ap_card3_unit  <- sprintf("W \u00b7 k=%s", out$ap_kuipers)
+    out$ap_card3_zline <- sprintf("%s %s \u00b7 %s",
+                                  tr("z_score", language),
+                                  out$ap_ppo_z, out$ap_ppo_pct)
+  }
+
   # Resting values (gated by athlete_profile section)
   r <- tryCatch(analysis@resting, error = function(e) NULL)
   if (has_ap && is.list(r) && length(r) > 0) {
@@ -1398,8 +1436,10 @@ build_phase7_template_data <- function(analysis, language, report_sections) {
       sprintf("%d:%02d", as.integer(dur_s) %/% 60L, as.integer(dur_s) %% 60L)
     } else "--"
     out$resting_duration_label <- escape_typst(tr("resting_rest_duration", language))
+    caption_key <- if (is_treadmill) "resting_values_caption_treadmill"
+                   else "resting_values_caption_cycling"
     out$resting_caption <- escape_typst(tryCatch(
-      sprintf(tr("resting_values_caption", language),
+      sprintf(tr(caption_key, language),
               as.integer(round(r$window_s %||% NA_real_)),
               as.integer(r$n_breaths %||% 0L)),
       error = function(e) ""
@@ -1458,10 +1498,20 @@ build_phase7_template_data <- function(analysis, language, report_sections) {
   has_vt <- any(is.finite(c(vt1r, vt2r, vt1_point, vt2_point)))
   out$has_vt_block <- has_vt
 
-  # FTP range
+  # VT-range table i18n labels (must be explicitly forwarded — tr() keys
+  # are not auto-merged into template_data)
+  out$vt_range        <- escape_typst(tr("vt_range", language))
+  out$vt_range_title  <- escape_typst(tr("vt_range", language))
+  out$vt_caveat       <- escape_typst(tr("vt_caveat", language))
+  out$metric          <- escape_typst(tr("metric", language))
+  out$low             <- escape_typst(tr("low", language))
+  out$high            <- escape_typst(tr("high", language))
+  out$point           <- escape_typst(tr("point", language))
+
+  # FTP range — cycling-only (meaningless for treadmill tests)
   map_w <- analysis@map_watts %||% NA_real_
   is_scalar_num <- function(v) is.numeric(v) && length(v) == 1 && !is.na(v) && is.finite(v)
-  if (is_scalar_num(map_w)) {
+  if (!is_treadmill && is_scalar_num(map_w)) {
     out$ftp_low  <- fmt_int(0.72 * map_w)
     out$ftp_high <- fmt_int(0.77 * map_w)
     out$has_ftp_block <- TRUE
@@ -1470,6 +1520,26 @@ build_phase7_template_data <- function(analysis, language, report_sections) {
     out$ftp_high <- "--"
     out$has_ftp_block <- FALSE
   }
+  out$ftp_range  <- escape_typst(tr("ftp_range", language))
+  out$ftp_caveat <- escape_typst(tr("ftp_caveat", language))
+
+  # CP and substrate explainer text/title — only render blocks when
+  # content is non-empty (avoids blank colored bars on page 3)
+  cp_title    <- tr("cp_explainer_title", language)
+  cp_text     <- tr("cp_explainer", language)
+  sub_title   <- tr("substrate_explainer_title", language)
+  sub_text    <- tr("substrate_explainer", language)
+  # Cycling-only: CP explainer is about critical power, not meaningful
+  # for treadmill; suppress. Substrate explainer applies to both.
+  out$cp_explainer_title       <- escape_typst(cp_title)
+  out$cp_explainer             <- escape_typst(cp_text)
+  out$has_cp_explainer         <- !is_treadmill && nzchar(trimws(cp_text))
+  out$substrate_explainer_title <- escape_typst(sub_title)
+  out$substrate_explainer      <- escape_typst(sub_text)
+  out$has_substrate_explainer  <- nzchar(trimws(sub_text))
+  out$stage         <- escape_typst(tr("stage", language))
+  out$fat_oxidation <- escape_typst(tr("fat_oxidation", language))
+  out$cho_oxidation <- escape_typst(tr("cho_oxidation", language))
 
   # Substrate: check steady-state stages
   sss <- analysis@steady_state_stages
