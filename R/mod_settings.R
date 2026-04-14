@@ -77,10 +77,10 @@ mod_settings_ui <- function(id, language = "en") {
             ns("protocol_type"),
             label = tr("protocol", language),
             choices = stats::setNames(
-              c("step", "ramp", "auto"),
-              c(tr("protocol_step", language),
-                tr("protocol_ramp", language),
-                "Auto-detect")
+              c("auto", "step", "ramp"),
+              c(tr("protocol_auto", language),
+                tr("protocol_step", language),
+                tr("protocol_ramp", language))
             ),
             selected = "auto"
           ),
@@ -344,10 +344,12 @@ mod_settings_server <- function(id, language, cpet_data = shiny::reactive(NULL))
       shiny::updateRadioButtons(session, "protocol_type",
         label = tr("protocol", lang),
         choices = stats::setNames(
-          c("step", "ramp", "auto"),
-          c(tr("protocol_step", lang), tr("protocol_ramp", lang),
-            "Auto-detect")
-        )
+          c("auto", "step", "ramp"),
+          c(tr("protocol_auto", lang),
+            tr("protocol_step", lang),
+            tr("protocol_ramp", lang))
+        ),
+        selected = input$protocol_type %||% "auto"
       )
 
       # Modality dropdown

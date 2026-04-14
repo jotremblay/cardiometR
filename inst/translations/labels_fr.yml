@@ -48,6 +48,7 @@ method_breath: "Basé sur les respirations"
 method_rolling: "Moyenne glissante"
 protocol_step: "Protocole par paliers"
 protocol_ramp: "Protocole en rampe"
+protocol_auto: "Détection automatique"
 stage_duration: "Durée du palier (s)"
 threshold_methods: "Méthodes de détection des seuils"
 

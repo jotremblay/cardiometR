@@ -48,6 +48,7 @@ method_breath: "Breath-based"
 method_rolling: "Rolling average"
 protocol_step: "Step protocol"
 protocol_ramp: "Ramp protocol"
+protocol_auto: "Auto-detect"
 stage_duration: "Stage Duration (s)"
 threshold_methods: "Threshold Detection Methods"
 
