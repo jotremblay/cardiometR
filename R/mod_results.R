@@ -161,6 +161,7 @@ mod_results_server <- function(id, language, cpet_data, participant, settings,
             stage_summary <- summarize_stages(data_with_stages, window_s = s$averaging_window %||% 30)
             stages_tbl <- tryCatch(data_with_stages@stages, error = function(e) NULL)
             data_avg@stages <- stages_tbl
+            data_avg@breaths <- data_with_stages@breaths
           }, error = function(e) {
             shiny::showNotification(
               tr("warning_stages_failed", lang),

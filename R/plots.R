@@ -301,6 +301,14 @@ plot_cpet_panel <- function(x,
   }
 
   breaths <- data@breaths
+  if (!"stage" %in% names(breaths)) {
+    stages_join <- tryCatch(data@stages, error = function(e) NULL)
+    if (is.data.frame(stages_join) && all(c("time_s", "stage") %in% names(stages_join))) {
+      breaths <- dplyr::left_join(breaths, stages_join[, c("time_s", "stage")],
+                                   by = "time_s")
+    }
+  }
+  breaths <- filter_exercise_data(breaths)
   weight_kg <- data@participant@weight_kg
 
   # Auto-detect modality if not specified
