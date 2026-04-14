@@ -159,6 +159,11 @@ extract_stages_from_power <- function(breaths, protocol, stage_duration) {
         power_used = power_used
       )
 
+      # Phase-based rest override: any row explicitly tagged as REST in the
+      # source data should stay stage 0 regardless of what the smoothed
+      # power says.
+      has_phase_col <- "phase" %in% names(breaths)
+
       breaths_with_power <- breaths |>
         dplyr::left_join(power_smoothed, by = "time_s") |>
         dplyr::mutate(
@@ -173,6 +178,20 @@ extract_stages_from_power <- function(breaths, protocol, stage_duration) {
             as.integer(match(power_rounded, sort(unique(power_rounded[power_rounded > 0])))),
             0L
           ),
+          # Force rest whenever raw power is 0 (centered rolling mean can
+          # bleed early ramp power into the last pre-ramp rows).
+          stage = dplyr::if_else(
+            !is.na(power_w) & power_w <= 0,
+            0L,
+            stage
+          ),
+          stage = if (has_phase_col) {
+            dplyr::if_else(
+              !is.na(phase) & tolower(as.character(phase)) == "rest",
+              0L,
+              stage
+            )
+          } else stage,
           stage_name = dplyr::if_else(stage == 0, "Rest", paste("Stage", stage))
         ) |>
         dplyr::select(time_s, stage, stage_name, power_rounded)
