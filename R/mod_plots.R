@@ -1,3 +1,63 @@
+#' Convert ggplot plotmath labels in a plotly object to Unicode
+#'
+#' `plotly::ggplotly()` does not render ggplot2 `expression()` axis/title
+#' labels — they appear literally as `"VO[2]"`. This helper walks the plotly
+#' layout/traces and substitutes the common CPET plotmath tokens with
+#' Unicode subscripts so the in-app interactive plots match the PNG version.
+#'
+#' @param p A plotly object.
+#' @return The same plotly object with axis/title/legend text made Unicode.
+#' @keywords internal
+plotlymath_to_unicode <- function(p) {
+  fix <- function(s) {
+    if (is.null(s) || !length(s)) return(s)
+    if (is.expression(s) || is.call(s) || is.name(s)) s <- as.character(s)
+    if (!is.character(s)) return(s)
+    s <- gsub("P\\[ET\\]\\s*\\*\\s*CO\\[2\\]", "P\u2091\u209cCO\u2082", s)
+    s <- gsub("P\\[ET\\]\\s*\\*\\s*O\\[2\\]",  "P\u2091\u209cO\u2082",  s)
+    s <- gsub("VCO\\[2\\]", "V\u0307CO\u2082", s)
+    s <- gsub("VO\\[2\\]",  "V\u0307O\u2082",  s)
+    s <- gsub("O\\[2\\]",   "O\u2082",         s)
+    s <- gsub("CO\\[2\\]",  "CO\u2082",        s)
+    s <- gsub("\\s*\\*\\s*", "", s)
+    s <- gsub("\\s*~\\s*",   " ", s)
+    s
+  }
+  lay <- p$x$layout
+  if (!is.null(lay)) {
+    for (ax in c("xaxis", "yaxis", "xaxis2", "yaxis2")) {
+      if (!is.null(lay[[ax]]) && !is.null(lay[[ax]]$title)) {
+        if (is.list(lay[[ax]]$title) && !is.null(lay[[ax]]$title$text)) {
+          p$x$layout[[ax]]$title$text <- fix(lay[[ax]]$title$text)
+        } else if (is.character(lay[[ax]]$title)) {
+          p$x$layout[[ax]]$title <- fix(lay[[ax]]$title)
+        }
+      }
+    }
+    if (!is.null(lay$title)) {
+      if (is.list(lay$title) && !is.null(lay$title$text)) {
+        p$x$layout$title$text <- fix(lay$title$text)
+      } else if (is.character(lay$title)) {
+        p$x$layout$title <- fix(lay$title)
+      }
+    }
+    if (!is.null(lay$annotations) && is.list(lay$annotations)) {
+      p$x$layout$annotations <- lapply(lay$annotations, function(a) {
+        if (!is.null(a$text)) a$text <- fix(a$text); a
+      })
+    }
+  }
+  if (!is.null(p$x$data)) {
+    p$x$data <- lapply(p$x$data, function(tr) {
+      if (!is.null(tr$name)) tr$name <- fix(tr$name)
+      if (!is.null(tr$legendgroup)) tr$legendgroup <- fix(tr$legendgroup)
+      tr
+    })
+  }
+  p
+}
+
+
 #' Plots Module UI
 #'
 #' @param id Module namespace ID.
@@ -39,7 +99,7 @@ mod_plots_ui <- function(id, language = "en", secondary_id = NULL) {
           ns("download_format"),
           label = NULL,
           choices = c("PNG" = "png", "SVG" = "svg"),
-          width = "80px"
+          width = "110px"
         ),
         shiny::downloadButton(
           ns("download_plot"),
@@ -145,6 +205,7 @@ mod_plots_server <- function(id, language, analysis, settings = NULL,
       p <- current_plot()
       shiny::req(p)
       plotly::ggplotly(p, tooltip = c("x", "y")) |>
+        plotlymath_to_unicode() |>
         plotly::config(displayModeBar = TRUE, displaylogo = FALSE)
     })
 

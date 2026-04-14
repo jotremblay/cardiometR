@@ -57,20 +57,26 @@ calculate_expected_vo2_treadmill <- function(speed_kmh, weight_kg) {
 #' Calculate expected VO2 for cycling exercise
 #'
 #' @description
-#' Calculates expected VO2 from cycling power output using metabolic
-#' efficiency. The formula converts mechanical power to metabolic cost:
-#' VO2 (mL/min) = (power_w * 0.01433 / (efficiency * 5.05)) * 1000.
+#' Calculates the expected metabolic cost (V̇O₂, mL/min) of upright cycle
+#' ergometry from the externally measured power output. Uses the ACSM
+#' metabolic equation for leg cycling (ACSM Guidelines, 10th ed., Chap. 6):
+#' `VO2 (mL/min) = 10.8 * power_w + 7 * body_mass_kg`. The first term
+#' captures the near-linear slope of measured V̇O₂ versus work rate
+#' (≈ 10–11 mL·W⁻¹·min⁻¹ across the 18–25 % gross-efficiency range), and
+#' the second term approximates unloaded pedaling plus resting metabolism
+#' (≈ 3.5 mL·kg⁻¹·min⁻¹ × body mass).
 #'
-#' @param power_w Power output in watts (numeric vector)
-#' @param weight_kg Body weight in kilograms (not used in calculation but
-#'   included for API consistency with treadmill function)
-#' @param efficiency Gross mechanical efficiency as a proportion (default 0.20)
-#'
-#' @return Numeric vector of expected VO2 values in mL/min
-#'
+#' @param power_w Power output in watts (numeric vector).
+#' @param weight_kg Body mass in kilograms; used for the resting/unloaded
+#'   component.
+#' @param slope_ml_per_w Slope of the V̇O₂–Power relation, in mL·O₂·W⁻¹·min⁻¹.
+#'   Defaults to the ACSM value of `10.8` (range 8–12 across elite to
+#'   low-efficiency riders).
+#' @return Numeric vector of expected V̇O₂ values in mL/min.
 #' @export
-calculate_expected_vo2_cycling <- function(power_w, weight_kg, efficiency = 0.20) {
-  (power_w * 0.01433 / (efficiency * 5.05)) * 1000
+calculate_expected_vo2_cycling <- function(power_w, weight_kg,
+                                           slope_ml_per_w = 10.8) {
+  slope_ml_per_w * power_w + 7 * (weight_kg %||% 75)
 }
 
 #' Calculate stage averages for CPET data
@@ -402,9 +408,9 @@ plot_cpet_panel <- function(x,
       ggplot2::geom_point(size = 2.5, alpha = 0.9, color = "#2E86AB") +
       ggplot2::geom_line(color = "#2E86AB", linewidth = 0.8, alpha = 0.6) +
       ggplot2::labs(
-        title = if (language == "fr") expression(Pouls~O[2]~vs~Puissance) else expression(O[2]~Pulse~vs~Power),
+        title = if (language == "fr") "Pouls O₂ vs Puissance" else "O₂ Pulse vs Power",
         x = if (language == "fr") "Puissance (W)" else "Power (W)",
-        y = expression(VO[2]/FC~(mL/batt))
+        y = if (language == "fr") "V̇O₂/FC (mL/batt)" else "V̇O₂/HR (mL/beat)"
       ) +
       theme_cpet
   } else if ("hr_bpm" %in% names(stage_avg) && !all(is.na(stage_avg$hr_bpm))) {
@@ -414,9 +420,9 @@ plot_cpet_panel <- function(x,
       ggplot2::geom_point(size = 2.5, alpha = 0.9, color = "#2E86AB") +
       ggplot2::geom_line(color = "#2E86AB", linewidth = 0.8, alpha = 0.6) +
       ggplot2::labs(
-        title = if (language == "fr") expression(Pouls~O[2]) else expression(O[2]~Pulse),
+        title = if (language == "fr") "Pouls O₂" else "O₂ Pulse",
         x = time_label,
-        y = expression(VO[2]/FC~(mL/batt))
+        y = if (language == "fr") "V̇O₂/FC (mL/batt)" else "V̇O₂/HR (mL/beat)"
       ) +
       theme_cpet
   } else {
@@ -435,9 +441,9 @@ plot_cpet_panel <- function(x,
       ggplot2::geom_smooth(method = "lm", se = TRUE, color = "#E94F37",
                            fill = "#E94F37", alpha = 0.2, linewidth = 1) +
       ggplot2::labs(
-        title = if (language == "fr") expression(VO[2]~vs~Puissance) else expression(VO[2]~vs~Power),
+        title = if (language == "fr") "V̇O₂ vs Puissance" else "V̇O₂ vs Power",
         x = if (language == "fr") "Puissance (W)" else "Power (W)",
-        y = expression(VO[2]~(mL/min))
+        y = "V̇O₂ (mL/min)"
       ) +
       theme_cpet
 
@@ -448,7 +454,7 @@ plot_cpet_panel <- function(x,
                        length.out = 50)
       expected_df <- tibble::tibble(
         power_w = power_seq,
-        vo2_expected = calculate_expected_vo2_cycling(power_seq, weight_kg, expected_efficiency)
+        vo2_expected = calculate_expected_vo2_cycling(power_seq, weight_kg)
       )
       expected_label <- if (language == "fr") "Attendu" else "Expected"
       p2 <- p2 +
@@ -503,8 +509,7 @@ plot_cpet_panel <- function(x,
           "text",
           x = peak_point$power_w,
           y = peak_point$vo2_peak,
-          label = if (language == "fr") "VO[2]~pic" else "VO[2]*peak",
-          parse = TRUE,
+          label = if (language == "fr") "V\u0307O\u2082 pic" else "V\u0307O\u2082 peak",
           hjust = -0.1,
           vjust = -0.8,
           size = 3,
@@ -516,9 +521,9 @@ plot_cpet_panel <- function(x,
       ggplot2::geom_point(size = 2.5, alpha = 0.9, color = "#E94F37") +
       ggplot2::geom_line(color = "#E94F37", linewidth = 0.8, alpha = 0.6) +
       ggplot2::labs(
-        title = if (language == "fr") expression(VO[2]) else expression(VO[2]),
+        title = if (language == "fr") "V̇O₂" else "V̇O₂",
         x = time_label,
-        y = expression(VO[2]~(mL/min))
+        y = "V̇O₂ (mL/min)"
       ) +
       theme_cpet
     if (!is.null(peak_point) && length(peak_point$time_plot) > 0 &&
@@ -535,8 +540,7 @@ plot_cpet_panel <- function(x,
           "text",
           x = peak_point$time_plot,
           y = peak_point$vo2_peak,
-          label = if (language == "fr") "VO[2]~pic" else "VO[2]*peak",
-          parse = TRUE,
+          label = if (language == "fr") "V\u0307O\u2082 pic" else "V\u0307O\u2082 peak",
           hjust = -0.1,
           vjust = -0.8,
           size = 3,
@@ -551,8 +555,8 @@ plot_cpet_panel <- function(x,
     ggplot2::geom_smooth(method = "lm", se = TRUE, color = "#1B998B",
                          fill = "#1B998B", alpha = 0.2, linewidth = 1) +
     ggplot2::labs(
-      title = expression(VE~vs~VCO[2]),
-      x = expression(VCO[2]~(mL/min)),
+      title = "V̇E vs V̇CO₂",
+      x = "V̇CO₂ (mL/min)",
       y = "VE (L/min)"
     ) +
     theme_cpet
@@ -566,8 +570,8 @@ plot_cpet_panel <- function(x,
                          fill = "#6B4C9A", alpha = 0.2, linewidth = 1) +
     ggplot2::labs(
       title = "V-Slope",
-      x = expression(VO[2]~(mL/min)),
-      y = expression(VCO[2]~(mL/min))
+      x = "V̇O₂ (mL/min)",
+      y = "V̇CO₂ (mL/min)"
     ) +
     theme_cpet
 
@@ -598,11 +602,11 @@ plot_cpet_panel <- function(x,
     ggplot2::geom_line(linewidth = 0.8, alpha = 0.6) +
     ggplot2::scale_color_manual(
       values = c("VE/VO2" = "#2E86AB", "VE/VCO2" = "#E94F37"),
-      labels = c(expression(VE/VO[2]), expression(VE/VCO[2]))
+      labels = c("V̇E/V̇O₂", "V̇E/V̇CO₂")
     ) +
     ggplot2::labs(
       title = if (language == "fr") "\u00c9quivalents ventilatoires" else "Ventilatory Equivalents",
-      x = expression(VO[2]~(mL/min)),
+      x = "V̇O₂ (mL/min)",
       y = NULL,
       color = NULL
     ) +
@@ -618,8 +622,8 @@ plot_cpet_panel <- function(x,
     ggplot2::geom_line(color = "#F77F00", linewidth = 0.8, alpha = 0.6) +
     ggplot2::geom_hline(yintercept = 1.0, linetype = "dashed", color = "gray50", linewidth = 0.8) +
     ggplot2::labs(
-      title = expression(RER~vs~VO[2]),
-      x = expression(VO[2]~(mL/min)),
+      title = "RER vs V̇O₂",
+      x = "V̇O₂ (mL/min)",
       y = "RER"
     ) +
     theme_cpet
@@ -647,11 +651,11 @@ plot_cpet_panel <- function(x,
       ggplot2::geom_line(linewidth = 0.8, alpha = 0.6) +
       ggplot2::scale_color_manual(
         values = c("PETO2" = "#2E86AB", "PETCO2" = "#E94F37"),
-        labels = c(expression(P[ET]*O[2]), expression(P[ET]*CO[2]))
+        labels = c("PₑₜO₂", "PₑₜCO₂")
       ) +
       ggplot2::labs(
-        title = if (language == "fr") expression(P[ET]*O[2]~"/"~P[ET]*CO[2]) else expression(P[ET]*O[2]~"/"~P[ET]*CO[2]),
-        x = expression(VO[2]~(mL/min)),
+        title = if (language == "fr") "PₑₜO₂/PₑₜCO₂" else "PₑₜO₂/PₑₜCO₂",
+        x = "V̇O₂ (mL/min)",
         y = "mmHg",
         color = NULL
       ) +
@@ -667,9 +671,9 @@ plot_cpet_panel <- function(x,
         ggplot2::geom_point(size = 2.5, alpha = 0.9, color = "#6B4C9A") +
         ggplot2::geom_line(color = "#6B4C9A", linewidth = 0.8, alpha = 0.6) +
         ggplot2::labs(
-          title = if (language == "fr") expression(Pouls~O[2]) else expression(O[2]~Pulse),
-          x = expression(VO[2]~(mL/min)),
-          y = expression(VO[2]/HR~(mL/beat))
+          title = if (language == "fr") "Pouls O₂" else "O₂ Pulse",
+          x = "V̇O₂ (mL/min)",
+          y = "V̇O₂/HR (mL/beat)"
         ) +
         theme_cpet
     } else {
@@ -825,9 +829,9 @@ plot_v_slope <- function(x,
   p <- ggplot2::ggplot(breaths, ggplot2::aes(x = vo2_ml, y = vco2_ml)) +
     ggplot2::geom_point(size = point_size, alpha = point_alpha, color = "#2E86AB") +
     ggplot2::labs(
-      title = if (language == "fr") expression(V-Slope~(VCO[2]~vs~VO[2])) else expression(V-Slope~(VCO[2]~vs~VO[2])),
-      x = expression(VO[2]~(mL/min)),
-      y = expression(VCO[2]~(mL/min))
+      title = if (language == "fr") "V-Slope (V̇CO₂ vs V̇O₂)" else "V-Slope (V̇CO₂ vs V̇O₂)",
+      x = "V̇O₂ (mL/min)",
+      y = "V̇CO₂ (mL/min)"
     ) +
     ggplot2::theme_minimal() +
     ggplot2::theme(
@@ -910,7 +914,7 @@ plot_ventilatory_equivalents <- function(x,
   # Set x-axis
   if (x_axis == "vo2") {
     x_var <- "vo2_ml"
-    x_label <- expression(VO[2]~(mL/min))
+    x_label <- "V̇O₂ (mL/min)"
   } else {
     x_var <- "time_min"
     x_label <- if (language == "fr") "Temps (min)" else "Time (min)"
@@ -921,7 +925,7 @@ plot_ventilatory_equivalents <- function(x,
     ggplot2::scale_color_manual(
       values = c("VE/VO2" = "#2E86AB", "VE/VCO2" = "#E94F37"),
       name = NULL,
-      labels = c(expression(VE/VO[2]), expression(VE/VCO[2]))
+      labels = c("V̇E/V̇O₂", "V̇E/V̇CO₂")
     ) +
     ggplot2::labs(
       title = if (language == "fr") "\u00c9quivalents ventilatoires" else "Ventilatory Equivalents",
@@ -1070,7 +1074,7 @@ plot_heart_rate <- function(x,
   # Set x-axis
   if (x_axis == "vo2") {
     x_var <- "vo2_ml"
-    x_label <- expression(VO[2]~(mL/min))
+    x_label <- "V̇O₂ (mL/min)"
   } else {
     x_var <- "time_min"
     x_label <- if (language == "fr") "Temps (min)" else "Time (min)"
@@ -1147,58 +1151,52 @@ plot_power <- function(x,
   point_alpha_secondary <- if (plot_data$using_stage_summary) 0.7 else 0.4
 
   if (show_vo2) {
-    # Calculate scaling factor for secondary axis
+    # V̇O₂ vs Power scatter with cycling-economy iso-lines. Each line is
+    # V̇O₂ = slope · P + 7 · body_mass, parameterised by an iso-slope in
+    # mL O₂ per watt (cycling economy). The 8–12 mL/W range spans typical
+    # trained-to-recreational cyclists (lower slope = higher efficiency).
     power_range <- range(breaths$power_w, na.rm = TRUE)
-    vo2_range <- range(breaths$vo2_ml, na.rm = TRUE)
-    scale_factor <- diff(power_range) / diff(vo2_range)
-    offset <- power_range[1] - vo2_range[1] * scale_factor
+    resting <- 7 * (weight_kg %||% 75)
+    slopes <- c(8, 9, 10, 11, 12)
+    pw_grid <- seq(max(0, power_range[1]), power_range[2], length.out = 80)
+    iso_df <- purrr::map_dfr(slopes, function(s) {
+      tibble::tibble(
+        power_w = pw_grid,
+        vo2_ml  = s * pw_grid + resting,
+        slope   = s
+      )
+    }) |>
+      dplyr::mutate(slope = factor(slope, levels = slopes,
+                                   labels = paste0(slopes, " mL/W")))
 
-    p <- ggplot2::ggplot(breaths, ggplot2::aes(x = time_min)) +
+    p <- ggplot2::ggplot(
+        breaths |> dplyr::filter(!is.na(power_w), power_w >= 0),
+        ggplot2::aes(x = power_w, y = vo2_ml)
+      ) +
+      ggplot2::geom_line(
+        data = iso_df,
+        ggplot2::aes(x = power_w, y = vo2_ml, color = slope, group = slope),
+        linewidth = 0.8, alpha = 0.9, inherit.aes = FALSE
+      ) +
       ggplot2::geom_point(
-        ggplot2::aes(y = power_w),
         size = point_size_primary,
         alpha = point_alpha_primary,
-        color = "#1B998B"
+        color = "#2E86AB"
       ) +
-      ggplot2::geom_point(ggplot2::aes(y = vo2_ml * scale_factor + offset),
-                          size = point_size_secondary, alpha = point_alpha_secondary, color = "#2E86AB") +
-      ggplot2::scale_y_continuous(
-        name = "Power (W)",
-        sec.axis = ggplot2::sec_axis(
-          ~ (. - offset) / scale_factor,
-          name = expression(VO[2]~(mL/min))
-        )
+      ggplot2::scale_color_viridis_d(
+        option = "plasma", end = 0.85, direction = -1,
+        name = if (language == "fr") "Économie" else "Economy"
       ) +
       ggplot2::labs(
-        title = if (language == "fr") expression(Puissance~et~VO[2]) else expression(Power~and~VO[2]),
-        x = if (language == "fr") "Temps (min)" else "Time (min)"
+        title = if (language == "fr") "V̇O₂ vs Puissance" else "V̇O₂ vs Power",
+        x = if (language == "fr") "Puissance (W)" else "Power (W)",
+        y = "V̇O₂ (mL/min)"
       ) +
       ggplot2::theme_minimal() +
       ggplot2::theme(
         plot.title = ggplot2::element_text(size = 14, face = "bold"),
-        axis.title.y.left = ggplot2::element_text(color = "#1B998B"),
-        axis.title.y.right = ggplot2::element_text(color = "#2E86AB")
+        legend.position = "right"
       )
-
-    # Overlay expected VO2 line on secondary axis
-    if (!is.null(expected_efficiency)) {
-      expected_vo2 <- calculate_expected_vo2_cycling(breaths$power_w, weight_kg, expected_efficiency)
-      expected_df <- tibble::tibble(
-        time_min = breaths$time_min,
-        vo2_expected_scaled = expected_vo2 * scale_factor + offset
-      )
-      expected_label <- if (language == "fr") "Attendu" else "Expected"
-      p <- p +
-        ggplot2::geom_line(data = expected_df,
-                           ggplot2::aes(x = time_min, y = vo2_expected_scaled),
-                           linetype = "dashed", color = "gray50", linewidth = 0.7,
-                           inherit.aes = FALSE) +
-        ggplot2::annotate("text",
-                          x = max(expected_df$time_min, na.rm = TRUE),
-                          y = expected_df$vo2_expected_scaled[nrow(expected_df)],
-                          label = expected_label,
-                          hjust = 1.1, vjust = -0.5, size = 2.8, color = "gray50")
-    }
   } else {
     p <- ggplot2::ggplot(breaths, ggplot2::aes(x = time_min, y = power_w)) +
       ggplot2::geom_point(
@@ -1322,8 +1320,10 @@ plot_predicted_comparison <- function(x,
   }
 
   # Build comparison data - VO2max only for main comparison
-  labels_en <- expression(atop(VO[2]*max, (mL/kg/min)))
-  labels_fr <- expression(atop(VO[2]*max, (mL/kg/min)))
+  labels_en <- "V̇O₂max
+(mL/kg/min)"
+  labels_fr <- "V̇O₂max
+(mL/kg/min)"
 
   # Create data frame for VO2max plot
   plot_data <- tibble::tibble(
@@ -1614,7 +1614,7 @@ plot_vo2_power_slope <- function(analysis, language = "en", dark = FALSE) {
     ggplot2::labs(
       title = tr("vo2_power_slope_title", language),
       x = if (language == "fr") "Puissance (W)" else "Power (W)",
-      y = expression(VO[2]~(mL/min)),
+      y = "V̇O₂ (mL/min)",
       caption = caption
     ) +
     theme_cardiometr(dark = dark)
