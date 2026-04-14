@@ -27,7 +27,8 @@ mod_upload_ui <- function(id, language = "en") {
             ns("file"),
             label = tr("upload_prompt", language),
             accept = c(".xlsx", ".xls"),
-            placeholder = tr("browse", language),
+            buttonLabel = tr("browse", language),
+            placeholder = if (identical(language, "fr")) "Aucun fichier s\u00e9lectionn\u00e9" else "No file selected",
             width = "100%"
           ),
           shiny::tags$small(
@@ -81,18 +82,33 @@ mod_upload_server <- function(id, language) {
         id = ns("file"),
         label = tr("upload_prompt", lang)
       ))
+      session$sendCustomMessage("update_button_label", list(
+        selector = sprintf(".shiny-input-container:has(#%s) .btn-file", ns("file")),
+        label = tr("browse", lang)
+      ))
+      # Re-run validation so the already-uploaded file's messages switch
+      # language along with the UI.
+      if (!is.null(cpet_data())) {
+        validation(validate(cpet_data(), language = lang))
+      }
     })
 
     # Process uploaded file
     shiny::observeEvent(input$file, {
       shiny::req(input$file)
 
+      # Localize Shiny's built-in "Upload complete" progress-bar text.
+      session$sendCustomMessage("localize_upload_progress", list(
+        id = ns("file"),
+        text = tr("upload_complete", language())
+      ))
+
       tryCatch({
         # Read CPET data
         data <- read_cpet(input$file$datapath)
 
         # Validate data
-        val <- validate(data)
+        val <- validate(data, language = language())
 
         # Store results
         cpet_data(data)

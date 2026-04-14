@@ -417,3 +417,5 @@ norms_no_stratum: "No stratum selected; configure sport and level."
 # Population norms table column + thresholds heading
 norms_patient: "Athlete"
 section_thresholds: "Ventilatory Thresholds"
+
+upload_complete: "Upload complete"

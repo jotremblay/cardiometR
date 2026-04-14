@@ -85,6 +85,36 @@ app_ui <- function() {
           var label = document.querySelector('label[for=\"' + data.id + '\"]');
           if (label) label.textContent = data.label;
         });
+        Shiny.addCustomMessageHandler('update_button_label', function(data) {
+          var el = document.querySelector(data.selector);
+          if (!el) return;
+          // Preserve child nodes (e.g. Shiny's hidden <input type=\"file\">)
+          // by replacing only the first text node rather than textContent.
+          var replaced = false;
+          for (var i = 0; i < el.childNodes.length; i++) {
+            var n = el.childNodes[i];
+            if (n.nodeType === Node.TEXT_NODE && n.nodeValue.trim().length) {
+              n.nodeValue = data.label;
+              replaced = true;
+              break;
+            }
+          }
+          if (!replaced) el.insertBefore(document.createTextNode(data.label), el.firstChild);
+        });
+        Shiny.addCustomMessageHandler('localize_upload_progress', function(data) {
+          var el = document.getElementById(data.id);
+          if (!el) return;
+          var container = el.closest('.form-group, .shiny-input-container') || el.parentNode;
+          if (!container) return;
+          var observer = new MutationObserver(function() {
+            var bar = container.querySelector('.progress-bar');
+            if (bar && bar.textContent && bar.textContent.match(/Upload complete/i)) {
+              bar.textContent = data.text;
+            }
+          });
+          observer.observe(container, { childList: true, subtree: true, characterData: true });
+          setTimeout(function() { observer.disconnect(); }, 10000);
+        });
         Shiny.addCustomMessageHandler('update_settings_badges', function(changed) {
           Object.keys(changed).forEach(function(key) {
             var btn = document.querySelector('.accordion-button[aria-controls*=\"' + key + '\"]');

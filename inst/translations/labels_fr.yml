@@ -417,3 +417,5 @@ norms_no_stratum: "Aucun stratum sélectionné; configurer le sport et le niveau
 # Colonnes de comparaison et titre des seuils
 norms_patient: "Athlète"
 section_thresholds: "Seuils ventilatoires"
+
+upload_complete: "Téléversement terminé"
