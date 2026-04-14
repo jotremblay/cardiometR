@@ -419,3 +419,8 @@ norms_patient: "Athlète"
 section_thresholds: "Seuils ventilatoires"
 
 upload_complete: "Téléversement terminé"
+
+# Validation de l'upload + retour édition participant
+info_label: "Info"
+breaths_label: "Respirations"
+error_label: "Erreur"

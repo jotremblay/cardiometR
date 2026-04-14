@@ -193,7 +193,7 @@ mod_upload_server <- function(id, language) {
         if (length(val@info) > 0) {
           shiny::div(
             class = "mb-3",
-            shiny::tags$strong(class = "text-info", "Info"),
+            shiny::tags$strong(class = "text-info", tr("info_label", lang)),
             shiny::tags$ul(
               class = "text-info small",
               lapply(val@info, function(i) shiny::tags$li(i))
@@ -212,7 +212,7 @@ mod_upload_server <- function(id, language) {
               shiny::tags$dd(class = "col-sm-8", data@participant@name),
               shiny::tags$dt(class = "col-sm-4", tr("test_date", lang)),
               shiny::tags$dd(class = "col-sm-8", format(data@metadata@test_date, "%Y-%m-%d")),
-              shiny::tags$dt(class = "col-sm-4", "Breaths"),
+              shiny::tags$dt(class = "col-sm-4", tr("breaths_label", lang)),
               shiny::tags$dd(class = "col-sm-8", nrow(data@breaths))
             )
           )

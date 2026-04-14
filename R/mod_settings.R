@@ -295,7 +295,7 @@ mod_settings_server <- function(id, language, cpet_data = shiny::reactive(NULL))
     })
 
     # Track non-default settings and show badge indicators
-    shiny::observe({
+    shiny::observeEvent(settings(), {
       s <- settings()
       defaults <- list(
         averaging_method = "rolling", averaging_window = 30,

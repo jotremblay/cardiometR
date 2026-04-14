@@ -165,6 +165,7 @@ mod_participant_server <- function(id, language, cpet_data) {
 
     # Save edits
     shiny::observeEvent(input$save_edits, {
+      shiny::req(cpet_data())
       tryCatch({
         new_participant <- Participant(
           id = cpet_data()@participant@id,
@@ -186,7 +187,7 @@ mod_participant_server <- function(id, language, cpet_data) {
         )
       }, error = function(e) {
         shiny::showNotification(
-          paste("Error:", e$message),
+          paste0(tr("error_label", language()), ": ", e$message),
           type = "error",
           duration = 5
         )

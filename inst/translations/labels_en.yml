@@ -419,3 +419,8 @@ norms_patient: "Athlete"
 section_thresholds: "Ventilatory Thresholds"
 
 upload_complete: "Upload complete"
+
+# Upload validation + participant edit feedback
+info_label: "Info"
+breaths_label: "Breaths"
+error_label: "Error"
