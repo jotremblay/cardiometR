@@ -675,3 +675,67 @@ format_citation <- function(citation, language = "en", style = "short") {
 
   citation
 }
+
+
+# Z-score helpers ------------------------------------------------------------
+
+#' Compute Z-Score Against a Normative Stratum
+#'
+#' @description
+#' Compute the z-score of an observation against a stratum returned by
+#' [get_normative_data()]. When the stratum does not publish an SD, SD is
+#' estimated as `(high - low) / 3.29` (approximately the 5th-95th percentile
+#' range under Normality), and the result is flagged accordingly.
+#'
+#' @param value Numeric observation (scalar).
+#' @param stratum A list as returned by [get_normative_data()].
+#' @param metric One of `"vo2max"`, `"map_per_kg"`, `"efficiency"` — selects
+#'   which stratum typical/low/high values are used.
+#' @return A list with `z`, `percentile`, and `sd_source` (one of
+#'   `"tabulated"` or `"estimated"`).
+#' @export
+z_score <- function(value, stratum,
+                    metric = c("vo2max", "map_per_kg", "efficiency")) {
+  metric <- match.arg(metric)
+  if (is.null(stratum) || !is.list(stratum) || !is.finite(value)) {
+    return(list(z = NA_real_, percentile = NA_real_, sd_source = NA_character_))
+  }
+
+  keys <- switch(metric,
+    vo2max      = list(mean = "vo2max_typical",     low = "vo2max_low",     high = "vo2max_high",     sd = "vo2max_sd"),
+    map_per_kg  = list(mean = "map_per_kg_typical", low = "map_per_kg_low", high = "map_per_kg_high", sd = "map_per_kg_sd"),
+    efficiency  = list(mean = "efficiency_typical", low = "efficiency_low", high = "efficiency_high", sd = "efficiency_sd")
+  )
+
+  mu <- stratum[[keys$mean]]
+  sd_tab <- stratum[[keys$sd]]
+  lo <- stratum[[keys$low]]
+  hi <- stratum[[keys$high]]
+
+  if (!is.numeric(mu) || !is.finite(mu)) {
+    return(list(z = NA_real_, percentile = NA_real_, sd_source = NA_character_))
+  }
+
+  if (is.numeric(sd_tab) && is.finite(sd_tab) && sd_tab > 0) {
+    sd_val <- sd_tab
+    src <- "tabulated"
+  } else if (is.numeric(lo) && is.numeric(hi) && is.finite(lo) && is.finite(hi) && hi > lo) {
+    sd_val <- (hi - lo) / 3.29
+    src <- "estimated"
+  } else {
+    return(list(z = NA_real_, percentile = NA_real_, sd_source = NA_character_))
+  }
+
+  z <- (value - mu) / sd_val
+  list(z = z, percentile = stats::pnorm(z) * 100, sd_source = src)
+}
+
+
+#' Percentile from Z-Score
+#'
+#' @param z Z-score (scalar or vector).
+#' @return Percentile(s) on a 0-100 scale.
+#' @export
+percentile_from_z <- function(z) {
+  stats::pnorm(z) * 100
+}

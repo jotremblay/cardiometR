@@ -17,17 +17,39 @@ mod_results_ui <- function(id, language = "en") {
     ),
     bslib::card_body(
       class = "overflow-auto",
-      # Peak values
-      shiny::uiOutput(ns("peak_display")),
 
-      # Comparison with predicted values
-      shiny::uiOutput(ns("comparison_display")),
+      # Athlete profile headline (3 value_boxes)
+      shiny::uiOutput(ns("athlete_profile")),
 
       shiny::tags$hr(class = "section-divider"),
 
-      # Thresholds
+      # Detailed peak values
+      shiny::h6(shiny::span(id = ns("peak_title"), tr("detailed_peak_values", language))),
+      shiny::uiOutput(ns("peak_display")),
+
+      shiny::tags$hr(class = "section-divider"),
+
+      # Normative comparison (strip plot + VO2-Power slope)
+      bslib::card(
+        bslib::card_header(
+          shiny::icon("chart-line"),
+          shiny::span(id = ns("norm_header"), tr("normative_comparison", language))
+        ),
+        bslib::card_body(
+          shiny::uiOutput(ns("norms_info")),
+          shiny::plotOutput(ns("zscore_strip_plot"), height = "200px"),
+          shiny::plotOutput(ns("vo2_power_slope_plot"), height = "240px")
+        )
+      ),
+
+      shiny::tags$hr(class = "section-divider"),
+
+      # Thresholds table (legacy point estimates)
       shiny::h6(shiny::span(id = ns("threshold_title"), tr("threshold_results", language))),
       shiny::uiOutput(ns("threshold_display")),
+
+      # Estimates & caveats accordion
+      shiny::uiOutput(ns("estimates_accordion")),
 
       shiny::tags$hr(class = "section-divider"),
 
@@ -41,7 +63,12 @@ mod_results_ui <- function(id, language = "en") {
           shiny::span(id = ns("export_label"), tr("export_csv", language))
         ),
         class = "btn-outline-secondary btn-sm mt-2"
-      )
+      ),
+
+      shiny::tags$hr(class = "section-divider"),
+
+      # Longitudinal panel
+      shiny::uiOutput(ns("longitudinal_panel"))
     )
   )
 }
@@ -64,11 +91,13 @@ mod_results_server <- function(id, language, cpet_data, participant, settings,
   shiny::moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
-    # --- Language reactivity for static UI text ---
     shiny::observeEvent(language(), {
       lang <- language()
-      ids <- c(ns("results_header"), ns("threshold_title"), ns("stage_title"), ns("export_label"))
-      texts <- c(tr("peak_values", lang), tr("threshold_results", lang), tr("stage_results", lang), tr("export_csv", lang))
+      ids <- c(ns("results_header"), ns("peak_title"), ns("norm_header"),
+               ns("threshold_title"), ns("stage_title"), ns("export_label"))
+      texts <- c(tr("peak_values", lang), tr("detailed_peak_values", lang),
+                 tr("normative_comparison", lang), tr("threshold_results", lang),
+                 tr("stage_results", lang), tr("export_csv", lang))
       session$sendCustomMessage("update_text", as.list(stats::setNames(texts, ids)))
     })
 
@@ -97,7 +126,6 @@ mod_results_server <- function(id, language, cpet_data, participant, settings,
       })
     })
 
-    # Computed analysis
     analysis <- shiny::eventReactive(
       list(cpet_data(), settings(), participant()),
       {
@@ -113,20 +141,17 @@ mod_results_server <- function(id, language, cpet_data, participant, settings,
 
           shiny::incProgress(0.2, detail = tr("step_averaging", lang))
 
-          # Update participant in data if edited
           if (!is.null(p)) {
             data@participant <- p
             data_avg@participant <- p
           }
 
-          # Find peaks with specified averaging
           shiny::incProgress(0.2, detail = tr("step_peaks", lang))
           peaks <- find_peaks(
             data_avg,
             averaging = s$averaging_window %||% 30
           )
 
-          # Detect thresholds (if methods specified)
           shiny::incProgress(0.2, detail = tr("step_thresholds", lang))
           thresholds <- NULL
           if (length(s$threshold_methods) > 0) {
@@ -146,7 +171,6 @@ mod_results_server <- function(id, language, cpet_data, participant, settings,
             })
           }
 
-          # Extract and summarize stages
           shiny::incProgress(0.2, detail = tr("step_stages", lang))
           stage_summary <- NULL
           tryCatch({
@@ -164,7 +188,6 @@ mod_results_server <- function(id, language, cpet_data, participant, settings,
 
           shiny::incProgress(0.2, detail = tr("step_complete", lang))
 
-          # Build protocol config from settings
           protocol_config <- tryCatch({
             ProtocolConfig(
               modality = s$modality %||% "cycling",
@@ -174,74 +197,176 @@ mod_results_server <- function(id, language, cpet_data, participant, settings,
             )
           }, error = function(e) NULL)
 
-          # Create analysis object
-          CpetAnalysis(
+          analysis_obj <- CpetAnalysis(
             data = data_avg,
             peaks = peaks,
             thresholds = thresholds,
             stage_summary = stage_summary,
             protocol_config = protocol_config
           )
+
+          analysis_obj <- populate_phase1_metrics(
+            analysis_obj,
+            stage_summary = stage_summary,
+            breath_df = data_avg@breaths,
+            participant = p,
+            settings = s
+          )
+
+          analysis_obj
         })
       }
     )
 
-    # Render peak values display
-    output$peak_display <- shiny::renderUI({
+    # -- Helpers ---------------------------------------------------------
+
+    fmt_z_line <- function(z_entry, lang) {
+      if (is.null(z_entry)) return(shiny::span(class = "text-muted small", "\u2014"))
+      z <- z_entry$z
+      pct <- z_entry$percentile
+      if (!is.finite(z) || !is.finite(pct)) {
+        return(shiny::span(class = "text-muted small", "\u2014"))
+      }
+      shiny::tags$small(
+        class = "text-muted d-block",
+        sprintf("%s %.2f \u00b7 p%.0f",
+                tr("z_score", lang), z, pct)
+      )
+    }
+
+    popover_howto <- function(text, title_text) {
+      bslib::popover(
+        shiny::icon("circle-info"),
+        shiny::tags$strong(title_text),
+        shiny::br(),
+        text,
+        title = title_text,
+        placement = "right"
+      )
+    }
+
+    # -- Athlete profile headline ---------------------------------------
+
+    output$athlete_profile <- shiny::renderUI({
       a <- analysis()
       lang <- language()
-
       if (is.null(a)) {
-        return(
-          shiny::div(
-            class = "text-muted text-center py-4",
-            tr("upload_prompt", lang)
-          )
-        )
+        return(shiny::div(class = "text-muted text-center py-4",
+                          tr("upload_prompt", lang)))
       }
 
       peaks <- a@peaks
+      participant_obj <- a@data@participant
+      wt <- tryCatch(participant_obj@weight_kg, error = function(e) NA_real_)
 
-      # Detect modality: treadmill if speed data exists or protocol says treadmill
+      vo2_kg <- tryCatch({
+        if (!is.null(peaks@vo2_kg_peak) && is.finite(peaks@vo2_kg_peak)) peaks@vo2_kg_peak
+        else if (!is.null(peaks@vo2_peak) && is.finite(wt) && wt > 0) peaks@vo2_peak / wt
+        else NA_real_
+      }, error = function(e) NA_real_)
+
+      map_kg <- a@map_per_kg %||% NA_real_
+      ppo    <- a@ppo_watts %||% NA_real_
+      kfrac  <- a@kuipers_fraction %||% NA_real_
+
+      zs <- a@z_scores %||% list()
+
+      howto_vo2 <- paste0(
+        "VO2peak / body mass. Peak taken as 30-s rolling average at test end. ",
+        "Bassett & Howley 2000; Poole & Jones 2017."
+      )
+      howto_map <- paste0(
+        "MAP = last completed stage power + (t_final / t_stage) x increment (Kuipers 1985). ",
+        "Divided by body mass for W/kg. Hawley & Noakes 1992."
+      )
+      howto_ppo <- "Peak 1-min power sustained at test end; Kuipers last-stage adjustment applied."
+
+      bslib::layout_column_wrap(
+        width = 1 / 3,
+        fill = FALSE,
+        gap = "1rem",
+        bslib::value_box(
+          title = shiny::tagList(
+            tr("aerobic_capacity", lang), " ",
+            popover_howto(howto_vo2, tr("how_computed", lang))
+          ),
+          value = if (is.finite(vo2_kg)) sprintf("%.1f", vo2_kg) else "--",
+          showcase = shiny::icon("heart-pulse"),
+          theme = "primary",
+          shiny::p(tr("unit_ml_kg_min", lang)),
+          fmt_z_line(zs$vo2_peak_z, lang)
+        ),
+        bslib::value_box(
+          title = shiny::tagList(
+            tr("aerobic_power", lang), " ",
+            popover_howto(howto_map, tr("how_computed", lang))
+          ),
+          value = if (is.finite(map_kg)) sprintf("%.2f", map_kg) else "--",
+          showcase = shiny::icon("bolt-lightning"),
+          theme = "light",
+          shiny::p("W/kg"),
+          fmt_z_line(zs$map_per_kg_z, lang)
+        ),
+        bslib::value_box(
+          title = shiny::tagList(
+            tr("peak_power", lang), " ",
+            popover_howto(howto_ppo, tr("how_computed", lang))
+          ),
+          value = if (is.finite(ppo)) as.character(round(ppo)) else "--",
+          showcase = shiny::icon("mountain"),
+          theme = "light",
+          shiny::p(tr("unit_watts", lang)),
+          shiny::tags$small(
+            class = "text-muted d-block",
+            if (is.finite(kfrac)) {
+              sprintf("%s %.2f", tr("last_stage_fraction_label", lang), kfrac)
+            } else "\u2014"
+          )
+        )
+      )
+    })
+
+    # -- Detailed peak values (legacy row) -------------------------------
+
+    output$peak_display <- shiny::renderUI({
+      a <- analysis()
+      lang <- language()
+      if (is.null(a)) return(NULL)
+
+      peaks <- a@peaks
       is_treadmill <- !is.null(peaks@speed_peak) ||
         (!is.null(a@protocol_config) && a@protocol_config@modality == "treadmill") ||
         ("speed_kmh" %in% names(a@data@breaths))
 
-      bslib::layout_columns(
-        col_widths = 12,
+      bslib::layout_column_wrap(
+        width = 1 / 3,
         fill = FALSE,
-
-        # VO2 peak - primary metric
+        gap = "1rem",
         bslib::value_box(
           title = tr("vo2_kg", lang),
           value = sprintf("%.1f", peaks@vo2_kg_peak),
           showcase = shiny::icon("lungs"),
           theme = "primary",
-          p(tr("unit_ml_kg_min", lang))
+          shiny::p(tr("unit_ml_kg_min", lang))
         ),
-
         bslib::layout_columns(
           col_widths = c(6, 6),
           fill = FALSE,
-
-          # HR peak
           bslib::value_box(
             title = tr("hr", lang),
             value = if (!is.null(peaks@hr_peak)) round(peaks@hr_peak) else "--",
             showcase = shiny::icon("heart-pulse"),
             theme = "danger",
-            p(tr("unit_bpm", lang)),
+            shiny::p(tr("unit_bpm", lang)),
             min_height = "120px"
           ),
-
-          # Power or Speed peak (depending on modality)
           if (is_treadmill) {
             bslib::value_box(
               title = tr("speed", lang),
               value = if (!is.null(peaks@speed_peak)) sprintf("%.1f", peaks@speed_peak) else "--",
               showcase = shiny::icon("person-running"),
               theme = "success",
-              p(tr("unit_kmh", lang)),
+              shiny::p(tr("unit_kmh", lang)),
               min_height = "120px"
             )
           } else {
@@ -250,27 +375,22 @@ mod_results_server <- function(id, language, cpet_data, participant, settings,
               value = if (!is.null(peaks@power_peak)) round(peaks@power_peak) else "--",
               showcase = shiny::icon("bolt"),
               theme = "success",
-              p(tr("unit_watts", lang)),
+              shiny::p(tr("unit_watts", lang)),
               min_height = "120px"
             )
           }
         ),
-
         bslib::layout_columns(
           col_widths = c(6, 6),
           fill = FALSE,
-
-          # VE peak
           bslib::value_box(
             title = tr("ve", lang),
             value = sprintf("%.1f", peaks@ve_peak),
             showcase = shiny::icon("wind"),
             theme = "light",
-            p(tr("unit_l_min", lang)),
+            shiny::p(tr("unit_l_min", lang)),
             min_height = "120px"
           ),
-
-          # RER peak
           bslib::value_box(
             title = tr("rer", lang),
             value = sprintf("%.2f", peaks@rer_peak),
@@ -282,106 +402,54 @@ mod_results_server <- function(id, language, cpet_data, participant, settings,
       )
     })
 
-    # Render comparison with predicted/normative values
-    output$comparison_display <- shiny::renderUI({
-      a <- analysis()
-      lang <- language()
-      s <- settings()
-      pred_source <- prediction_source()
+    # -- Normative comparison block --------------------------------------
 
-      if (is.null(a) || is.null(a@peaks) || length(a@peaks@vo2_peak) == 0) {
+    output$norms_info <- shiny::renderUI({
+      a <- analysis()
+      s <- settings()
+      if (is.null(a)) return(NULL)
+      athlete_sport <- s$athlete_sport
+      if (is.null(athlete_sport) || !nzchar(athlete_sport) || athlete_sport == "general") {
         return(NULL)
       }
-
-      peaks <- a@peaks
-      participant <- a@data@participant
-      predicted <- calculate_predicted_values(participant, prediction_source = pred_source)
-
-      # Compute percentages
-      vo2_pct <- round(100 * peaks@vo2_peak / predicted$vo2_max, 0)
-      hr_pct <- if (!is.null(peaks@hr_peak) && length(peaks@hr_peak) > 0) {
-        round(100 * peaks@hr_peak / predicted$hr_max, 0)
-      } else {
-        NA
-      }
-      # Scale RER: 0.7-1.3 -> 0-100%
-      rer_pct <- min(100, max(0, round((peaks@rer_peak - 0.7) / 0.6 * 100, 0)))
-
-      # Color helper
-      pct_color <- function(pct) {
-        if (pct >= 100) "success"
-        else if (pct >= 85) "primary"
-        else if (pct >= 70) "warning"
-        else "danger"
-      }
-
-      # Build gauge helper
-      make_gauge <- function(label, pct, display_text = NULL) {
-        color_class <- pct_color(pct)
-        bar_width <- min(100, pct)
-        display <- display_text %||% paste0(pct, "%")
-        shiny::div(
-          shiny::tags$small(class = "text-muted", label),
-          shiny::div(class = "progress mb-2",
-            shiny::div(
-              class = paste0("progress-bar bg-", color_class),
-              style = paste0("width:", bar_width, "%"),
-              role = "progressbar",
-              display
-            )
-          )
-        )
-      }
-
-      # Normative context if athlete sport is set
-      norms_info <- NULL
-      athlete_sport <- s$athlete_sport
-      if (!is.null(athlete_sport) && nchar(athlete_sport) > 0 && athlete_sport != "general") {
-        athlete_level <- s$athlete_level %||% "recreational"
-        norms <- get_normative_data(athlete_sport, athlete_level, participant@sex, participant@age)
-        norms_info <- shiny::tags$small(
-          class = "text-muted d-block mb-1",
-          shiny::icon("chart-bar"),
-          paste0(" ", norms$description, " (", norms$citation_short, ")")
-        )
-      }
-
-      shiny::tagList(
-        shiny::tags$hr(class = "section-divider"),
-        shiny::h6(tr("comparison_title", lang)),
-        norms_info,
-        make_gauge(
-          tr("aerobic_capacity", lang),
-          vo2_pct,
-          paste0(vo2_pct, "% ", tr("pct_predicted", lang))
-        ),
-        if (!is.na(hr_pct)) {
-          make_gauge(
-            tr("cardiovascular_response", lang),
-            hr_pct,
-            paste0(hr_pct, "% ", tr("pct_predicted", lang))
-          )
-        },
-        make_gauge(
-          tr("ventilatory_response", lang),
-          rer_pct,
-          sprintf("RER %.2f", peaks@rer_peak)
-        )
+      athlete_level <- s$athlete_level %||% "recreational"
+      participant_obj <- a@data@participant
+      norms <- tryCatch(
+        get_normative_data(athlete_sport, athlete_level,
+                           participant_obj@sex, participant_obj@age),
+        error = function(e) NULL
+      )
+      if (is.null(norms)) return(NULL)
+      shiny::tags$small(
+        class = "text-muted d-block mb-2",
+        shiny::icon("chart-bar"),
+        paste0(" ", norms$description, " (", norms$citation_short, ")")
       )
     })
 
-    # Render thresholds display
+    output$zscore_strip_plot <- shiny::renderPlot({
+      a <- analysis()
+      shiny::req(a)
+      plot_zscore_strip(a,
+                        metrics = c("vo2_peak", "map_per_kg", "ppo"),
+                        language = language())
+    })
+
+    output$vo2_power_slope_plot <- shiny::renderPlot({
+      a <- analysis()
+      shiny::req(a)
+      plot_vo2_power_slope(a, language = language())
+    })
+
+    # -- Thresholds table (legacy) ---------------------------------------
+
     output$threshold_display <- shiny::renderUI({
       a <- analysis()
       lang <- language()
 
       if (is.null(a) || is.null(a@thresholds)) {
-        return(
-          shiny::div(
-            class = "text-muted small",
-            tr("message_no_thresholds", lang)
-          )
-        )
+        return(shiny::div(class = "text-muted small",
+                          tr("message_no_thresholds", lang)))
       }
 
       th <- a@thresholds
@@ -397,7 +465,6 @@ mod_results_server <- function(id, language, cpet_data, participant, settings,
           )
         ),
         shiny::tags$tbody(
-          # VT1
           if (!is.null(th@vt1_vo2) && !is.na(th@vt1_vo2)) {
             shiny::tags$tr(
               shiny::tags$td(shiny::strong(tr("vt1", lang))),
@@ -406,7 +473,6 @@ mod_results_server <- function(id, language, cpet_data, participant, settings,
               shiny::tags$td(if (!is.null(th@vt1_power)) round(th@vt1_power) else "--")
             )
           },
-          # VT2
           if (!is.null(th@vt2_vo2) && !is.na(th@vt2_vo2)) {
             shiny::tags$tr(
               shiny::tags$td(shiny::strong(tr("vt2", lang))),
@@ -419,23 +485,153 @@ mod_results_server <- function(id, language, cpet_data, participant, settings,
       )
     })
 
-    # Render stage summary table
+    # -- Estimates & caveats accordion ----------------------------------
+
+    output$estimates_accordion <- shiny::renderUI({
+      a <- analysis()
+      lang <- language()
+      if (is.null(a)) return(NULL)
+
+      # 1. VT ranges
+      vt1_r <- a@vt1_range
+      vt2_r <- a@vt2_range
+      vt_table <- shiny::tags$table(
+        class = "table table-sm",
+        shiny::tags$thead(shiny::tags$tr(
+          shiny::tags$th(""),
+          shiny::tags$th("Low"),
+          shiny::tags$th("High"),
+          shiny::tags$th("Point")
+        )),
+        shiny::tags$tbody(
+          shiny::tags$tr(
+            shiny::tags$td(shiny::strong(tr("vt1", lang))),
+            shiny::tags$td(if (length(vt1_r) >= 1 && is.finite(vt1_r[1])) round(vt1_r[1]) else "--"),
+            shiny::tags$td(if (length(vt1_r) >= 2 && is.finite(vt1_r[2])) round(vt1_r[2]) else "--"),
+            shiny::tags$td(if (!is.null(a@thresholds) && !is.null(a@thresholds@vt1_vo2) &&
+                               !is.na(a@thresholds@vt1_vo2)) round(a@thresholds@vt1_vo2) else "--")
+          ),
+          shiny::tags$tr(
+            shiny::tags$td(shiny::strong(tr("vt2", lang))),
+            shiny::tags$td(if (length(vt2_r) >= 1 && is.finite(vt2_r[1])) round(vt2_r[1]) else "--"),
+            shiny::tags$td(if (length(vt2_r) >= 2 && is.finite(vt2_r[2])) round(vt2_r[2]) else "--"),
+            shiny::tags$td(if (!is.null(a@thresholds) && !is.null(a@thresholds@vt2_vo2) &&
+                               !is.na(a@thresholds@vt2_vo2)) round(a@thresholds@vt2_vo2) else "--")
+          )
+        )
+      )
+      vt_panel <- bslib::accordion_panel(
+        title = tr("vt_range", lang),
+        icon = shiny::icon("wave-square"),
+        vt_table,
+        shiny::tags$small(class = "text-muted", tr("vt_caveat", lang))
+      )
+
+      # 2. FTP range
+      ftp_low <- if (!is.null(a@map_watts) && is.finite(a@map_watts)) 0.72 * a@map_watts else NA_real_
+      ftp_high <- if (!is.null(a@map_watts) && is.finite(a@map_watts)) 0.77 * a@map_watts else NA_real_
+      ftp_panel <- bslib::accordion_panel(
+        title = tr("ftp_range", lang),
+        icon = shiny::icon("gauge-high"),
+        shiny::checkboxInput(ns("show_ftp"), tr("ftp_range", lang), value = FALSE),
+        shiny::conditionalPanel(
+          condition = "input.show_ftp == true", ns = ns,
+          shiny::div(
+            if (is.finite(ftp_low) && is.finite(ftp_high)) {
+              shiny::tags$p(sprintf("FTP \u2248 %.0f\u2013%.0f W (0.72\u20130.77 \u00d7 MAP)",
+                                    ftp_low, ftp_high))
+            } else {
+              shiny::tags$p(class = "text-muted", "--")
+            },
+            shiny::tags$small(class = "text-muted", tr("ftp_caveat", lang))
+          )
+        )
+      )
+
+      # 3. CP explainer
+      cp_panel <- bslib::accordion_panel(
+        title = tr("cp_explainer_title", lang),
+        icon = shiny::icon("stopwatch"),
+        shiny::tags$p(tr("cp_explainer", lang))
+      )
+
+      # 4. Substrate oxidation
+      ss <- a@steady_state_stages
+      has_steady <- !is.null(ss) && is.data.frame(ss) &&
+        "steady_state_ok" %in% names(ss) && any(isTRUE(ss$steady_state_ok) |
+                                                 ss$steady_state_ok %in% TRUE)
+      substrate_body <- if (has_steady) {
+        qualifying <- ss |> dplyr::filter(.data$steady_state_ok %in% TRUE)
+        # Péronnet-Massicotte 1991: fractional fat energy from RER
+        compute_fat_pct <- function(rer) {
+          rer <- pmin(pmax(rer, 0.70), 1.00)
+          pmax(0, pmin(100, (1.00 - rer) / (1.00 - 0.70) * 100))
+        }
+        if ("rer" %in% names(qualifying)) {
+          qualifying <- qualifying |>
+            dplyr::mutate(
+              fat_pct = compute_fat_pct(.data$rer),
+              cho_pct = 100 - .data$fat_pct
+            )
+          tbl_rows <- purrr::pmap(
+            list(qualifying$stage %||% seq_len(nrow(qualifying)),
+                 qualifying$rer,
+                 qualifying$fat_pct,
+                 qualifying$cho_pct),
+            function(stg, rer, fat, cho) {
+              shiny::tags$tr(
+                shiny::tags$td(stg),
+                shiny::tags$td(sprintf("%.2f", rer)),
+                shiny::tags$td(sprintf("%.0f%%", fat)),
+                shiny::tags$td(sprintf("%.0f%%", cho))
+              )
+            }
+          )
+          shiny::tags$table(
+            class = "table table-sm",
+            shiny::tags$thead(shiny::tags$tr(
+              shiny::tags$th(tr("stage", lang)),
+              shiny::tags$th("RER"),
+              shiny::tags$th("Fat %"),
+              shiny::tags$th("CHO %")
+            )),
+            shiny::tags$tbody(tbl_rows)
+          )
+        } else {
+          shiny::tags$small(class = "text-muted", tr("substrate_explainer", lang))
+        }
+      } else {
+        shiny::tags$small(class = "text-muted", tr("substrate_explainer", lang))
+      }
+      substrate_panel <- bslib::accordion_panel(
+        title = tr("substrate_explainer_title", lang),
+        icon = shiny::icon("fire"),
+        substrate_body
+      )
+
+      shiny::tagList(
+        shiny::h6(tr("estimates_and_caveats", lang)),
+        bslib::accordion(
+          open = FALSE,
+          vt_panel, ftp_panel, cp_panel, substrate_panel
+        )
+      )
+    })
+
+    # -- Stage summary table ---------------------------------------------
+
     output$stage_table <- DT::renderDataTable({
       a <- analysis()
       lang <- language()
 
-      if (is.null(a) || is.null(a@stage_summary)) {
-        return(NULL)
-      }
+      if (is.null(a) || is.null(a@stage_summary)) return(NULL)
 
-      # Detect modality for column selection
       is_treadmill <- (!is.null(a@protocol_config) && a@protocol_config@modality == "treadmill") ||
         ("speed_kmh" %in% names(a@data@breaths)) ||
         (!is.null(a@peaks) && !is.null(a@peaks@speed_peak))
 
-      # Format the stage summary - show Speed for treadmill, Power for cycling
-      if (is_treadmill && "speed_kmh" %in% names(a@stage_summary)) {
-        df <- a@stage_summary |>
+      df <- if (is_treadmill && "speed_kmh" %in% names(a@stage_summary)) {
+        a@stage_summary |>
           dplyr::select(
             Stage = dplyr::any_of("stage"),
             Speed = dplyr::any_of("speed_kmh"),
@@ -445,7 +641,7 @@ mod_results_server <- function(id, language, cpet_data, participant, settings,
             RER = dplyr::any_of("rer")
           )
       } else {
-        df <- a@stage_summary |>
+        a@stage_summary |>
           dplyr::select(
             Stage = dplyr::any_of("stage"),
             Power = dplyr::any_of("power_w"),
@@ -457,34 +653,24 @@ mod_results_server <- function(id, language, cpet_data, participant, settings,
       }
 
       df <- df |>
-        dplyr::mutate(
-          dplyr::across(dplyr::where(is.numeric), ~ round(.x, 1))
-        )
+        dplyr::mutate(dplyr::across(dplyr::where(is.numeric), ~ round(.x, 1)))
 
       dt <- DT::datatable(
         df,
-        options = list(
-          pageLength = 10,
-          scrollY = "200px",
-          dom = "t",
-          ordering = FALSE
-        ),
+        options = list(pageLength = 10, scrollY = "200px", dom = "t", ordering = FALSE),
         rownames = FALSE,
         class = "compact stripe"
       )
 
-      # Color-code RER values above 1.10 (high intensity)
       if ("RER" %in% names(df)) {
         dt <- dt |>
           DT::formatStyle("RER",
             backgroundColor = DT::styleInterval(1.10, c("transparent", "#fff3cd"))
           )
       }
-
       dt
     })
 
-    # CSV data export handler
     output$download_data <- shiny::downloadHandler(
       filename = function() {
         paste0("cpet_data_", format(Sys.Date(), "%Y%m%d"), ".csv")
@@ -496,7 +682,81 @@ mod_results_server <- function(id, language, cpet_data, participant, settings,
       }
     )
 
-    # Return analysis
+    # -- Longitudinal panel ----------------------------------------------
+
+    output$longitudinal_panel <- shiny::renderUI({
+      a <- analysis()
+      lang <- language()
+      if (is.null(a)) return(NULL)
+
+      pid <- tryCatch(a@data@participant@id, error = function(e) NA_character_)
+      prior <- tryCatch(longitudinal_cache_read(pid), error = function(e) NULL)
+      has_prior <- !is.null(prior) && nrow(prior) > 0
+
+      bslib::card(
+        bslib::card_header(
+          shiny::icon("clock-rotate-left"),
+          tr("longitudinal_title", lang)
+        ),
+        bslib::card_body(
+          shiny::checkboxInput(ns("save_longitudinal"),
+                               tr("save_longitudinal", lang), value = FALSE),
+          if (has_prior) {
+            shiny::plotOutput(ns("longitudinal_plot"), height = "240px")
+          } else {
+            shiny::div(class = "text-muted small", tr("no_prior_tests", lang))
+          }
+        )
+      )
+    })
+
+    shiny::observeEvent(input$save_longitudinal, {
+      if (!isTRUE(input$save_longitudinal)) return()
+      a <- analysis()
+      if (is.null(a)) return()
+      p <- tryCatch(a@data@participant, error = function(e) NULL)
+      pid <- tryCatch(p@id, error = function(e) NA_character_)
+      if (is.null(pid) || is.na(pid) || !nzchar(as.character(pid))) return()
+      wt <- tryCatch(p@weight_kg, error = function(e) NA_real_)
+      age <- tryCatch(as.numeric(p@age), error = function(e) NA_real_)
+      sex <- tryCatch(as.character(p@sex), error = function(e) NA_character_)
+      row <- list(
+        timestamp = format(Sys.time(), "%Y-%m-%dT%H:%M:%S"),
+        vo2_peak = tryCatch(a@peaks@vo2_kg_peak, error = function(e) NA_real_),
+        map_per_kg = a@map_per_kg %||% NA_real_,
+        ppo = a@ppo_watts %||% NA_real_,
+        weight_kg = wt,
+        age = age,
+        sex = sex
+      )
+      tryCatch(
+        longitudinal_cache_write(pid, row),
+        error = function(e) cli::cli_warn("Longitudinal save failed: {e$message}")
+      )
+    }, ignoreInit = TRUE)
+
+    output$longitudinal_plot <- shiny::renderPlot({
+      a <- analysis()
+      shiny::req(a)
+      pid <- tryCatch(a@data@participant@id, error = function(e) NA_character_)
+      prior <- tryCatch(longitudinal_cache_read(pid), error = function(e) NULL)
+      shiny::req(prior)
+      # Take most recent prior as the "prior analysis" summary surrogate.
+      latest <- prior |> dplyr::slice_tail(n = 1)
+      # plot_longitudinal_delta expects an analysis-like object; since we only
+      # persisted summary fields, pass a minimal environment with the same
+      # accessors.
+      # Build a minimal prior analysis by cloning the current one and
+      # overwriting only the summary slots consumed by the plot helper.
+      prior_stub <- a
+      prior_stub@map_per_kg <- as.numeric(latest$map_per_kg[1])
+      prior_stub@ppo_watts <- as.numeric(latest$ppo[1])
+      prior_peaks <- a@peaks
+      prior_peaks@vo2_kg_peak <- as.numeric(latest$vo2_peak[1])
+      prior_stub@peaks <- prior_peaks
+      plot_longitudinal_delta(a, prior_stub, language = language())
+    })
+
     list(
       analysis = analysis
     )

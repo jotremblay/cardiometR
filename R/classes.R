@@ -616,7 +616,20 @@ CpetAnalysis <- new_class("CpetAnalysis",
     # Additional context and metrics (optional)
     pre_test_conditions = PreTestConditions | NULL,
     protocol_config = ProtocolConfig | NULL,
-    economy_metrics = EconomyMetrics | NULL
+    economy_metrics = EconomyMetrics | NULL,
+    # Phase 1 additive power / threshold / norm / steady-state slots.
+    # All default NULL; populated incrementally as analyses are run.
+    map_watts = class_numeric | NULL,
+    ppo_watts = class_numeric | NULL,
+    map_per_kg = class_numeric | NULL,
+    kuipers_fraction = class_numeric | NULL,
+    vo2_power_slope = class_list | NULL,
+    vt1_range = class_numeric | NULL,
+    vt2_range = class_numeric | NULL,
+    z_scores = class_list | NULL,
+    steady_state_stages = class_data.frame | NULL,
+    substrate_by_stage = class_data.frame | NULL,
+    cp_fit = class_list | NULL
   )
 )
 

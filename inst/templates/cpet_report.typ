@@ -276,6 +276,98 @@
 #v(0.8em)
 {{/if}}
 
+// Athlete Profile (Phase 7) — three-column headline
+{{#if has_athlete_profile}}
+#block(breakable: false)[
+  #grid(
+    columns: (auto, 1fr),
+    gutter: 0.5em,
+    align(horizon)[🚴],
+    heading(level: 1)[{{section_athlete_profile}}]
+  )
+
+  #grid(
+    columns: (1fr, 1fr, 1fr),
+    gutter: 1em,
+    block(
+      fill: primary.lighten(94%),
+      stroke: (top: 3pt + primary),
+      inset: 0.9em,
+      radius: (bottom: 6pt),
+      width: 100%
+    )[
+      #align(center)[
+        #text(size: 9pt, weight: "semibold", fill: luma(80))[{{aerobic_capacity}}]
+        #v(0.2em)
+        #text(size: 22pt, weight: "bold", fill: primary)[{{ap_vo2_kg}}]
+        #v(0.1em)
+        #text(size: 8pt, fill: luma(110))[mL·kg⁻¹·min⁻¹]
+        #v(0.3em)
+        #text(size: 8pt)[{{z_score}} {{ap_vo2_z}} · {{ap_vo2_pct}}]
+      ]
+    ],
+    block(
+      fill: accent.lighten(94%),
+      stroke: (top: 3pt + accent),
+      inset: 0.9em,
+      radius: (bottom: 6pt),
+      width: 100%
+    )[
+      #align(center)[
+        #text(size: 9pt, weight: "semibold", fill: luma(80))[{{aerobic_power}}]
+        #v(0.2em)
+        #text(size: 22pt, weight: "bold", fill: accent)[{{ap_map_kg}}]
+        #v(0.1em)
+        #text(size: 8pt, fill: luma(110))[W/kg]
+        #v(0.3em)
+        #text(size: 8pt)[{{z_score}} {{ap_map_z}} · {{ap_map_pct}}]
+      ]
+    ],
+    block(
+      fill: warning.lighten(94%),
+      stroke: (top: 3pt + warning),
+      inset: 0.9em,
+      radius: (bottom: 6pt),
+      width: 100%
+    )[
+      #align(center)[
+        #text(size: 9pt, weight: "semibold", fill: luma(80))[{{peak_power}}]
+        #v(0.2em)
+        #text(size: 22pt, weight: "bold", fill: warning)[{{ap_ppo}}]
+        #v(0.1em)
+        #text(size: 8pt, fill: luma(110))[W · k={{ap_kuipers}}]
+        #v(0.3em)
+        #text(size: 8pt)[{{z_score}} {{ap_ppo_z}} · {{ap_ppo_pct}}]
+      ]
+    ]
+  )
+]
+
+{{#if graph_slope}}
+#v(0.6em)
+#block(breakable: false)[
+  == {{section_vo2_power_slope}}
+  #figure(
+    image("{{graph_slope}}", width: 100%),
+    caption: [#text(size: 9pt)[{{caption_vo2_power_slope}} {{slope_caption}}]]
+  )
+]
+{{/if}}
+
+{{#if graph_zstrip}}
+#v(0.6em)
+#block(breakable: false)[
+  == {{section_zscore_strip}}
+  #figure(
+    image("{{graph_zstrip}}", width: 100%),
+    caption: [#text(size: 9pt)[{{caption_zscore_strip}}]]
+  )
+]
+{{/if}}
+
+#v(0.8em)
+{{/if}}
+
 // Peak Values - keep together on one page
 #block(breakable: false)[
   #grid(
@@ -663,6 +755,126 @@
 ]
 
 #v(0.8em)
+
+// Longitudinal comparison (Phase 7)
+{{#if has_longitudinal}}
+{{#if graph_longitudinal}}
+#block(breakable: false)[
+  #grid(
+    columns: (auto, 1fr),
+    gutter: 0.5em,
+    align(horizon)[📉],
+    heading(level: 1)[{{section_longitudinal}}]
+  )
+  #figure(
+    image("{{graph_longitudinal}}", width: 100%),
+    caption: [#text(size: 9pt)[{{caption_longitudinal}}]]
+  )
+]
+#v(0.8em)
+{{/if}}
+{{/if}}
+
+// Estimates & Caveats (Phase 7)
+{{#if has_estimates_caveats}}
+#block(breakable: false)[
+  #grid(
+    columns: (auto, 1fr),
+    gutter: 0.5em,
+    align(horizon)[⚖️],
+    heading(level: 1)[{{estimates_and_caveats}}]
+  )
+
+  // VT range
+  {{#if has_vt_block}}
+  #block(
+    fill: luma(252),
+    stroke: (left: 3pt + warning),
+    inset: (left: 1em, right: 1em, y: 0.7em),
+    radius: (right: 4pt),
+    width: 100%
+  )[
+    #text(size: 10pt, weight: "bold", fill: luma(60))[{{vt_range}}]
+    #v(0.4em)
+    #table(
+      columns: (1.2fr, 1fr, 1fr, 1fr),
+      inset: (x: 8pt, y: 5pt),
+      stroke: none,
+      fill: (col, row) => if row == 0 { luma(235) } else if calc.odd(row) { luma(250) } else { white },
+      align: (left, center, center, center),
+      [#text(weight: "bold")[{{metric}}]],
+      [#text(weight: "bold")[{{low}}]],
+      [#text(weight: "bold")[{{high}}]],
+      [#text(weight: "bold")[{{point}}]],
+      {{vt_rows_content}}
+    )
+    #v(0.2em)
+    #text(size: 8pt, fill: luma(110), style: "italic")[{{vt_caveat}}]
+  ]
+  #v(0.6em)
+  {{/if}}
+
+  // FTP range
+  {{#if has_ftp_block}}
+  #block(
+    fill: luma(252),
+    stroke: (left: 3pt + accent),
+    inset: (left: 1em, right: 1em, y: 0.7em),
+    radius: (right: 4pt),
+    width: 100%
+  )[
+    #text(size: 10pt, weight: "bold", fill: luma(60))[{{ftp_range}}]
+    #v(0.3em)
+    #text(size: 10pt)[0.72–0.77 × MAP = #text(weight: "bold")[{{ftp_low}}–{{ftp_high}} W]]
+    #v(0.2em)
+    #text(size: 8pt, fill: luma(110), style: "italic")[{{ftp_caveat}}]
+  ]
+  #v(0.6em)
+  {{/if}}
+
+  // CP explainer
+  #block(
+    fill: luma(252),
+    stroke: (left: 3pt + primary),
+    inset: (left: 1em, right: 1em, y: 0.7em),
+    radius: (right: 4pt),
+    width: 100%
+  )[
+    #text(size: 10pt, weight: "bold", fill: luma(60))[{{cp_explainer_title}}]
+    #v(0.3em)
+    #text(size: 9pt)[{{cp_explainer}}]
+  ]
+  #v(0.6em)
+
+  // Substrate oxidation
+  #block(
+    fill: luma(252),
+    stroke: (left: 3pt + success),
+    inset: (left: 1em, right: 1em, y: 0.7em),
+    radius: (right: 4pt),
+    width: 100%
+  )[
+    #text(size: 10pt, weight: "bold", fill: luma(60))[{{substrate_explainer_title}}]
+    #v(0.3em)
+    {{#if has_substrate_table}}
+    #table(
+      columns: (1fr, 1fr, 1fr),
+      inset: (x: 8pt, y: 5pt),
+      stroke: none,
+      fill: (col, row) => if row == 0 { luma(235) } else if calc.odd(row) { luma(250) } else { white },
+      align: (left, center, center),
+      [#text(weight: "bold")[{{stage}}]],
+      [#text(weight: "bold")[{{fat_oxidation}}]],
+      [#text(weight: "bold")[{{cho_oxidation}}]],
+      {{substrate_rows_content}}
+    )
+    {{else}}
+    #text(size: 9pt)[{{substrate_explainer}}]
+    {{/if}}
+  ]
+]
+#v(0.8em)
+{{/if}}
 
 // Clinical Notes (only if provided)
 {{#if has_clinical_notes}}

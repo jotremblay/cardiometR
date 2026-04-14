@@ -234,6 +234,163 @@ threshold_confidence <- function(n_methods) {
   else "unable"
 }
 
+#' Detect VT1 and VT2 as Ranges Across Methods and Smoothing
+#'
+#' Runs the existing threshold detectors for every combination of method
+#' and smoothing preset and returns the min/max VO2 across all successful
+#' combinations as a range. This surfaces detection uncertainty driven by
+#' protocol-dependent choices (Jamnick et al. 2020).
+#'
+#' @param breath_df A breath-by-breath tibble with columns `time_s`,
+#'   `vo2_ml`, `vco2_ml`, `ve_l`, optionally `peto2_mmhg`, `petco2_mmhg`.
+#' @param methods Character vector restricting methods to try. If `NULL`,
+#'   all supported methods are used: `"v_slope"`, `"ve_vo2"`, `"peto2"`
+#'   for VT1; `"ve_vco2"`, `"petco2"` for VT2.
+#' @param smoothing Character vector of smoothing presets to vary:
+#'   `"narrow"` (~10 s), `"default"` (~30 s), `"wide"` (~60 s) rolling
+#'   windows on VO2/VCO2/VE.
+#'
+#' @return A list with elements:
+#'   \describe{
+#'     \item{vt1_range}{`c(low, high)` VO2 (mL/min) across successful
+#'       VT1 combinations, or `NULL` if none succeeded.}
+#'     \item{vt2_range}{`c(low, high)` VO2 (mL/min) for VT2, or `NULL`.}
+#'     \item{vt1_values}{Tibble of `method`, `smoothing`, `vo2` for
+#'       every successful VT1 combination.}
+#'     \item{vt2_values}{Tibble for VT2.}
+#'   }
+#'
+#' @export
+detect_threshold_range <- function(breath_df,
+                                   methods = NULL,
+                                   smoothing = c("default", "narrow", "wide")) {
+  empty <- list(
+    vt1_range = NULL, vt2_range = NULL,
+    vt1_values = tibble::tibble(method = character(), smoothing = character(), vo2 = numeric()),
+    vt2_values = tibble::tibble(method = character(), smoothing = character(), vo2 = numeric())
+  )
+
+  required <- c("time_s", "vo2_ml", "vco2_ml", "ve_l")
+  if (!is.data.frame(breath_df) || !all(required %in% names(breath_df)) || nrow(breath_df) < 20) {
+    return(empty)
+  }
+
+  vt1_methods_all <- c("v_slope", "ve_vo2", "peto2")
+  vt2_methods_all <- c("ve_vco2", "petco2")
+
+  if (is.null(methods)) {
+    methods_norm <- c(vt1_methods_all, vt2_methods_all)
+  } else {
+    methods_norm <- normalize_threshold_methods(methods)
+  }
+  if (!length(methods_norm)) return(empty)
+
+  smoothing <- match.arg(smoothing, several.ok = TRUE)
+  window_map <- c(narrow = 10, default = 30, wide = 60)
+
+  avg_interval <- mean(diff(breath_df$time_s), na.rm = TRUE)
+  if (!is.finite(avg_interval) || avg_interval <= 0) avg_interval <- 1
+
+  has_peto2 <- "peto2_mmhg" %in% names(breath_df) && !all(is.na(breath_df$peto2_mmhg))
+  has_petco2 <- "petco2_mmhg" %in% names(breath_df) && !all(is.na(breath_df$petco2_mmhg))
+
+  vt1_rows <- list()
+  vt2_rows <- list()
+
+  for (sm in smoothing) {
+    window_s <- window_map[[sm]]
+    k <- max(5, round(window_s / avg_interval))
+    k <- min(k, nrow(breath_df) %/% 2)
+
+    vo2_s  <- smooth_series(breath_df$vo2_ml,  k)
+    vco2_s <- smooth_series(breath_df$vco2_ml, k)
+    ve_s   <- smooth_series(breath_df$ve_l,    k)
+    peto2_s  <- if (has_peto2)  smooth_series(breath_df$peto2_mmhg,  k) else NULL
+    petco2_s <- if (has_petco2) smooth_series(breath_df$petco2_mmhg, k) else NULL
+
+    push <- function(bucket, method, vo2_val) {
+      if (is.null(vo2_val) || !is.finite(vo2_val)) return(bucket)
+      c(bucket, list(tibble::tibble(method = method, smoothing = sm, vo2 = vo2_val)))
+    }
+
+    if ("v_slope" %in% methods_norm) {
+      res <- tryCatch(detect_vslope_threshold(vo2_s, vco2_s), error = function(e) NULL)
+      vt1_rows <- push(vt1_rows, "v_slope", res$vo2)
+    }
+    if ("ve_vo2" %in% methods_norm) {
+      res <- tryCatch({
+        ratio <- ve_s * 1000 / vo2_s
+        idx <- detect_threshold_rise(ratio)
+        if (!is.na(idx)) vo2_s[idx] else NULL
+      }, error = function(e) NULL)
+      vt1_rows <- push(vt1_rows, "ve_vo2", res)
+    }
+    if ("peto2" %in% methods_norm && !is.null(peto2_s)) {
+      res <- tryCatch({
+        idx <- detect_threshold_rise(peto2_s)
+        if (!is.na(idx)) vo2_s[idx] else NULL
+      }, error = function(e) NULL)
+      vt1_rows <- push(vt1_rows, "peto2", res)
+    }
+
+    if ("ve_vco2" %in% methods_norm) {
+      res <- tryCatch({
+        ratio <- ve_s * 1000 / vco2_s
+        idx <- detect_threshold_rise(ratio)
+        if (!is.na(idx)) vo2_s[idx] else NULL
+      }, error = function(e) NULL)
+      vt2_rows <- push(vt2_rows, "ve_vco2", res)
+    }
+    if ("petco2" %in% methods_norm && !is.null(petco2_s)) {
+      res <- tryCatch({
+        idx <- detect_threshold_drop(petco2_s)
+        if (!is.na(idx)) vo2_s[idx] else NULL
+      }, error = function(e) NULL)
+      vt2_rows <- push(vt2_rows, "petco2", res)
+    }
+  }
+
+  vt1_values <- if (length(vt1_rows)) dplyr::bind_rows(vt1_rows) else empty$vt1_values
+  vt2_values <- if (length(vt2_rows)) dplyr::bind_rows(vt2_rows) else empty$vt2_values
+
+  range_or_null <- function(v) {
+    v <- v[is.finite(v)]
+    if (!length(v)) return(NULL)
+    as.numeric(c(min(v), max(v)))
+  }
+
+  list(
+    vt1_range  = range_or_null(vt1_values$vo2),
+    vt2_range  = range_or_null(vt2_values$vo2),
+    vt1_values = vt1_values,
+    vt2_values = vt2_values
+  )
+}
+
+#' Populate VT1/VT2 Range Slots on a CpetAnalysis Object
+#'
+#' Convenience wrapper that calls [detect_threshold_range()] and assigns
+#' `vt1_range` / `vt2_range` onto the analysis object. Failures degrade
+#' silently to `NULL`.
+#'
+#' @param analysis A CpetAnalysis S7 object.
+#' @param breath_df Breath-by-breath tibble (may be `NULL`).
+#' @return The updated CpetAnalysis.
+#' @keywords internal
+populate_threshold_ranges <- function(analysis, breath_df) {
+  res <- tryCatch(
+    if (!is.null(breath_df)) detect_threshold_range(breath_df) else NULL,
+    error = function(e) {
+      cli::cli_warn("VT range detection failed: {e$message}"); NULL
+    }
+  )
+  if (!is.null(res)) {
+    analysis@vt1_range <- res$vt1_range
+    analysis@vt2_range <- res$vt2_range
+  }
+  analysis
+}
+
 empty_thresholds <- function(confidence = "unable") {
   Thresholds(
     vt1_vo2 = NULL,

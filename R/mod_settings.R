@@ -144,9 +144,9 @@ mod_settings_ui <- function(id, language = "en") {
               ns("athlete_level"),
               label = tr("athlete_level", language),
               choices = stats::setNames(
-                c("elite", "competitive", "recreational", "sedentary"),
-                c(tr("elite", language), tr("competitive", language),
-                  tr("recreational", language), tr("sedentary", language))
+                c("recreational", "competitive", "elite", "sedentary"),
+                c(tr("recreational", language), tr("competitive", language),
+                  tr("elite", language), tr("sedentary", language))
               ),
               selected = "recreational"
             )
@@ -175,16 +175,20 @@ mod_settings_ui <- function(id, language = "en") {
             ns("report_sections"),
             label = NULL,
             choices = stats::setNames(
-              c("pretest", "protocol_details", "stage_table", "economy", "thresholds", "graphs", "clinical_notes"),
+              c("pretest", "protocol_details", "stage_table", "economy", "thresholds", "graphs", "clinical_notes",
+                "athlete_profile", "longitudinal", "estimates_caveats"),
               c(tr("section_pretest_toggle", language),
                 tr("section_protocol_toggle", language),
                 tr("section_stage_table_toggle", language),
                 tr("section_economy_toggle", language),
                 tr("section_thresholds_toggle", language),
                 tr("section_graphs_toggle", language),
-                tr("section_clinical_notes_toggle", language))
+                tr("section_clinical_notes_toggle", language),
+                tr("report_section_athlete_profile", language),
+                tr("report_section_longitudinal", language),
+                tr("report_section_estimates_caveats", language))
             ),
-            selected = c("protocol_details", "stage_table")
+            selected = c("protocol_details", "stage_table", "athlete_profile", "estimates_caveats")
           )
         )
       )
@@ -281,7 +285,8 @@ mod_settings_server <- function(id, language, cpet_data = shiny::reactive(NULL))
           input$athlete_sport
         },
         athlete_level = input$athlete_level %||% "recreational",
-        report_sections = input$report_sections %||% c("protocol_details", "stage_table"),
+        report_sections = input$report_sections %||% c("protocol_details", "stage_table",
+                                                        "athlete_profile", "estimates_caveats"),
         gross_efficiency = input$gross_efficiency %||% 20
       )
     })
@@ -395,15 +400,20 @@ mod_settings_server <- function(id, language, cpet_data = shiny::reactive(NULL))
       # Report sections checkboxes
       shiny::updateCheckboxGroupInput(session, "report_sections",
         choices = stats::setNames(
-          c("pretest", "protocol_details", "stage_table", "economy", "thresholds", "graphs", "clinical_notes"),
+          c("pretest", "protocol_details", "stage_table", "economy", "thresholds", "graphs", "clinical_notes",
+            "athlete_profile", "longitudinal", "estimates_caveats"),
           c(tr("section_pretest_toggle", lang),
             tr("section_protocol_toggle", lang),
             tr("section_stage_table_toggle", lang),
             tr("section_economy_toggle", lang),
             tr("section_thresholds_toggle", lang),
             tr("section_graphs_toggle", lang),
-            tr("section_clinical_notes_toggle", lang))
-        )
+            tr("section_clinical_notes_toggle", lang),
+            tr("report_section_athlete_profile", lang),
+            tr("report_section_longitudinal", lang),
+            tr("report_section_estimates_caveats", lang))
+        ),
+        selected = input$report_sections
       )
     })
 

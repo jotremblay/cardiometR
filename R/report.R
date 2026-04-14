@@ -754,6 +754,10 @@ build_template_data <- function(analysis, config, labels, clinical_notes, interp
                                                    prediction_source = prediction_source)
   template_data <- c(template_data, visual_interp)
 
+  # Phase 7: athlete profile / estimates & caveats / longitudinal section data
+  phase7 <- build_phase7_template_data(analysis, language, report_sections)
+  template_data <- c(template_data, phase7)
+
   # Add clinical notes
   # Add clinical notes if provided
   template_data$clinical_notes <- escape_typst(clinical_notes %||% "")
@@ -1290,11 +1294,186 @@ generate_report_graphs <- function(analysis, language = "en",
   predicted_file <- tempfile("predicted_comparison_", fileext = ".png")
   ggplot2::ggsave(predicted_file, plots$predicted, width = 10, height = 5, dpi = 150)
 
-  list(
+  out <- list(
     graph_panel = panel_file,
     graph_vslope = vslope_file,
     graph_predicted = predicted_file
   )
+
+  # Phase 7: VO2-power slope, z-score strip, longitudinal delta
+  try_save <- function(expr, name, w = 7, h = 3.5) {
+    p <- tryCatch(expr, error = function(e) NULL)
+    if (is.null(p)) return(NULL)
+    f <- tempfile(paste0(name, "_"), fileext = ".png")
+    tryCatch({
+      ggplot2::ggsave(f, p, width = w, height = h, dpi = 200)
+      f
+    }, error = function(e) NULL)
+  }
+
+  slope_file <- try_save(plot_vo2_power_slope(analysis, language = language),
+                         "vo2_power_slope")
+  if (!is.null(slope_file)) out$graph_slope <- slope_file
+
+  zstrip_file <- try_save(plot_zscore_strip(analysis, language = language),
+                          "zscore_strip", w = 7, h = 3)
+  if (!is.null(zstrip_file)) out$graph_zstrip <- zstrip_file
+
+  pid <- tryCatch(analysis@data@participant@id, error = function(e) "")
+  prior <- tryCatch(longitudinal_cache_read(pid), error = function(e) NULL)
+  if (is.data.frame(prior) && nrow(prior) > 0) {
+    long_file <- try_save(
+      plot_longitudinal_delta(analysis, prior, language = language),
+      "longitudinal_delta", w = 7, h = 3.5)
+    if (!is.null(long_file)) out$graph_longitudinal <- long_file
+  }
+
+  out
+}
+
+# ---- Phase 7 helpers --------------------------------------------------------
+
+# Build template data for athlete-profile, longitudinal and estimates-&-caveats
+# sections. Returns a list merged into the main template data.
+build_phase7_template_data <- function(analysis, language, report_sections) {
+  out <- list()
+  want <- function(key) is.null(report_sections) || key %in% report_sections
+
+  has_ap <- want("athlete_profile")
+  out$has_athlete_profile <- has_ap
+
+  peaks <- analysis@peaks
+  participant <- analysis@data@participant
+  wt <- tryCatch(participant@weight_kg, error = function(e) NA_real_)
+
+  vo2_kg <- tryCatch({
+    if (!is.null(peaks@vo2_kg_peak) && is.finite(peaks@vo2_kg_peak)) peaks@vo2_kg_peak
+    else if (!is.null(peaks@vo2_peak) && is.finite(wt) && wt > 0) peaks@vo2_peak / wt
+    else NA_real_
+  }, error = function(e) NA_real_)
+
+  zs <- analysis@z_scores %||% list()
+  fmt_num <- function(x, d = 1) {
+    if (is.numeric(x) && length(x) == 1 && !is.na(x) && is.finite(x))
+      formatC(x, digits = d, format = "f") else "--"
+  }
+  fmt_int <- function(x) {
+    if (is.numeric(x) && length(x) == 1 && !is.na(x) && is.finite(x))
+      as.character(round(x)) else "--"
+  }
+  fmt_z   <- function(entry) {
+    z <- if (is.list(entry)) entry$z else entry
+    if (!is.numeric(z) || !is.finite(z)) return("--")
+    formatC(as.numeric(z), digits = 2, format = "f")
+  }
+  fmt_pct <- function(entry) {
+    p <- if (is.list(entry)) entry$percentile else NA_real_
+    if (!is.numeric(p) || !is.finite(p)) return("--")
+    paste0(round(as.numeric(p)), "%")
+  }
+
+  out$ap_vo2_kg        <- fmt_num(vo2_kg, 1)
+  out$ap_map_kg        <- fmt_num(analysis@map_per_kg %||% NA_real_, 2)
+  out$ap_ppo           <- fmt_int(analysis@ppo_watts %||% NA_real_)
+  out$ap_kuipers       <- fmt_num(analysis@kuipers_fraction %||% NA_real_, 2)
+  out$ap_vo2_z         <- fmt_z(zs$vo2_peak_z)
+  out$ap_vo2_pct       <- fmt_pct(zs$vo2_peak_z)
+  out$ap_map_z         <- fmt_z(zs$map_per_kg_z)
+  out$ap_map_pct       <- fmt_pct(zs$map_per_kg_z)
+  out$ap_ppo_z         <- fmt_z(zs$ppo_z)
+  out$ap_ppo_pct       <- fmt_pct(zs$ppo_z)
+
+  # VO2-power slope caption
+  slope <- analysis@vo2_power_slope
+  if (is.list(slope) && !is.null(slope$slope) && length(slope$slope) == 1 &&
+      is.numeric(slope$slope) && !is.na(slope$slope) && is.finite(slope$slope)) {
+    lo <- slope$slope_ci_low %||% NA_real_
+    hi <- slope$slope_ci_high %||% NA_real_
+    out$slope_caption <- escape_typst(sprintf(
+      "%s: %.2f [%.2f, %.2f] mL/min/W",
+      tr("slope_label", language),
+      as.numeric(slope$slope),
+      as.numeric(lo),
+      as.numeric(hi)
+    ))
+    out$has_slope_caption <- TRUE
+  } else {
+    out$slope_caption <- ""
+    out$has_slope_caption <- FALSE
+  }
+
+  # Estimates & caveats
+  has_ec <- want("estimates_caveats")
+  out$has_estimates_caveats <- has_ec
+
+  # VT ranges table (metric | low | high | point)
+  vt1r <- analysis@vt1_range %||% NA_real_
+  vt2r <- analysis@vt2_range %||% NA_real_
+  th <- analysis@thresholds
+  vt1_point <- tryCatch(th@vt1_vo2, error = function(e) NA_real_)
+  vt2_point <- tryCatch(th@vt2_vo2, error = function(e) NA_real_)
+
+  build_vt_row <- function(name, rg, pt) {
+    lo <- if (length(rg) >= 1) rg[1] else NA_real_
+    hi <- if (length(rg) >= 2) rg[2] else NA_real_
+    sprintf("[%s], [%s], [%s], [%s]",
+      escape_typst(name),
+      fmt_int(lo), fmt_int(hi), fmt_int(pt))
+  }
+  out$vt_rows_content <- paste0(
+    build_vt_row("VT1", vt1r, vt1_point), ",\n    ",
+    build_vt_row("VT2", vt2r, vt2_point)
+  )
+
+  has_vt <- any(is.finite(c(vt1r, vt2r, vt1_point, vt2_point)))
+  out$has_vt_block <- has_vt
+
+  # FTP range
+  map_w <- analysis@map_watts %||% NA_real_
+  is_scalar_num <- function(v) is.numeric(v) && length(v) == 1 && !is.na(v) && is.finite(v)
+  if (is_scalar_num(map_w)) {
+    out$ftp_low  <- fmt_int(0.72 * map_w)
+    out$ftp_high <- fmt_int(0.77 * map_w)
+    out$has_ftp_block <- TRUE
+  } else {
+    out$ftp_low <- "--"
+    out$ftp_high <- "--"
+    out$has_ftp_block <- FALSE
+  }
+
+  # Substrate: check steady-state stages
+  sss <- analysis@steady_state_stages
+  sbs <- analysis@substrate_by_stage
+  qualifying_rows <- ""
+  has_substrate_table <- FALSE
+  if (is.data.frame(sss) && "steady_state_ok" %in% names(sss) &&
+      any(isTRUE(any(sss$steady_state_ok)), na.rm = TRUE) &&
+      is.data.frame(sbs)) {
+    ok <- which(isTRUE(sss$steady_state_ok) | sss$steady_state_ok %in% TRUE)
+    if (length(ok) > 0 && all(c("fat_pct", "cho_pct") %in% names(sbs))) {
+      sub <- sbs[ok, , drop = FALSE]
+      rows <- vapply(seq_len(nrow(sub)), function(i) {
+        st <- if ("stage" %in% names(sub)) sub$stage[i] else i
+        sprintf("[%s], [%s], [%s]",
+          escape_typst(as.character(st)),
+          fmt_num(sub$fat_pct[i], 0),
+          fmt_num(sub$cho_pct[i], 0))
+      }, character(1))
+      qualifying_rows <- paste(rows, collapse = ",\n    ")
+      has_substrate_table <- nzchar(qualifying_rows)
+    }
+  }
+  out$substrate_rows_content <- qualifying_rows
+  out$has_substrate_table <- has_substrate_table
+
+  # Longitudinal gate: cache has prior entry
+  has_long <- want("longitudinal")
+  prior <- tryCatch(longitudinal_cache_read(participant@id %||% ""),
+                    error = function(e) NULL)
+  out$has_longitudinal <- isTRUE(has_long) && !is.null(prior) &&
+    (is.data.frame(prior) && nrow(prior) > 0)
+
+  out
 }
 
 build_report_graph_cache_key <- function(analysis, language, athlete_sport, athlete_level) {
@@ -1492,7 +1671,9 @@ render_typst_report <- function(template_path, data, output_file) {
   on.exit(unlink(temp_dir, recursive = TRUE), add = TRUE)
 
   # Copy any image files to the temp directory and update paths
-  image_vars <- c("graph_panel", "graph_vslope", "graph_predicted", "logo_path", "lab_logo_path")
+  image_vars <- c("graph_panel", "graph_vslope", "graph_predicted",
+                  "graph_slope", "graph_zstrip", "graph_longitudinal",
+                  "logo_path", "lab_logo_path")
   for (var in image_vars) {
     val <- data[[var]]
     if (!is.null(val) && length(val) > 0 && !anyNA(val) && nchar(val) > 0 && file.exists(val)) {

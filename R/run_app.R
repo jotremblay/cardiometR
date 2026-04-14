@@ -28,6 +28,10 @@ run_app <- function(language = c("fr", "en"), ...) {
   if (nzchar(assets_dir)) {
     shiny::addResourcePath("cardiometR", assets_dir)
   }
+  www_dir <- system.file("app/www", package = "cardiometR")
+  if (nzchar(www_dir)) {
+    shiny::addResourcePath("cardiometr_www", www_dir)
+  }
 
   shiny::shinyApp(
     ui = app_ui(),

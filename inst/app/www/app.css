@@ -1,0 +1,288 @@
+:root {
+  --app-content-max-width: 1520px;
+  --app-content-xpad: clamp(0.65rem, 1.2vw, 1.25rem);
+  --app-content-ypad: clamp(0.8rem, 1.2vw, 1.4rem);
+  --app-card-border: var(--bs-border-color, #e6edf5);
+  --app-soft-bg: var(--bs-tertiary-bg, #fafbfd);
+}
+
+[data-bs-theme="dark"] {
+  --app-card-border: var(--bs-border-color);
+  --app-soft-bg: var(--bs-tertiary-bg);
+}
+
+.bslib-page-navbar > .container-fluid.html-fill-item {
+  padding-left: 0;
+  padding-right: 0;
+}
+.navbar {
+  box-shadow: 0 1px 6px rgba(17, 35, 58, 0.08);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+.navbar > .container-fluid {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+.navbar .navbar-header {
+  display: flex;
+  align-items: center;
+  margin-right: 0.5rem;
+  flex-shrink: 0;
+}
+.navbar .navbar-brand {
+  display: flex;
+  align-items: center;
+  margin-right: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  min-height: 64px;
+  line-height: 1;
+}
+.app-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-height: 64px;
+}
+.app-brand .app-logo {
+  display: block;
+  width: auto;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+.app-brand .app-logo-udem {
+  height: 52px;
+}
+.app-brand .app-logo-lab {
+  height: 66px;
+  max-width: none;
+  transform: translateY(4px);
+}
+.app-brand-title {
+  font-weight: 700;
+  font-size: clamp(1.45rem, 1.2rem + 0.7vw, 2rem);
+  line-height: 1;
+  color: var(--bs-body-color, #1f2d3d);
+  white-space: nowrap;
+}
+.navbar .navbar-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.12rem;
+}
+.navbar .nav-item {
+  display: flex;
+  align-items: center;
+}
+.navbar .nav-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  line-height: 1.05;
+  padding-top: 0.85rem;
+  padding-bottom: 0.85rem;
+  padding-left: 0.75rem;
+  padding-right: 0.75rem;
+}
+.navbar .nav-link i,
+.navbar .nav-link svg {
+  line-height: 1;
+  vertical-align: middle;
+}
+.navbar .nav-link.active {
+  font-weight: 600;
+}
+.navbar .app-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding-left: 0.5rem;
+}
+.navbar .app-toolbar .btn {
+  border-width: 1px;
+  min-width: 3rem;
+}
+.bslib-page-navbar .tab-content {
+  padding-top: 0.25rem;
+}
+.bslib-page-navbar .tab-pane {
+  padding-left: var(--app-content-xpad);
+  padding-right: var(--app-content-xpad);
+}
+.app-page {
+  width: min(100%, var(--app-content-max-width));
+  margin-left: auto;
+  margin-right: auto;
+  padding-top: var(--app-content-ypad);
+  padding-bottom: var(--app-content-ypad);
+}
+.app-page > .bslib-grid,
+.app-page > .card {
+  margin-bottom: 0;
+}
+.card {
+  border: 1px solid var(--app-card-border);
+  box-shadow: 0 1px 3px rgba(17, 35, 58, 0.05);
+}
+@media (max-width: 991.98px) {
+  .navbar > .container-fluid {
+    align-items: flex-start;
+  }
+  .navbar .navbar-brand {
+    min-height: 44px;
+  }
+  .app-brand {
+    min-height: 44px;
+    gap: 0.45rem;
+  }
+  .app-brand .app-logo-udem {
+    height: 38px;
+  }
+  .app-brand .app-logo-lab {
+    height: 48px;
+    transform: translateY(2px);
+  }
+  .app-brand-title {
+    font-size: 1.2rem;
+    white-space: normal;
+    max-width: 13ch;
+  }
+  .bslib-page-navbar .tab-pane {
+    padding-left: 0.55rem;
+    padding-right: 0.55rem;
+  }
+  .app-page {
+    padding-top: 0.7rem;
+    padding-bottom: 0.9rem;
+  }
+}
+@media (min-width: 992px) {
+  .navbar .navbar-collapse.collapse {
+    display: flex !important;
+    align-items: center;
+    justify-content: space-between;
+  }
+}
+.plot-container { position: relative; }
+.plot-container .recalculating { opacity: 0.3; }
+.plot-container .recalculating::after {
+  content: ''; position: absolute; top: 50%; left: 50%;
+  width: 40px; height: 40px; margin: -20px;
+  border: 4px solid var(--app-card-border); border-top-color: var(--bs-primary, #2E86AB);
+  border-radius: 50%; animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.bslib-value-box .value-box-showcase .fa,
+.bslib-value-box .value-box-showcase .svg-inline--fa {
+  font-size: 2.2rem;
+  opacity: 0.85;
+}
+
+.upload-dropzone {
+  border: 2px dashed var(--app-card-border);
+  border-radius: 0.5rem;
+  padding: 2rem;
+  text-align: center;
+  transition: border-color 0.2s, background-color 0.2s;
+  background: var(--app-soft-bg);
+}
+.upload-dropzone:hover {
+  border-color: var(--bs-primary, #2E86AB);
+  background: var(--bs-secondary-bg, #f0f7fb);
+}
+.upload-dropzone .form-group {
+  margin-bottom: 0;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2.5rem 1rem;
+  color: var(--bs-secondary-color, #9ca3af);
+}
+.empty-state .fa, .empty-state .svg-inline--fa {
+  font-size: 2.5rem;
+  margin-bottom: 0.75rem;
+  opacity: 0.5;
+}
+.empty-state p {
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+.criteria-list .criterion-item {
+  border-bottom: 1px solid var(--app-card-border);
+}
+.criteria-list .criterion-item:last-child {
+  border-bottom: none;
+}
+
+.metrics-list > div {
+  border-bottom: 1px solid var(--app-card-border);
+}
+.metrics-list > div:last-child {
+  border-bottom: none;
+}
+
+.quality-metrics-section {
+  background: var(--app-soft-bg);
+  border-radius: 0.5rem;
+  padding: 1rem;
+  border: 1px solid var(--app-card-border);
+}
+
+.report-preview-paper {
+  background: var(--bs-body-bg, white);
+  border: 1px solid var(--app-card-border);
+  border-radius: 4px;
+  padding: 1.5rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  font-size: 0.92rem;
+}
+
+.progress {
+  height: 1.25rem;
+  border-radius: 0.375rem;
+}
+.progress-bar {
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.25rem;
+}
+
+.section-divider {
+  border: none;
+  border-top: 1px solid var(--app-card-border);
+  margin: 1rem 0;
+}
+
+.table-clean {
+  font-size: 0.88rem;
+}
+.table-clean th {
+  background: var(--app-soft-bg);
+  font-weight: 600;
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--bs-secondary-color, #6c757d);
+  border-bottom: 2px solid var(--app-card-border);
+}
+.table-clean td {
+  vertical-align: middle;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .progress-bar,
+  .upload-dropzone,
+  .plot-container .recalculating::after,
+  * {
+    transition: none !important;
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}

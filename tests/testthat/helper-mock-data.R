@@ -106,6 +106,98 @@ create_mock_breath_data <- function(n_breaths = 300,
   )
 }
 
+#' Build a CpetAnalysis fixture for tests
+#'
+#' Constructs a realistic 12-min ramp CpetData with a Participant + CpetMetadata,
+#' runs the same pipeline as `mod_results` (averaging, peaks, threshold detection,
+#' stage extraction/summary), and populates Phase-1 additive metrics.
+#'
+#' @param n_breaths Number of breaths in the ramp (default 360 -> 12 min @ 2s).
+#' @return A CpetAnalysis S7 object with phase-1 slots populated.
+#' @keywords internal
+create_mock_cpet_analysis <- function(n_breaths = 360) {
+  set.seed(42)
+  time_s <- seq(0, by = 2, length.out = n_breaths)
+  intensity <- pmin(time_s / max(time_s), 1)
+  power_w <- round(intensity * 300)
+
+  breaths <- tibble::tibble(
+    time_s  = time_s,
+    vo2_ml  = 300 + intensity * 2700 + stats::rnorm(n_breaths, 0, 40),
+    vco2_ml = 250 + intensity * 3000 + stats::rnorm(n_breaths, 0, 40),
+    ve_l    = 10  + intensity * 120  + stats::rnorm(n_breaths, 0, 2),
+    bf      = 12  + intensity * 38   + stats::rnorm(n_breaths, 0, 2),
+    hr_bpm  = 70  + intensity * 120  + stats::rnorm(n_breaths, 0, 3),
+    power_w = power_w
+  ) |>
+    dplyr::mutate(
+      rer        = vco2_ml / vo2_ml,
+      vt_l       = ve_l / bf,
+      ve_vo2     = ve_l * 1000 / vo2_ml,
+      ve_vco2    = ve_l * 1000 / vco2_ml,
+      peto2_mmhg = 100 + intensity * 15 + stats::rnorm(n_breaths, 0, 2),
+      petco2_mmhg = 40 - intensity * 5  + stats::rnorm(n_breaths, 0, 1)
+    )
+
+  participant <- cardiometR::Participant(
+    id = "TEST001", name = "Test Subject",
+    age = 30, sex = "M",
+    height_cm = 175, weight_kg = 70
+  )
+  metadata <- cardiometR::CpetMetadata(
+    test_date = Sys.Date(),
+    device = "Mock COSMED Quark",
+    protocol = "Incremental ramp"
+  )
+
+  data <- cardiometR::CpetData(
+    participant = participant,
+    metadata = metadata,
+    breaths = breaths,
+    is_averaged = FALSE
+  )
+
+  # Mirror the mod_results pipeline
+  data_avg <- cardiometR::average(data, method = "rolling", window = 30)
+  peaks <- cardiometR::find_peaks(data_avg, averaging = 30)
+
+  thresholds <- tryCatch(
+    cardiometR::detect_thresholds(data_avg, methods = c("v_slope", "ve_vo2"),
+                                  window_s = 30),
+    error = function(e) NULL
+  )
+
+  stage_summary <- tryCatch({
+    staged <- cardiometR::extract_stages(data_avg, protocol = "ramp",
+                                         stage_duration = 60)
+    cardiometR::summarize_stages(staged, window_s = 30)
+  }, error = function(e) NULL)
+
+  protocol_config <- tryCatch(
+    cardiometR::ProtocolConfig(modality = "cycling",
+                                starting_intensity = 0,
+                                increment_size = 25,
+                                stage_duration_s = 60),
+    error = function(e) NULL
+  )
+
+  analysis <- cardiometR::CpetAnalysis(
+    data = data_avg,
+    peaks = peaks,
+    thresholds = thresholds,
+    stage_summary = stage_summary,
+    protocol_config = protocol_config
+  )
+
+  cardiometR:::populate_phase1_metrics(
+    analysis,
+    stage_summary = stage_summary,
+    breath_df = data_avg@breaths,
+    participant = participant,
+    settings = list(athlete_sport = "cycling", athlete_level = "recreational")
+  )
+}
+
 #' Create minimal valid breath data
 #'
 #' Creates the minimum required columns for CpetData validation.

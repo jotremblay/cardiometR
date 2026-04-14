@@ -1,0 +1,35 @@
+meta:
+  name: cardiometR
+  link: https://github.com/jtremblay/cardiometR
+
+logo:
+  small: cardiometR/lpeba_logo.svg
+  medium: cardiometR/lpeba_logo.svg
+  large: cardiometR/Ec-_kinesiologie_-act_-phy_officiel-RVB.png
+
+color:
+  palette:
+    udem-blue: "#2E86AB"
+    lpeba-slate: "#1f2d3d"
+    soft-border: "#e6edf5"
+    soft-bg: "#fafbfd"
+    muted: "#6c757d"
+  primary: "#2E86AB"
+  secondary: "#6c757d"
+  success: "#198754"
+  info: "#0dcaf0"
+  warning: "#ffc107"
+  danger: "#dc3545"
+  light: "#f8f9fa"
+  dark: "#1f2d3d"
+
+typography:
+  fonts:
+    - family: Inter
+      source: system
+  base:
+    family: Inter, -apple-system, "Segoe UI", "Helvetica Neue", Arial, sans-serif
+    size: 1rem
+  headings:
+    family: Inter, -apple-system, "Segoe UI", "Helvetica Neue", Arial, sans-serif
+    weight: 700

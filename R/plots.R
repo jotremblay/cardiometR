@@ -168,6 +168,52 @@ calculate_stage_averages <- function(breaths, window_seconds = 30, protocol_conf
     dplyr::filter(!is.na(vo2_ml))
 }
 
+#' Build VT shaded-band layers for a given x-axis unit
+#'
+#' Returns a list of ggplot2 layers that draw shaded vertical bands for
+#' VT1 and VT2 ranges. `x_unit` controls which slot is used:
+#' - `"vo2"`: expects `analysis@vt1_range` / `@vt2_range` as length-2 VO2 (mL/min)
+#' - `"time_s"` or `"time_min"`: skipped (time-axis VT bands not implemented)
+#' - `"power_w"`: skipped unless an explicit range is provided.
+#'
+#' Falls back to `geom_vline` at a legacy single value when only
+#' `thresholds@vt1_vo2` / `vt2_vo2` are present (and x_unit is `"vo2"`).
+#' @keywords internal
+vt_band_layers <- function(analysis, thresholds = NULL, x_unit = "vo2") {
+  pal <- palette_cardiometr()
+  layers <- list()
+  if (x_unit != "vo2") return(layers)
+
+  vt1_r <- tryCatch(analysis@vt1_range, error = function(e) NULL)
+  vt2_r <- tryCatch(analysis@vt2_range, error = function(e) NULL)
+
+  add_band <- function(rng, color) {
+    if (is.numeric(rng) && length(rng) == 2 && all(is.finite(rng))) {
+      list(ggplot2::annotate("rect", xmin = rng[1], xmax = rng[2],
+                             ymin = -Inf, ymax = Inf,
+                             fill = color, alpha = 0.15))
+    } else NULL
+  }
+  add_line <- function(val, color) {
+    if (is.numeric(val) && length(val) == 1 && is.finite(val)) {
+      list(ggplot2::geom_vline(xintercept = val, color = color,
+                               linetype = "dashed", linewidth = 0.6))
+    } else NULL
+  }
+
+  b1 <- add_band(vt1_r, pal[["bluish_green"]])
+  b2 <- add_band(vt2_r, pal[["vermillion"]])
+  if (is.null(b1) && !is.null(thresholds)) {
+    v1 <- tryCatch(thresholds@vt1_vo2, error = function(e) NULL)
+    b1 <- add_line(v1, pal[["bluish_green"]])
+  }
+  if (is.null(b2) && !is.null(thresholds)) {
+    v2 <- tryCatch(thresholds@vt2_vo2, error = function(e) NULL)
+    b2 <- add_line(v2, pal[["vermillion"]])
+  }
+  c(b1, b2)
+}
+
 is_cpet_analysis <- function(x) {
   inherits(x, "CpetAnalysis") || grepl("CpetAnalysis$", class(x)[1])
 }
@@ -316,18 +362,24 @@ plot_cpet_panel <- function(x,
     }
   }
 
-  # Common theme - clean and professional
-  theme_cpet <- ggplot2::theme_minimal(base_size = 9) +
+  # Common theme - cardiometR palette, tuned to panel size
+  theme_cpet <- theme_cardiometr(base_size = 9) +
     ggplot2::theme(
-      panel.grid.minor = ggplot2::element_blank(),
-      panel.grid.major = ggplot2::element_line(color = "gray90", linewidth = 0.3),
-      axis.title = ggplot2::element_text(size = 8),
+      axis.title = ggplot2::element_text(size = 8, face = "bold"),
       axis.text = ggplot2::element_text(size = 7),
       plot.title = ggplot2::element_text(size = 9, face = "bold", hjust = 0.5),
       legend.text = ggplot2::element_text(size = 7),
       legend.key.size = ggplot2::unit(0.4, "lines"),
       plot.margin = ggplot2::margin(5, 5, 5, 5)
     )
+  pal <- palette_cardiometr()
+
+  # Resolve CpetAnalysis for VT band overlays (may be NULL when x is CpetData)
+  analysis_for_bands <- if (inherits(x, "CpetAnalysis") ||
+                            grepl("CpetAnalysis$", class(x)[1])) x else NULL
+  vt_bands_vo2 <- if (!is.null(analysis_for_bands)) {
+    vt_band_layers(analysis_for_bands, thresholds, x_unit = "vo2")
+  } else list()
 
   # Panel 1: O2 Pulse vs Power - KEY RELATIONSHIP (stroke volume response)
   if ("power_w" %in% names(stage_avg) && !all(is.na(stage_avg$power_w)) &&
@@ -510,6 +562,9 @@ plot_cpet_panel <- function(x,
     ) +
     theme_cpet
 
+  # Overlay VT bands on V-slope (panel 4, x = VO2)
+  if (length(vt_bands_vo2) > 0) p4 <- Reduce(`+`, vt_bands_vo2, init = p4)
+
   # Panel 5: VE/VO2 and VE/VCO2 vs VO2 (Ventilatory Equivalents)
   stage_ve <- stage_avg |>
     dplyr::mutate(
@@ -545,6 +600,9 @@ plot_cpet_panel <- function(x,
     theme_cpet +
     ggplot2::theme(legend.position = "bottom")
 
+  # Overlay VT bands on ventilatory equivalents (panel 5, x = VO2)
+  if (length(vt_bands_vo2) > 0) p5 <- Reduce(`+`, vt_bands_vo2, init = p5)
+
   # Panel 6: RER vs VO2
   p6 <- ggplot2::ggplot(stage_avg, ggplot2::aes(x = vo2_ml, y = rer)) +
     ggplot2::geom_point(size = 2.5, alpha = 0.9, color = "#F77F00") +
@@ -556,6 +614,9 @@ plot_cpet_panel <- function(x,
       y = "RER"
     ) +
     theme_cpet
+
+  # Overlay VT bands on RER vs VO2 (panel 6, x = VO2)
+  if (length(vt_bands_vo2) > 0) p6 <- Reduce(`+`, vt_bands_vo2, init = p6)
 
   # Panel 7: PETO2 and PETCO2 vs VO2 (if available)
   if ("peto2_mmhg" %in% names(stage_avg) && "petco2_mmhg" %in% names(stage_avg) &&
@@ -609,6 +670,9 @@ plot_cpet_panel <- function(x,
         ggplot2::theme_void()
     }
   }
+
+  # Overlay VT bands on panel 7 when its x-axis is VO2 (both variants use VO2)
+  if (length(vt_bands_vo2) > 0) p7 <- Reduce(`+`, vt_bands_vo2, init = p7)
 
   # Panel 8: HR vs Power - SHOWS CARDIOVASCULAR RESPONSE
   if ("hr_bpm" %in% names(stage_avg) && !all(is.na(stage_avg$hr_bpm)) &&
@@ -1420,4 +1484,279 @@ plot_predicted_comparison <- function(x,
   }
 
   p
+}
+
+
+# ---------------------------------------------------------------------------
+# Phase 4 additive plots: VO2-Power slope, Z-score strip, Longitudinal delta
+# ---------------------------------------------------------------------------
+
+#' Plot VO2-Power Submax Slope
+#'
+#' @description
+#' Scatter of VO2 vs Power over the submax portion of the test with a linear
+#' fit and 95% confidence ribbon. Submax cutoff is VT2 (from
+#' `analysis@vt2_range[1]`) when available, else 85% of `analysis@ppo_watts`.
+#' The slope ± 95% CI (mL·min^-1·W^-1) is shown as a caption.
+#'
+#' @param analysis A CpetAnalysis S7 object.
+#' @param language Language code (`"en"` or `"fr"`).
+#' @return A ggplot2 object.
+#' @examples
+#' \dontrun{
+#' plot_vo2_power_slope(analysis, language = "en")
+#' }
+#' @export
+plot_vo2_power_slope <- function(analysis, language = "en") {
+  pal <- palette_cardiometr()
+  breaths <- tryCatch(analysis@data@breaths, error = function(e) NULL)
+  stage_summary <- tryCatch(analysis@stage_summary, error = function(e) NULL)
+
+  vt2_power <- tryCatch({
+    vt2r <- analysis@vt2_range
+    if (is.numeric(vt2r) && length(vt2r) == 2) vt2r[1] else NULL
+  }, error = function(e) NULL)
+
+  cutoff <- vt2_power
+  if (is.null(cutoff) || !is.finite(cutoff)) {
+    ppo <- tryCatch(analysis@ppo_watts, error = function(e) NA_real_)
+    cutoff <- if (is.numeric(ppo) && is.finite(ppo)) 0.85 * ppo else NA_real_
+  }
+
+  df <- if (!is.null(breaths) &&
+            all(c("vo2_ml", "power_w") %in% names(breaths))) {
+    d <- breaths |>
+      dplyr::select("vo2_ml", "power_w") |>
+      dplyr::filter(!is.na(.data$vo2_ml), !is.na(.data$power_w),
+                    .data$power_w > 0)
+    if (is.finite(cutoff)) dplyr::filter(d, .data$power_w <= cutoff) else d
+  } else NULL
+
+  fit <- tryCatch(analysis@vo2_power_slope, error = function(e) NULL)
+  if (is.null(fit) || !is.finite(fit$slope %||% NA_real_)) {
+    fit <- tryCatch(
+      fit_vo2_power_slope(breaths, stage_summary, vt2_power = cutoff),
+      error = function(e) NULL
+    )
+  }
+
+  p <- ggplot2::ggplot()
+  if (!is.null(df) && nrow(df) >= 2) {
+    p <- p +
+      ggplot2::geom_point(data = df,
+                          ggplot2::aes(x = .data$power_w, y = .data$vo2_ml),
+                          color = pal[["patient"]], size = 2, alpha = 0.7) +
+      ggplot2::geom_smooth(data = df,
+                           ggplot2::aes(x = .data$power_w, y = .data$vo2_ml),
+                           method = "lm", formula = y ~ x, se = TRUE,
+                           color = pal[["patient"]], fill = pal[["patient"]],
+                           alpha = 0.2, linewidth = 0.9)
+  } else {
+    p <- p + ggplot2::annotate("text", x = 0.5, y = 0.5,
+                               label = tr("insufficient_stratum_data", language),
+                               color = "gray50")
+  }
+
+  caption <- NULL
+  if (!is.null(fit) && is.finite(fit$slope %||% NA_real_)) {
+    slope_s <- sprintf("%.2f", fit$slope)
+    ci_s <- sprintf("[%.2f, %.2f]",
+                    fit$slope_ci_low %||% NA_real_,
+                    fit$slope_ci_high %||% NA_real_)
+    cap_tpl <- tr("vo2_power_slope_caption", language)
+    caption <- gsub("\\{slope\\}", slope_s,
+                    gsub("\\{ci\\}", ci_s, cap_tpl))
+  }
+
+  p +
+    ggplot2::labs(
+      title = tr("vo2_power_slope_title", language),
+      x = if (language == "fr") "Puissance (W)" else "Power (W)",
+      y = expression(VO[2]~(mL/min)),
+      caption = caption
+    ) +
+    theme_cardiometr()
+}
+
+
+#' Plot Z-Score Strip for Key Metrics
+#'
+#' @description
+#' Horizontal strip plot: one row per metric. Shows a grey μ±1 SD band
+#' (in z-units), dashed LLN/ULN at ±1.645, the patient's z as a coloured dot,
+#' and a right-aligned annotation with z and percentile. Metrics without a
+#' valid z-score are rendered with a subdued placeholder label.
+#'
+#' @param analysis A CpetAnalysis S7 object (uses `@z_scores`).
+#' @param metrics Character vector of metric keys drawn from
+#'   `analysis@z_scores` (strip the `_z` suffix — e.g. `"vo2_peak"`
+#'   maps to `vo2_peak_z`).
+#' @param language Language code.
+#' @return A ggplot2 object.
+#' @examples
+#' \dontrun{
+#' plot_zscore_strip(analysis)
+#' }
+#' @export
+plot_zscore_strip <- function(analysis,
+                              metrics = c("vo2_peak", "map_per_kg", "ppo"),
+                              language = "en") {
+  pal <- palette_cardiometr()
+  zs <- tryCatch(analysis@z_scores, error = function(e) NULL)
+
+  label_for <- function(m) {
+    switch(m,
+      vo2_peak   = if (language == "fr") "VO2pic" else "VO2peak",
+      map_per_kg = if (language == "fr") "PMA/kg" else "MAP/kg",
+      ppo        = if (language == "fr") "PPO" else "PPO",
+      m)
+  }
+
+  rows <- purrr::map_dfr(metrics, function(m) {
+    key <- paste0(m, "_z")
+    entry <- if (is.list(zs)) zs[[key]] else NULL
+    z <- if (is.list(entry)) entry$z else entry
+    z <- suppressWarnings(as.numeric(z))
+    if (!is.numeric(z) || !is.finite(z)) z <- NA_real_
+    tibble::tibble(metric = label_for(m), z = z)
+  })
+  rows$metric <- factor(rows$metric, levels = rev(rows$metric))
+
+  x_range <- c(-3, 3)
+  finite_z <- rows$z[is.finite(rows$z)]
+  if (length(finite_z) > 0) {
+    x_range <- range(c(x_range, finite_z), na.rm = TRUE)
+  }
+
+  annot <- rows |>
+    dplyr::mutate(
+      label = dplyr::if_else(
+        is.finite(.data$z),
+        sprintf("z = %+.2f  (%s %.0f)",
+                .data$z,
+                tr("percentile_label", language),
+                percentile_from_z(.data$z)),
+        tr("insufficient_stratum_data", language)
+      )
+    )
+
+  ggplot2::ggplot(rows, ggplot2::aes(x = .data$z, y = .data$metric)) +
+    ggplot2::annotate("rect", xmin = -1, xmax = 1,
+                      ymin = -Inf, ymax = Inf,
+                      fill = pal[["stratum_band"]], alpha = 0.25) +
+    ggplot2::geom_vline(xintercept = c(-1.645, 1.645),
+                        color = pal[["stratum_band"]],
+                        linetype = "dashed", linewidth = 0.5) +
+    ggplot2::geom_vline(xintercept = 0, color = "gray60", linewidth = 0.3) +
+    ggplot2::geom_point(data = dplyr::filter(rows, is.finite(.data$z)),
+                        color = pal[["patient"]], size = 4) +
+    ggplot2::geom_text(data = annot,
+                       ggplot2::aes(x = max(x_range), label = .data$label),
+                       hjust = 1, vjust = -0.7, size = 3,
+                       color = ifelse(is.finite(annot$z), "black", "gray60")) +
+    ggplot2::scale_x_continuous(limits = x_range) +
+    ggplot2::labs(
+      x = tr("z_score_axis", language),
+      y = NULL,
+      title = NULL
+    ) +
+    theme_cardiometr()
+}
+
+
+#' Plot Longitudinal Delta Between Two CPET Tests
+#'
+#' @description
+#' Dumbbell comparator across VO2peak, MAP/kg and PPO for a current vs prior
+#' test. A typical-error band (±3 percent per Hopkins 2001) is shaded around
+#' the prior value; the current value is coloured as "beyond typical error"
+#' when the change exceeds the band, otherwise as "within noise". Returns
+#' `NULL` when `prior_analysis` is NULL.
+#'
+#' @param current_analysis A CpetAnalysis S7 object (required).
+#' @param prior_analysis A CpetAnalysis S7 object, or NULL.
+#' @param language Language code.
+#' @return A ggplot2 object, or NULL when no prior test is supplied.
+#' @examples
+#' \dontrun{
+#' plot_longitudinal_delta(current, prior)
+#' }
+#' @export
+plot_longitudinal_delta <- function(current_analysis,
+                                    prior_analysis,
+                                    language = "en") {
+  if (is.null(prior_analysis)) return(NULL)
+  pal <- palette_cardiometr()
+
+  get_metric <- function(a, key) {
+    tryCatch({
+      val <- switch(key,
+        vo2_peak   = a@peaks@vo2_kg_peak,
+        map_per_kg = a@map_per_kg,
+        ppo        = a@ppo_watts,
+        NA_real_)
+      if (is.numeric(val) && length(val) >= 1) as.numeric(val[1]) else NA_real_
+    }, error = function(e) NA_real_)
+  }
+
+  metric_label <- function(m) switch(m,
+    vo2_peak   = if (language == "fr") "VO2pic (mL/kg/min)" else "VO2peak (mL/kg/min)",
+    map_per_kg = if (language == "fr") "PMA/kg (W/kg)" else "MAP/kg (W/kg)",
+    ppo        = if (language == "fr") "PPO (W)" else "PPO (W)",
+    m)
+
+  metrics <- c("vo2_peak", "map_per_kg", "ppo")
+  typical_error <- 0.03  # Hopkins 2001, ±3 percent
+
+  df <- purrr::map_dfr(metrics, function(m) {
+    prior <- get_metric(prior_analysis, m)
+    curr <- get_metric(current_analysis, m)
+    tibble::tibble(
+      metric = metric_label(m),
+      prior = prior,
+      current = curr,
+      te_low = prior * (1 - typical_error),
+      te_high = prior * (1 + typical_error),
+      beyond = is.finite(prior) && is.finite(curr) &&
+               (curr < prior * (1 - typical_error) ||
+                curr > prior * (1 + typical_error))
+    )
+  })
+  df$metric <- factor(df$metric, levels = rev(df$metric))
+  df$color_key <- ifelse(df$beyond,
+                         tr("beyond_typical_error", language),
+                         tr("within_noise", language))
+
+  ggplot2::ggplot(df) +
+    ggplot2::geom_errorbarh(
+      ggplot2::aes(y = .data$metric,
+                   xmin = .data$te_low, xmax = .data$te_high),
+      color = pal[["stratum_band"]], height = 0.25, linewidth = 3, alpha = 0.4
+    ) +
+    ggplot2::geom_segment(
+      ggplot2::aes(y = .data$metric, yend = .data$metric,
+                   x = .data$prior, xend = .data$current),
+      color = "gray60", linewidth = 0.6
+    ) +
+    ggplot2::geom_point(ggplot2::aes(y = .data$metric, x = .data$prior),
+                        color = pal[["stratum_band"]], size = 3) +
+    ggplot2::geom_point(
+      ggplot2::aes(y = .data$metric, x = .data$current,
+                   color = .data$color_key),
+      size = 4
+    ) +
+    ggplot2::scale_color_manual(
+      values = stats::setNames(
+        c(pal[["vermillion"]], pal[["bluish_green"]]),
+        c(tr("beyond_typical_error", language),
+          tr("within_noise", language))
+      ),
+      name = NULL
+    ) +
+    ggplot2::labs(
+      title = tr("longitudinal_title", language),
+      x = NULL, y = NULL,
+      caption = tr("typical_error_band", language)
+    ) +
+    theme_cardiometr()
 }
