@@ -157,7 +157,8 @@ mod_results_server <- function(id, language, cpet_data, participant, settings,
           stages_tbl <- NULL
           tryCatch({
             data_with_stages <- extract_stages(data_avg, protocol = s$protocol,
-                                               stage_duration = s$stage_duration)
+                                               stage_duration = s$stage_duration,
+                                               increment = s$increment_size)
             stage_summary <- summarize_stages(data_with_stages, window_s = s$averaging_window %||% 30)
             stages_tbl <- tryCatch(data_with_stages@stages, error = function(e) NULL)
             data_avg@stages <- stages_tbl

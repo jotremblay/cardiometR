@@ -4,7 +4,7 @@
 \alias{extract_stages_from_power}
 \title{Extract Stages from Power Changes}
 \usage{
-extract_stages_from_power(breaths, protocol, stage_duration)
+extract_stages_from_power(breaths, protocol, stage_duration, increment = NULL)
 }
 \arguments{
 \item{breaths}{Breath data tibble}

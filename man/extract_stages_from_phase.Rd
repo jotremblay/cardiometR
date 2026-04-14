@@ -4,7 +4,7 @@
 \alias{extract_stages_from_phase}
 \title{Extract Stages from Phase Column}
 \usage{
-extract_stages_from_phase(breaths, protocol, stage_duration)
+extract_stages_from_phase(breaths, protocol, stage_duration, increment = NULL)
 }
 \arguments{
 \item{breaths}{Breath data tibble}

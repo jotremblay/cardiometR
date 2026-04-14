@@ -6,19 +6,25 @@
 method(extract_stages, CpetData) <- function(x,
                                               protocol = c("step", "ramp", "auto"),
                                               stage_duration = 180,
+                                              increment = NULL,
                                               ...) {
   protocol <- match.arg(protocol)
   breaths <- x@breaths
 
   # Try to use phase column if available
   if ("phase" %in% names(breaths)) {
-    stages <- extract_stages_from_phase(breaths, protocol, stage_duration)
+    stages <- extract_stages_from_phase(breaths, protocol, stage_duration, increment)
   } else if ("power_w" %in% names(breaths)) {
     # Try to detect from power changes
-    stages <- extract_stages_from_power(breaths, protocol, stage_duration)
+    stages <- extract_stages_from_power(breaths, protocol, stage_duration, increment)
   } else {
     # Fall back to time-based stages
     stages <- extract_stages_by_time(breaths, stage_duration)
+  }
+
+  # Drop micro-stages (less than half the median stage duration).
+  if (!is.null(stages) && nrow(stages) > 0 && "stage" %in% names(stages)) {
+    stages <- merge_short_stages(stages, stage_duration)
   }
 
   # Return CpetData with stages populated
@@ -40,54 +46,68 @@ method(extract_stages, CpetData) <- function(x,
 #' @param stage_duration Stage duration in seconds
 #' @return Tibble with stage annotations
 #' @keywords internal
-extract_stages_from_phase <- function(breaths, protocol, stage_duration) {
+extract_stages_from_phase <- function(breaths, protocol, stage_duration, increment = NULL) {
+  # When we have real power (or speed) signal, prefer the power-based
+  # detector so stages are aligned to the actual protocol increments and
+  # our phase-level rest/warmup override applies. Fall back to phase-based
+  # time bucketing only when no power data is available.
+  has_power  <- "power_w"   %in% names(breaths) && any(!is.na(breaths$power_w))
+  has_speed  <- "speed_kmh" %in% names(breaths) && any(!is.na(breaths$speed_kmh))
+  if (has_power) {
+    return(extract_stages_from_power(breaths, protocol, stage_duration, increment))
+  }
+
   # Get unique phases
   phases <- breaths |>
     dplyr::mutate(phase = tolower(phase)) |>
     dplyr::filter(!is.na(phase))
 
-  # Identify exercise portion
-  exercise_phases <- c("exercise", "warmup", "work", "exer")
+  # Identify protocol portion: strictly 'exercise' / 'work', NOT warmup
+  # or recovery (those are pre/post the ramp and distort stage summaries).
+  exercise_phases <- c("exercise", "work", "exer")
   exercise_data <- phases |>
     dplyr::filter(grepl(paste(exercise_phases, collapse = "|"), phase))
 
   if (nrow(exercise_data) == 0) {
-    # No exercise phase found, use all non-rest data
+    # No explicit exercise phase — take everything that isn't rest/warmup/
+    # recovery/cool.
     exercise_data <- phases |>
-      dplyr::filter(!grepl("rest|recovery|cool", phase))
+      dplyr::filter(!grepl("rest|warmup|warm.?up|recovery|cool", phase))
   }
 
   if (nrow(exercise_data) == 0) {
     return(extract_stages_by_time(breaths, stage_duration))
   }
 
-  # For step protocol, create stages based on duration
+  # Time-based stages, with rest/warmup/recovery forced to stage 0.
   if (protocol %in% c("step", "auto")) {
     exercise_start <- min(exercise_data$time_s)
     exercise_end <- max(exercise_data$time_s)
 
     n_stages <- ceiling((exercise_end - exercise_start) / stage_duration)
 
+    phase_lc <- if ("phase" %in% names(breaths)) tolower(as.character(breaths$phase)) else NA_character_
+
     stages <- tibble::tibble(
       time_s = breaths$time_s,
-      stage = dplyr::case_when(
-        time_s < exercise_start ~ 0L,  # Rest
-        time_s > exercise_end ~ n_stages + 1L,  # Recovery
-        TRUE ~ as.integer(ceiling((time_s - exercise_start) / stage_duration))
-      ),
-      stage_name = dplyr::case_when(
-        stage == 0L ~ "Rest",
-        stage > n_stages ~ "Recovery",
-        TRUE ~ paste("Stage", stage)
-      )
-    )
+      phase_lc = phase_lc
+    ) |>
+      dplyr::mutate(
+        stage = dplyr::case_when(
+          !is.na(phase_lc) & grepl("rest|warmup|warm.?up|recovery|cool", phase_lc) ~ 0L,
+          time_s < exercise_start ~ 0L,
+          time_s > exercise_end ~ n_stages + 1L,
+          TRUE ~ as.integer(ceiling((time_s - exercise_start) / stage_duration))
+        ),
+        stage_name = dplyr::case_when(
+          stage == 0L ~ "Rest",
+          stage > n_stages ~ "Recovery",
+          TRUE ~ paste("Stage", stage)
+        )
+      ) |>
+      dplyr::select(time_s, stage, stage_name)
   } else {
-    # Ramp protocol - stages based on power increments
-    if ("power_w" %in% names(breaths)) {
-      stages <- extract_stages_from_power(breaths, protocol, stage_duration)
-    } else {
-      stages <- extract_stages_by_time(breaths, stage_duration)
-    }
+    stages <- extract_stages_by_time(breaths, stage_duration)
   }
 
   stages
@@ -101,7 +121,7 @@ extract_stages_from_phase <- function(breaths, protocol, stage_duration) {
 #' @param stage_duration Stage duration for step protocols
 #' @return Tibble with stage annotations
 #' @keywords internal
-extract_stages_from_power <- function(breaths, protocol, stage_duration) {
+extract_stages_from_power <- function(breaths, protocol, stage_duration, increment = NULL) {
   # Get power data
   power_data <- breaths |>
     dplyr::filter(!is.na(power_w))
@@ -110,10 +130,18 @@ extract_stages_from_power <- function(breaths, protocol, stage_duration) {
     return(extract_stages_by_time(breaths, stage_duration))
   }
 
+  resolve_increment <- function(vals, user_increment) {
+    if (is.numeric(user_increment) && length(user_increment) == 1 &&
+        is.finite(user_increment) && user_increment > 0) {
+      return(as.numeric(user_increment))
+    }
+    detect_power_increment(vals)
+  }
+
   # For step protocol, group by power level
   if (protocol %in% c("step", "auto")) {
     # Round power to nearest increment (e.g., 25W or 30W stages)
-    power_increment <- detect_power_increment(power_data$power_w)
+    power_increment <- resolve_increment(power_data$power_w, increment)
 
     stages <- breaths |>
       dplyr::mutate(
@@ -126,6 +154,26 @@ extract_stages_from_power <- function(breaths, protocol, stage_duration) {
           as.integer(match(power_rounded, sort(unique(power_rounded[power_rounded > 0])))),
           0L
         ),
+        stage = dplyr::if_else(
+          !is.na(power_w) & power_w <= 0,
+          0L,
+          stage
+        )
+      )
+    if ("phase" %in% names(breaths)) {
+      stages <- stages |>
+        dplyr::mutate(
+          stage = dplyr::if_else(
+            !is.na(phase) & tolower(as.character(phase)) %in%
+              c("rest", "warmup", "warm-up", "warm up", "recovery",
+                "cooldown", "cool-down", "cool down", "cool"),
+            0L,
+            stage
+          )
+        )
+    }
+    stages <- stages |>
+      dplyr::mutate(
         stage_name = dplyr::if_else(stage == 0, "Rest", paste("Stage", stage))
       ) |>
       dplyr::select(time_s, stage, stage_name, power_rounded)
@@ -148,7 +196,7 @@ extract_stages_from_power <- function(breaths, protocol, stage_duration) {
     }
 
     power_used <- ifelse(is.na(power_smooth), power_data$power_w, power_smooth)
-    power_increment <- detect_power_increment(power_used)
+    power_increment <- resolve_increment(power_used, increment)
 
     if (is.null(power_increment) || is.na(power_increment) || power_increment <= 0) {
       stages <- extract_stages_by_time(breaths, stage_duration)
@@ -204,6 +252,50 @@ extract_stages_from_power <- function(breaths, protocol, stage_duration) {
   stages
 }
 
+
+#' Merge short/transient protocol stages into stage 0
+#'
+#' @description
+#' Drops stages whose duration is less than half the median exercise-stage
+#' duration. This removes the transient 1-row "stages" produced when a
+#' ramp crosses a power bucket briefly, keeping only stages that actually
+#' held for a meaningful period. Stages reassigned to 0 are renamed "Rest".
+#'
+#' @param stages Stages tibble with `time_s`, `stage`, `stage_name`.
+#' @param stage_duration Target protocol stage duration (seconds).
+#' @return Updated stages tibble.
+#' @keywords internal
+merge_short_stages <- function(stages, stage_duration = 60) {
+  if (!all(c("time_s", "stage") %in% names(stages)) || nrow(stages) < 2) {
+    return(stages)
+  }
+  ex <- stages |> dplyr::filter(!is.na(.data$stage), .data$stage > 0)
+  if (nrow(ex) < 2) return(stages)
+
+  durs <- ex |>
+    dplyr::group_by(.data$stage) |>
+    dplyr::summarise(
+      t_min = min(.data$time_s, na.rm = TRUE),
+      t_max = max(.data$time_s, na.rm = TRUE),
+      n = dplyr::n(),
+      .groups = "drop"
+    ) |>
+    dplyr::mutate(duration = pmax(.data$t_max - .data$t_min, 0))
+
+  med_dur <- stats::median(durs$duration[durs$duration > 0])
+  if (!is.finite(med_dur) || med_dur <= 0) med_dur <- stage_duration
+  cutoff <- 0.5 * med_dur
+
+  keep_stages <- durs |>
+    dplyr::filter(.data$duration >= cutoff | .data$n >= 3) |>
+    dplyr::pull(.data$stage)
+
+  stages |>
+    dplyr::mutate(
+      stage = dplyr::if_else(.data$stage %in% keep_stages, .data$stage, 0L),
+      stage_name = dplyr::if_else(.data$stage == 0L, "Rest", .data$stage_name)
+    )
+}
 
 #' Extract Stages by Time Windows
 #'
