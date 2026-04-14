@@ -410,6 +410,10 @@ section_population_norms: "Population norms"
 norms_mean: "Mean"
 norms_band: "Band (low–high)"
 norms_zscore_percentile: "z · percentile"
-norms_sd_tabulated: "SD from published tables."
-norms_sd_estimated: "SD estimated from the published range (high−low)/3.29."
+norms_sd_tabulated: "z-scores computed with SD from published tables."
+norms_sd_estimated: "z-scores computed with SD approximated as (high−low)/3.29 from the published range."
 norms_no_stratum: "No stratum selected; configure sport and level."
+
+# Population norms table column + thresholds heading
+norms_patient: "Patient"
+section_thresholds: "Ventilatory Thresholds"

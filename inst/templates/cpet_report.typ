@@ -279,12 +279,9 @@
 // Athlete Profile (Phase 7) — three-column headline
 {{#if has_athlete_profile}}
 #block(breakable: false)[
-  #grid(
-    columns: (auto, 1fr),
-    gutter: 0.5em,
-    align(horizon)[🚴],
-    heading(level: 1)[{{section_athlete_profile}}]
-  )
+  #block[
+    #text(size: 18pt)[🚴] #h(0.4em) #heading(level: 1, outlined: false)[{{section_athlete_profile}}]
+  ]
 
   #grid(
     columns: (1fr, 1fr, 1fr),
@@ -450,12 +447,9 @@
 #v(0.8em)
 
 {{#if has_population_norms}}
-#grid(
-  columns: (auto, 1fr),
-  gutter: 0.5em,
-  align(horizon)[👥],
-  heading(level: 1)[{{pn_section_title}}]
-)
+#block[
+  #text(size: 18pt)[👥] #h(0.4em) #heading(level: 1, outlined: false)[{{pn_section_title}}]
+]
 #block(breakable: false)[
   #text(size: 9pt, fill: luma(90), style: "italic")[{{pn_description}} — {{pn_citation_short}}]
   #v(0.3em)
@@ -480,12 +474,9 @@
 
 // Stage-by-Stage Results (optional)
 {{#if has_stage_table}}
-#grid(
-  columns: (auto, 1fr),
-  gutter: 0.5em,
-  align(horizon)[📊],
-  heading(level: 1)[{{section_stage_table}}]
-)
+#block[
+  #text(size: 18pt)[📊] #h(0.4em) #heading(level: 1, outlined: false)[{{section_stage_table}}]
+]
 
 {{stage_table}}
 
@@ -495,12 +486,9 @@
 // Economy Metrics (optional) - keep together on one page
 {{#if has_economy_metrics}}
 #block(breakable: false)[
-  #grid(
-    columns: (auto, 1fr),
-    gutter: 0.5em,
-    align(horizon)[🏃],
-    heading(level: 1)[{{section_economy}}]
-  )
+  #block[
+    #text(size: 18pt)[🏃] #h(0.4em) #heading(level: 1, outlined: false)[{{section_economy}}]
+  ]
 
   #grid(
     columns: (1fr, 1fr),
@@ -552,12 +540,9 @@
 // Ventilatory Thresholds (only shown if detected) - keep together on one page
 {{#if thresholds_detected}}
 #block(breakable: false)[
-  #grid(
-    columns: (auto, 1fr),
-    gutter: 0.5em,
-    align(horizon)[🎯],
-    heading(level: 1)[{{section_thresholds}}]
-  )
+  #block[
+    #text(size: 18pt)[🎯] #h(0.4em) #heading(level: 1, outlined: false)[{{section_thresholds}}]
+  ]
 
   #table(
     columns: (2fr, 1fr, 1fr, 1fr, 1fr),
@@ -585,12 +570,9 @@
 
 {{#if has_graphs}}
 // Graphs
-#grid(
-  columns: (auto, 1fr),
-  gutter: 0.5em,
-  align(horizon)[📈],
-  heading(level: 1)[{{section_graphs}}]
-)
+#block[
+  #text(size: 18pt)[📈] #h(0.4em) #heading(level: 1, outlined: false)[{{section_graphs}}]
+]
 
 {{#if graph_panel}}
 #figure(
@@ -634,12 +616,9 @@
 
 // Interpretation - Visual Summary - keep together on one page
 #block(breakable: false)[
-  #grid(
-    columns: (auto, 1fr),
-    gutter: 0.5em,
-    align(horizon)[🧠],
-    heading(level: 1)[{{section_interpretation}}]
-  )
+  #block[
+    #text(size: 18pt)[🧠] #h(0.4em) #heading(level: 1, outlined: false)[{{section_interpretation}}]
+  ]
 
   #grid(
     columns: (1fr, 1fr, 1fr),
@@ -762,12 +741,9 @@
 {{#if has_longitudinal}}
 {{#if graph_longitudinal}}
 #block(breakable: false)[
-  #grid(
-    columns: (auto, 1fr),
-    gutter: 0.5em,
-    align(horizon)[📉],
-    heading(level: 1)[{{section_longitudinal}}]
-  )
+  #block[
+    #text(size: 18pt)[📉] #h(0.4em) #heading(level: 1, outlined: false)[{{section_longitudinal}}]
+  ]
   #figure(
     image("{{graph_longitudinal}}", width: 100%),
     caption: [#text(size: 9pt)[{{caption_longitudinal}}]]
@@ -846,12 +822,9 @@
 
 // Clinical Notes (only if provided)
 {{#if has_clinical_notes}}
-#grid(
-  columns: (auto, 1fr),
-  gutter: 0.5em,
-  align(horizon)[📝],
-  heading(level: 1)[{{section_clinical_notes}}]
-)
+#block[
+  #text(size: 18pt)[📝] #h(0.4em) #heading(level: 1, outlined: false)[{{section_clinical_notes}}]
+]
 
 #block(
   fill: luma(252),

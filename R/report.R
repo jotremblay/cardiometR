@@ -146,6 +146,7 @@ get_report_labels <- function(language = "en") {
     section_test = "Test Information",
     section_peak_values = "Peak Values",
     section_detailed_results = "Detailed Results",
+    section_athlete_profile = "Athlete Profile",
     section_thresholds = "Ventilatory Thresholds",
     section_graphs = "Graphical Analysis",
     section_interpretation = "Interpretation",
@@ -253,6 +254,7 @@ get_report_labels <- function(language = "en") {
     section_test = "Informations du test",
     section_peak_values = "Valeurs maximales",
     section_detailed_results = "R\u00e9sultats d\u00e9taill\u00e9s",
+    section_athlete_profile = "Profil de l'athl\u00e8te",
     section_thresholds = "Seuils ventilatoires",
     section_graphs = "Analyse graphique",
     section_interpretation = "Interpr\u00e9tation",
@@ -1586,7 +1588,7 @@ build_phase7_template_data <- function(analysis, language, report_sections,
   out$pn_sd_note          <- ""
   out$pn_rows_content     <- ""
   out$pn_label_metric     <- escape_typst(tr("metric", language))
-  out$pn_label_patient    <- escape_typst(tr("label_value", language))
+  out$pn_label_patient    <- escape_typst(tr("norms_patient", language))
   out$pn_label_mean       <- escape_typst(tr("norms_mean", language))
   out$pn_label_band       <- escape_typst(tr("norms_band", language))
   out$pn_label_zpct       <- escape_typst(tr("norms_zscore_percentile", language))
@@ -1603,6 +1605,28 @@ build_phase7_template_data <- function(analysis, language, report_sections,
     modality <- tryCatch(analysis@protocol_config@modality,
                          error = function(e) "cycling")
     if (is.null(modality) || !length(modality)) modality <- "cycling"
+
+    # Build a concise, localized stratum label so the FR report doesn't
+    # quote the English research-paper description verbatim.
+    stratum_localized_desc <- function(sport, level, sex, age, lang) {
+      sport_lc <- tolower(sport %||% "general")
+      level_lc <- tolower(level %||% "recreational")
+      sex_lc <- toupper(sex %||% "M")
+      ag <- if (!is.null(age) && is.finite(age)) {
+        paste0(10L * (as.integer(age) %/% 10L), "–",
+               10L * (as.integer(age) %/% 10L) + 9L, " ",
+               if (identical(lang, "fr")) "ans" else "yr")
+      } else ""
+      sport_tr  <- tr(if (sport_lc %in% c("cycling","running","triathlon","general")) sport_lc else "general", lang)
+      level_tr  <- tr(level_lc, lang)
+      sex_tr    <- if (sex_lc == "F") {
+                      if (identical(lang, "fr")) "femmes" else "women"
+                   } else {
+                      if (identical(lang, "fr")) "hommes" else "men"
+                   }
+      paste0(tools::toTitleCase(level_tr), " ", tolower(sport_tr), ", ",
+             sex_tr, ", ", ag)
+    }
 
     fmt_val <- function(x, d) {
       if (is.null(x) || length(x) != 1) return("--")
@@ -1644,9 +1668,11 @@ build_phase7_template_data <- function(analysis, language, report_sections,
     peaks <- analysis@peaks
 
     if (!is.null(stratum)) {
-      # VO2peak — always shown
+      weight_kg <- tryCatch(participant@weight_kg, error = function(e) NA_real_)
+
+      # VO2peak — always shown, Unicode subscript for VO2
       add_row(
-        label = paste0(tr("vo2_kg", language), " (mL/kg/min)"),
+        label = "VO\u2082 (mL/kg/min)",
         patient = tryCatch(peaks@vo2_kg_peak, error = function(e) NA_real_),
         low = stratum$vo2max_low,
         high = stratum$vo2max_high,
@@ -1656,7 +1682,7 @@ build_phase7_template_data <- function(analysis, language, report_sections,
 
       if (identical(modality, "treadmill")) {
         add_row(
-          label = tr("peak_speed", language),
+          label = paste0(tr("peak_speed", language), " (km/h)"),
           patient = tryCatch(peaks@speed_peak, error = function(e) NA_real_),
           low = NA, high = NA, mean = NA,
           z_entry = zs$speed_peak_z, decimals = 1
@@ -1670,10 +1696,14 @@ build_phase7_template_data <- function(analysis, language, report_sections,
           mean = stratum$map_per_kg_typical %||% NA_real_,
           z_entry = zs$map_per_kg_z, decimals = 2
         )
+        # PPO in absolute W — derive stratum mean/band from W/kg * body mass
+        ppo_low <- if (is.numeric(stratum$map_per_kg_low)   && is.numeric(weight_kg) && is.finite(weight_kg)) stratum$map_per_kg_low   * weight_kg else NA_real_
+        ppo_high <- if (is.numeric(stratum$map_per_kg_high) && is.numeric(weight_kg) && is.finite(weight_kg)) stratum$map_per_kg_high  * weight_kg else NA_real_
+        ppo_mean <- if (is.numeric(stratum$map_per_kg_typical) && is.numeric(weight_kg) && is.finite(weight_kg)) stratum$map_per_kg_typical * weight_kg else NA_real_
         add_row(
           label = paste0(tr("peak_power", language), " (W)"),
           patient = analysis@ppo_watts %||% NA_real_,
-          low = NA, high = NA, mean = NA,
+          low = ppo_low, high = ppo_high, mean = ppo_mean,
           z_entry = zs$ppo_z, decimals = 0
         )
         if (!is.null(stratum$efficiency_typical)) {
@@ -1695,7 +1725,13 @@ build_phase7_template_data <- function(analysis, language, report_sections,
       }
 
       out$has_population_norms <- length(rows) > 0
-      out$pn_description    <- escape_typst(stratum$description %||% "")
+
+      # Localized one-line stratum label, with the source citation after.
+      desc_local <- stratum_localized_desc(sport_for_norms, level_for_norms,
+                                           participant@sex,
+                                           tryCatch(participant@age, error = function(e) NA_real_),
+                                           language)
+      out$pn_description    <- escape_typst(desc_local)
       out$pn_citation_short <- escape_typst(stratum$citation_short %||% "")
       out$pn_rows_content   <- paste(rows, collapse = ",\n    ")
 
