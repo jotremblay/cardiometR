@@ -139,7 +139,7 @@ get_report_labels <- function(language = "en") {
   labels_en <- list(
     # Title and headers
     title = "Cardiopulmonary Exercise Test Report",
-    subtitle = "Clinical Assessment",
+    subtitle = "",
 
     # Section titles
     section_patient = "Patient Information",
@@ -247,7 +247,7 @@ get_report_labels <- function(language = "en") {
   labels_fr <- list(
     # Title and headers
     title = "Rapport d'\u00e9preuve d'effort cardiorespiratoire",
-    subtitle = "\u00c9valuation clinique",
+    subtitle = "",
 
     # Section titles
     section_patient = "Informations du patient",
@@ -806,6 +806,23 @@ build_template_data <- function(analysis, config, labels, clinical_notes, interp
 
   template_data
 }
+
+# Row index of the stage_summary entry nearest 70% of V̇O₂peak, filtered so
+# `required` column (e.g. "power_w" or "speed_kmh") is positive and finite.
+# Returns NA_integer_ when inputs are unusable.
+submax_stage_idx <- function(analysis, peaks, required) {
+  ss <- tryCatch(analysis@stage_summary, error = function(e) NULL)
+  vo2_peak_ml <- tryCatch(peaks@vo2_peak, error = function(e) NA_real_)
+  if (!is.data.frame(ss) || nrow(ss) == 0 ||
+      !all(c("vo2_ml", required) %in% names(ss)) ||
+      !is.numeric(vo2_peak_ml) || !is.finite(vo2_peak_ml)) {
+    return(NA_integer_)
+  }
+  valid <- is.finite(ss$vo2_ml) & is.finite(ss[[required]]) & ss[[required]] > 0
+  if (!any(valid)) return(NA_integer_)
+  which(valid)[which.min(abs(ss$vo2_ml[valid] - 0.70 * vo2_peak_ml))]
+}
+
 
 # Split long header labels into two lines (e.g., before "et" in French names)
 split_header_text <- function(text, split_word = "et") {
@@ -1594,17 +1611,21 @@ build_phase7_template_data <- function(analysis, language, report_sections,
   out$pn_label_zpct       <- escape_typst(tr("norms_zscore_percentile", language))
 
   if (isTRUE(pn_want)) {
+    modality <- tryCatch(analysis@protocol_config@modality,
+                         error = function(e) "cycling")
+    if (is.null(modality) || !length(modality)) modality <- "cycling"
     sport_for_norms <- if (!is.null(athlete_sport) && nzchar(athlete_sport) &&
-                           athlete_sport != "general") athlete_sport else "general"
+                           athlete_sport != "general") {
+      athlete_sport
+    } else {
+      default_sport_for_modality(modality)
+    }
     level_for_norms <- athlete_level %||% "recreational"
     stratum <- tryCatch(
       get_normative_data(sport = sport_for_norms, level = level_for_norms,
                          sex = participant@sex, age = participant@age),
       error = function(e) NULL
     )
-    modality <- tryCatch(analysis@protocol_config@modality,
-                         error = function(e) "cycling")
-    if (is.null(modality) || !length(modality)) modality <- "cycling"
 
     # Build a concise, localized stratum label so the FR report doesn't
     # quote the English research-paper description verbatim.
@@ -1687,6 +1708,27 @@ build_phase7_template_data <- function(analysis, language, report_sections,
           low = NA, high = NA, mean = NA,
           z_entry = zs$speed_peak_z, decimals = 1
         )
+        # Running economy at a submaximal reference stage near 70% VO2peak.
+        if (!is.null(stratum$economy_typical)) {
+          re_val <- NA_real_
+          idx <- submax_stage_idx(analysis, peaks, required = "speed_kmh")
+          if (!is.na(idx) && is.numeric(weight_kg) && is.finite(weight_kg)) {
+            ss <- analysis@stage_summary
+            vo2_kg <- ss$vo2_ml[idx] / weight_kg
+            re_val <- tryCatch(
+              calculate_running_economy(vo2_kg, ss$speed_kmh[idx]),
+              error = function(e) NA_real_
+            )
+          }
+          add_row(
+            label = paste0(tr("running_economy", language), " (mL/kg/km)"),
+            patient = re_val,
+            low = stratum$economy_low,
+            high = stratum$economy_high,
+            mean = stratum$economy_typical,
+            z_entry = NULL, decimals = 0
+          )
+        }
       } else {
         add_row(
           label = paste0(tr("aerobic_power", language), " (W/kg)"),
@@ -1713,6 +1755,19 @@ build_phase7_template_data <- function(analysis, language, report_sections,
             ge_val <- suppressWarnings(max(sbs$gross_efficiency_pct, na.rm = TRUE))
             if (!is.finite(ge_val)) ge_val <- NA_real_
           }
+          # Fall back: compute GE at a submaximal reference stage (~70% VO2peak)
+          # directly from stage_summary when substrate_by_stage is absent.
+          if (!is.finite(ge_val)) {
+            idx <- submax_stage_idx(analysis, peaks, required = "power_w")
+            if (!is.na(idx)) {
+              ss <- analysis@stage_summary
+              rer_ref <- if ("rer" %in% names(ss) && is.finite(ss$rer[idx])) ss$rer[idx] else 0.95
+              ge_val <- tryCatch(
+                calculate_gross_efficiency(ss$vo2_ml[idx], ss$power_w[idx], rer_ref),
+                error = function(e) NA_real_
+              )
+            }
+          }
           add_row(
             label = paste0(tr("gross_efficiency", language), " (%)"),
             patient = ge_val,
@@ -1732,7 +1787,17 @@ build_phase7_template_data <- function(analysis, language, report_sections,
                                            tryCatch(participant@age, error = function(e) NA_real_),
                                            language)
       out$pn_description    <- escape_typst(desc_local)
-      out$pn_citation_short <- escape_typst(stratum$citation_short %||% "")
+      base_cite <- stratum$citation_short %||% ""
+      cite_parts <- base_cite
+      map_cite <- stratum$map_per_kg_citation_short %||% ""
+      if (nzchar(map_cite) && !identical(map_cite, base_cite)) {
+        cite_parts <- paste0(cite_parts, "; ", map_cite, " (MAP)")
+      }
+      eff_cite <- stratum$efficiency_citation_short %||% ""
+      if (nzchar(eff_cite) && !identical(eff_cite, base_cite)) {
+        cite_parts <- paste0(cite_parts, "; ", eff_cite, " (GE)")
+      }
+      out$pn_citation_short <- escape_typst(cite_parts)
       out$pn_rows_content   <- paste(rows, collapse = ",\n    ")
 
       sd_msg <- NULL

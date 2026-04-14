@@ -29,6 +29,24 @@
 #' # Get norms for recreational female runner
 #' norms <- get_normative_data("running", "recreational", "F", 45)
 #'
+#' Default Sport for a Given Modality
+#'
+#' Map the CPET modality to the most appropriate default sport stratum when
+#' the user has not explicitly picked one. Cycle ergometry → cycling,
+#' treadmill → running, anything else → general.
+#'
+#' @param modality Character, typically `"cycling"` or `"treadmill"`.
+#' @return Sport key for [get_normative_data()].
+#' @keywords internal
+#' @export
+default_sport_for_modality <- function(modality) {
+  m <- tolower(as.character(modality %||% ""))
+  if (identical(m, "treadmill")) "running"
+  else if (identical(m, "cycling")) "cycling"
+  else "general"
+}
+
+
 #' @export
 get_normative_data <- function(sport = "general",
                                level = "recreational",
@@ -92,6 +110,9 @@ normative_lookup <- function(sport, level, sex, age_group) {
           vo2max_low = 70,
           vo2max_high = 85,
           vo2max_typical = 77,
+          map_per_kg_low = 6.2,
+          map_per_kg_high = 7.4,
+          map_per_kg_typical = 6.8,
           efficiency_low = 22.0,
           efficiency_high = 25.5,
           efficiency_typical = 23.5,
@@ -99,21 +120,28 @@ normative_lookup <- function(sport, level, sex, age_group) {
           description = "Elite/Professional male cyclists (WorldTour, Continental)",
           citation = "Lucia A, Hoyos J, Chicharro JL. Physiology of professional road cycling. Sports Med. 2001;31(5):325-337. doi:10.2165/00007256-200131050-00004",
           citation_short = "Lucia et al., 2001",
+          map_per_kg_citation = "Pinot J, Grappe F. Determination of Maximal Aerobic Power on the field in cycling. J Sci Cycl. 2014;3(1):26-31. (MAP 6.87 \u00b1 0.5 W/kg in elite/pro men)",
+          map_per_kg_citation_short = "Pinot & Grappe, 2014",
           efficiency_citation = "Coyle EF. Improved muscular efficiency displayed as Tour de France champion matures. J Appl Physiol. 2005;98(6):2191-2196.",
           efficiency_citation_short = "Coyle, 2005"
         ))
       } else {
         return(list(
           vo2max_low = 60,
-          vo2max_high = 70,
-          vo2max_typical = 65,
+          vo2max_high = 72,
+          vo2max_typical = 66,
+          map_per_kg_low = 5.0,
+          map_per_kg_high = 6.2,
+          map_per_kg_typical = 5.6,
           efficiency_low = 21.0,
           efficiency_high = 24.5,
           efficiency_typical = 22.5,
           efficiency_unit = "%",
           description = "Elite/Professional female cyclists (WorldTour, Continental)",
-          citation = "Impellizzeri FM, Marcora SM. The physiology of mountain biking. Sports Med. 2007;37(1):59-71. doi:10.2165/00007256-200737010-00005",
-          citation_short = "Impellizzeri & Marcora, 2007",
+          citation = "Leo P, Spragg J, Mujika I, et al. The Record Power Profile in Professional Female Cyclists: Normative Values Obtained From a Large Database. Int J Sports Physiol Perform. 2022;17(5):682-686.",
+          citation_short = "Leo et al., 2022",
+          map_per_kg_citation = "Leo P, Spragg J, Mujika I, et al. The Record Power Profile in Professional Female Cyclists. Int J Sports Physiol Perform. 2022;17(5):682-686. (5-min MMP \u2248 5.2 W/kg)",
+          map_per_kg_citation_short = "Leo et al., 2022",
           efficiency_citation = "Hopker J, Passfield L, Coleman D, et al. The effects of training on gross efficiency in cycling. Med Sci Sports Exerc. 2009;41(8):1653-1659.",
           efficiency_citation_short = "Hopker et al., 2009"
         ))
@@ -124,6 +152,9 @@ normative_lookup <- function(sport, level, sex, age_group) {
           vo2max_low = 55,
           vo2max_high = 70,
           vo2max_typical = 62,
+          map_per_kg_low = 4.7,
+          map_per_kg_high = 5.7,
+          map_per_kg_typical = 5.2,
           efficiency_low = 20.0,
           efficiency_high = 23.5,
           efficiency_typical = 21.5,
@@ -131,6 +162,8 @@ normative_lookup <- function(sport, level, sex, age_group) {
           description = "Competitive amateur male cyclists (Cat 1-3, Masters)",
           citation = "Mujika I, Padilla S. Physiological and performance characteristics of male professional road cyclists. Sports Med. 2001;31(7):479-487.",
           citation_short = "Mujika & Padilla, 2001",
+          map_per_kg_citation = "Hawley JA, Noakes TD. Peak power output predicts maximal oxygen uptake and performance time in trained cyclists. Eur J Appl Physiol. 1992;65(1):79-83.",
+          map_per_kg_citation_short = "Hawley & Noakes, 1992",
           efficiency_citation = "Hopker J, Passfield L, Coleman D, et al. The effects of training on gross efficiency in cycling. Med Sci Sports Exerc. 2009;41(8):1653-1659.",
           efficiency_citation_short = "Hopker et al., 2009"
         ))
@@ -139,6 +172,9 @@ normative_lookup <- function(sport, level, sex, age_group) {
           vo2max_low = 48,
           vo2max_high = 60,
           vo2max_typical = 54,
+          map_per_kg_low = 4.0,
+          map_per_kg_high = 5.0,
+          map_per_kg_typical = 4.5,
           efficiency_low = 19.5,
           efficiency_high = 23.0,
           efficiency_typical = 21.0,
@@ -146,6 +182,8 @@ normative_lookup <- function(sport, level, sex, age_group) {
           description = "Competitive amateur female cyclists (Cat 1-3, Masters)",
           citation = "Mujika I, Padilla S. Physiological and performance characteristics of male professional road cyclists. Sports Med. 2001;31(7):479-487.",
           citation_short = "Mujika & Padilla, 2001",
+          map_per_kg_citation = "Bell PG, Furber MJW, van Someren KA, et al. The Physiological Profile of a Multiple Tour de France Winning Cyclist. Med Sci Sports Exerc. 2017; and trained-female cycling data (MAP \u2248 4.5 W/kg).",
+          map_per_kg_citation_short = "Bell et al., 2017",
           efficiency_citation = "Hopker J, Passfield L, Coleman D, et al. The effects of training on gross efficiency in cycling. Med Sci Sports Exerc. 2009;41(8):1653-1659.",
           efficiency_citation_short = "Hopker et al., 2009"
         ))
@@ -156,6 +194,9 @@ normative_lookup <- function(sport, level, sex, age_group) {
           vo2max_low = 40,
           vo2max_high = 55,
           vo2max_typical = 47,
+          map_per_kg_low = 3.2,
+          map_per_kg_high = 4.2,
+          map_per_kg_typical = 3.7,
           efficiency_low = 18.0,
           efficiency_high = 22.0,
           efficiency_typical = 20.0,
@@ -163,6 +204,8 @@ normative_lookup <- function(sport, level, sex, age_group) {
           description = "Recreational male cyclists (regular training, amateur racing)",
           citation = "Jeukendrup AE, Craig NP, Hawley JA. The bioenergetics of world class cycling. J Sci Med Sport. 2000;3(4):414-433. doi:10.1016/S1440-2440(00)80008-0",
           citation_short = "Jeukendrup et al., 2000",
+          map_per_kg_citation = "Jeukendrup AE, Craig NP, Hawley JA. The bioenergetics of world class cycling. J Sci Med Sport. 2000;3(4):414-433.",
+          map_per_kg_citation_short = "Jeukendrup et al., 2000",
           efficiency_citation = "Moseley L, Jeukendrup AE. The reliability of cycling efficiency. Med Sci Sports Exerc. 2001;33(4):621-627.",
           efficiency_citation_short = "Moseley & Jeukendrup, 2001"
         ))
@@ -171,6 +214,9 @@ normative_lookup <- function(sport, level, sex, age_group) {
           vo2max_low = 35,
           vo2max_high = 48,
           vo2max_typical = 41,
+          map_per_kg_low = 2.7,
+          map_per_kg_high = 3.7,
+          map_per_kg_typical = 3.2,
           efficiency_low = 17.5,
           efficiency_high = 21.5,
           efficiency_typical = 19.5,
@@ -178,6 +224,8 @@ normative_lookup <- function(sport, level, sex, age_group) {
           description = "Recreational female cyclists (regular training, amateur racing)",
           citation = "Jeukendrup AE, Craig NP, Hawley JA. The bioenergetics of world class cycling. J Sci Med Sport. 2000;3(4):414-433. doi:10.1016/S1440-2440(00)80008-0",
           citation_short = "Jeukendrup et al., 2000",
+          map_per_kg_citation = "Jeukendrup AE, Craig NP, Hawley JA. The bioenergetics of world class cycling. J Sci Med Sport. 2000;3(4):414-433.",
+          map_per_kg_citation_short = "Jeukendrup et al., 2000",
           efficiency_citation = "Moseley L, Jeukendrup AE. The reliability of cycling efficiency. Med Sci Sports Exerc. 2001;33(4):621-627.",
           efficiency_citation_short = "Moseley & Jeukendrup, 2001"
         ))

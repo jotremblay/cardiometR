@@ -214,14 +214,17 @@ populate_phase1_metrics <- function(analysis, stage_summary, breath_df,
   )
 
   analysis@z_scores <- tryCatch({
+    modality_in <- tryCatch(analysis@protocol_config@modality, error = function(e) NULL)
+    if (is.null(modality_in) || !length(modality_in) || !nzchar(modality_in)) {
+      modality_in <- "cycling"
+    }
     sport_in <- settings$athlete_sport %||% settings$sport
     if (is.null(sport_in) || !nzchar(sport_in) || sport_in == "general") {
-      sport <- "general"
-      level <- "recreational"
+      sport <- default_sport_for_modality(modality_in)
     } else {
       sport <- sport_in
-      level <- settings$athlete_level %||% settings$level %||% "recreational"
     }
+    level <- settings$athlete_level %||% settings$level %||% "recreational"
     sex <- tryCatch(as.character(participant@sex), error = function(e) "M")
     age <- tryCatch(as.numeric(participant@age), error = function(e) 30)
     if (!length(sex) || is.na(sex)) sex <- "M"
@@ -229,10 +232,11 @@ populate_phase1_metrics <- function(analysis, stage_summary, breath_df,
     stratum <- get_normative_data(sport = sport, level = level, sex = sex, age = age)
 
     vo2_peak_val <- tryCatch(analysis@peaks@vo2_kg_peak, error = function(e) NA_real_)
+    map_per_kg_z <- z_score(analysis@map_per_kg %||% NA_real_, stratum, metric = "map_per_kg")
     list(
-      vo2_peak_z   = z_score(vo2_peak_val,         stratum, metric = "vo2max"),
-      map_per_kg_z = z_score(analysis@map_per_kg %||% NA_real_, stratum, metric = "map_per_kg"),
-      ppo_z        = z_score(analysis@ppo_watts   %||% NA_real_, stratum, metric = "map_per_kg")
+      vo2_peak_z   = z_score(vo2_peak_val, stratum, metric = "vo2max"),
+      map_per_kg_z = map_per_kg_z,
+      ppo_z        = map_per_kg_z  # PPO (W) and MAP (W/kg) share the same z once scaled
     )
   }, error = function(e) { cli::cli_warn("Z-score computation failed: {e$message}"); NULL })
 

@@ -407,7 +407,7 @@ resting_rest_duration: "Durée"
 
 # Comparaison aux données normatives (rapport)
 section_population_norms: "Comparaison à la population"
-norms_mean: "Moyenne"
+norms_mean: "Moyenne normative"
 norms_band: "Intervalle (bas–haut)"
 norms_zscore_percentile: "z · centile"
 norms_sd_tabulated: "Scores z calculés avec la SD des tables publiées."
@@ -415,5 +415,5 @@ norms_sd_estimated: "Scores z calculés avec une SD approximée par (haut−bas)
 norms_no_stratum: "Aucun stratum sélectionné; configurer le sport et le niveau."
 
 # Colonnes de comparaison et titre des seuils
-norms_patient: "Patient"
+norms_patient: "Athlète"
 section_thresholds: "Seuils ventilatoires"

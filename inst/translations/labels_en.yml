@@ -407,7 +407,7 @@ resting_rest_duration: "Duration"
 
 # Population normative comparison (report)
 section_population_norms: "Population norms"
-norms_mean: "Mean"
+norms_mean: "Normative mean"
 norms_band: "Band (low–high)"
 norms_zscore_percentile: "z · percentile"
 norms_sd_tabulated: "z-scores computed with SD from published tables."
@@ -415,5 +415,5 @@ norms_sd_estimated: "z-scores computed with SD approximated as (high−low)/3.29
 norms_no_stratum: "No stratum selected; configure sport and level."
 
 # Population norms table column + thresholds heading
-norms_patient: "Patient"
+norms_patient: "Athlete"
 section_thresholds: "Ventilatory Thresholds"
