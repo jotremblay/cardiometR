@@ -806,50 +806,11 @@
   #v(0.6em)
   {{/if}}
 
-  // CP explainer (only when content present and modality applies)
-  {{#if has_cp_explainer}}
-  #block(
-    fill: luma(252),
-    stroke: (left: 3pt + primary),
-    inset: (left: 1em, right: 1em, y: 0.7em),
-    radius: (right: 4pt),
-    width: 100%
-  )[
-    #text(size: 10pt, weight: "bold", fill: luma(60))[{{cp_explainer_title}}]
-    #v(0.3em)
-    #text(size: 9pt)[{{cp_explainer}}]
-  ]
-  #v(0.6em)
-  {{/if}}
-
-  // Substrate oxidation
-  {{#if has_substrate_explainer}}
-  #block(
-    fill: luma(252),
-    stroke: (left: 3pt + success),
-    inset: (left: 1em, right: 1em, y: 0.7em),
-    radius: (right: 4pt),
-    width: 100%
-  )[
-    #text(size: 10pt, weight: "bold", fill: luma(60))[{{substrate_explainer_title}}]
-    #v(0.3em)
-    {{#if has_substrate_table}}
-    #table(
-      columns: (1fr, 1fr, 1fr),
-      inset: (x: 8pt, y: 5pt),
-      stroke: none,
-      fill: (col, row) => if row == 0 { luma(235) } else if calc.odd(row) { luma(250) } else { white },
-      align: (left, center, center),
-      [#text(weight: "bold")[{{stage}}]],
-      [#text(weight: "bold")[{{fat_oxidation}}]],
-      [#text(weight: "bold")[{{cho_oxidation}}]],
-      {{substrate_rows_content}}
-    )
-    {{else}}
-    #text(size: 9pt)[{{substrate_explainer}}]
-    {{/if}}
-  ]
-  {{/if}}
+  // Critical power and substrate-oxidation blocks intentionally omitted
+  // from the PDF report: both require protocols (multi-trial CP; 3-6 min
+  // steady-state substrate) that a single ramp cannot support. The
+  // screen-side Estimates-&-caveats accordion keeps them as educational
+  // placeholders.
 ]
 #v(0.8em)
 {{/if}}
