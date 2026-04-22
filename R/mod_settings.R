@@ -157,7 +157,7 @@ mod_settings_ui <- function(id, language = "en") {
             shiny::numericInput(
               ns("gross_efficiency"),
               label = tr("gross_efficiency_setting", language),
-              value = 20,
+              value = default_gross_efficiency_pct,
               min = 10,
               max = 35,
               step = 1
@@ -290,7 +290,7 @@ mod_settings_server <- function(id, language, cpet_data = shiny::reactive(NULL))
         report_sections = input$report_sections %||% c("protocol_details", "stage_table",
                                                         "athlete_profile", "population_norms",
                                                         "estimates_caveats"),
-        gross_efficiency = input$gross_efficiency %||% 20
+        gross_efficiency = input$gross_efficiency %||% default_gross_efficiency_pct
       )
     })
 

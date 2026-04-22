@@ -1,62 +1,29 @@
-#' Convert ggplot plotmath labels in a plotly object to Unicode
+#' Default gross mechanical efficiency for cycling (percent).
 #'
-#' `plotly::ggplotly()` does not render ggplot2 `expression()` axis/title
-#' labels — they appear literally as `"VO[2]"`. This helper walks the plotly
-#' layout/traces and substitutes the common CPET plotmath tokens with
-#' Unicode subscripts so the in-app interactive plots match the PNG version.
-#'
-#' @param p A plotly object.
-#' @return The same plotly object with axis/title/legend text made Unicode.
+#' Single source of truth for the cycling gross-efficiency fallback used by
+#' the Shiny settings module and the plots module.
 #' @keywords internal
-plotlymath_to_unicode <- function(p) {
-  fix <- function(s) {
-    if (is.null(s) || !length(s)) return(s)
-    if (is.expression(s) || is.call(s) || is.name(s)) s <- as.character(s)
-    if (!is.character(s)) return(s)
-    s <- gsub("P\\[ET\\]\\s*\\*\\s*CO\\[2\\]", "P\u2091\u209cCO\u2082", s)
-    s <- gsub("P\\[ET\\]\\s*\\*\\s*O\\[2\\]",  "P\u2091\u209cO\u2082",  s)
-    s <- gsub("VCO\\[2\\]", "V\u0307CO\u2082", s)
-    s <- gsub("VO\\[2\\]",  "V\u0307O\u2082",  s)
-    s <- gsub("O\\[2\\]",   "O\u2082",         s)
-    s <- gsub("CO\\[2\\]",  "CO\u2082",        s)
-    s <- gsub("\\s*\\*\\s*", "", s)
-    s <- gsub("\\s*~\\s*",   " ", s)
-    s
-  }
-  lay <- p$x$layout
-  if (!is.null(lay)) {
-    for (ax in c("xaxis", "yaxis", "xaxis2", "yaxis2")) {
-      if (!is.null(lay[[ax]]) && !is.null(lay[[ax]]$title)) {
-        if (is.list(lay[[ax]]$title) && !is.null(lay[[ax]]$title$text)) {
-          p$x$layout[[ax]]$title$text <- fix(lay[[ax]]$title$text)
-        } else if (is.character(lay[[ax]]$title)) {
-          p$x$layout[[ax]]$title <- fix(lay[[ax]]$title)
-        }
-      }
-    }
-    if (!is.null(lay$title)) {
-      if (is.list(lay$title) && !is.null(lay$title$text)) {
-        p$x$layout$title$text <- fix(lay$title$text)
-      } else if (is.character(lay$title)) {
-        p$x$layout$title <- fix(lay$title)
-      }
-    }
-    if (!is.null(lay$annotations) && is.list(lay$annotations)) {
-      p$x$layout$annotations <- lapply(lay$annotations, function(a) {
-        if (!is.null(a$text)) a$text <- fix(a$text); a
-      })
-    }
-  }
-  if (!is.null(p$x$data)) {
-    p$x$data <- lapply(p$x$data, function(tr) {
-      if (!is.null(tr$name)) tr$name <- fix(tr$name)
-      if (!is.null(tr$legendgroup)) tr$legendgroup <- fix(tr$legendgroup)
-      tr
-    })
-  }
-  p
-}
+default_gross_efficiency_pct <- 20L
 
+#' Named choices for the plot-type select input.
+#'
+#' @param language Language code ("en" or "fr").
+#' @return Named character vector suitable for `selectInput(choices = ...)`.
+#' @keywords internal
+plot_type_choices <- function(language) {
+  stats::setNames(
+    c("panel", "vslope", "vent_eq", "gas", "hr", "power", "predicted"),
+    c(
+      tr("plot_panel", language),
+      tr("plot_vslope", language),
+      tr("plot_vent_eq", language),
+      tr("plot_gas", language),
+      tr("plot_hr", language),
+      tr("plot_power", language),
+      tr("plot_predicted", language)
+    )
+  )
+}
 
 #' Plots Module UI
 #'
@@ -82,16 +49,7 @@ mod_plots_ui <- function(id, language = "en", secondary_id = NULL) {
         shiny::selectInput(
           ns("plot_type"),
           label = NULL,
-          choices = stats::setNames(
-            c("panel", "vslope", "vent_eq", "gas", "hr", "power", "predicted"),
-            c(tr("plot_panel", language),
-              tr("plot_vslope", language),
-              tr("plot_vent_eq", language),
-              tr("plot_gas", language),
-              tr("plot_hr", language),
-              tr("plot_power", language),
-              tr("plot_predicted", language))
-          ),
+          choices = plot_type_choices(language),
           selected = "panel",
           width = "200px"
         ),
@@ -115,14 +73,16 @@ mod_plots_ui <- function(id, language = "en", secondary_id = NULL) {
       shiny::conditionalPanel(
         condition = "input.plot_type == 'panel'",
         ns = ns,
-        shiny::div(class = "plot-container",
+        shiny::div(
+          class = "plot-container",
           shiny::plotOutput(ns("static_plot"), height = "550px")
         )
       ),
       shiny::conditionalPanel(
         condition = "input.plot_type != 'panel'",
         ns = ns,
-        shiny::div(class = "plot-container",
+        shiny::div(
+          class = "plot-container",
           plotly::plotlyOutput(ns("interactive_plot"), height = "550px")
         )
       )
@@ -148,88 +108,93 @@ mod_plots_ui <- function(id, language = "en", secondary_id = NULL) {
 #'
 #' @keywords internal
 mod_plots_server <- function(id, language, analysis, settings = NULL,
-                              dark_mode = shiny::reactive(FALSE)) {
+                             dark_mode = shiny::reactive(FALSE)) {
   shiny::moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
-    # Generate plot based on selection
+    # Read settings lazily inside per-plot branches so that changes to
+    # settings-only inputs (averaging window, modality, dark mode) do not
+    # invalidate the reactive for plot types that ignore them.
+    read_settings <- function() {
+      if (is.null(settings)) list() else settings()
+    }
+
     current_plot <- shiny::reactive({
       a <- analysis()
       shiny::req(a)
       lang <- language()
-      dark <- isTRUE(dark_mode())
-
-      # Extract settings if available
-      sport <- NULL
-      level <- "recreational"
-      avg_window <- 30
-      gross_efficiency <- 0.20
-      modality <- NULL
-      if (!is.null(settings)) {
-        s <- settings()
-        sport_val <- s$athlete_sport
-        if (!is.null(sport_val) && nchar(sport_val) > 0 && sport_val != "general") {
-          sport <- sport_val
-        }
-        level <- s$athlete_level %||% "recreational"
-        avg_window <- s$averaging_window %||% 30
-        gross_efficiency <- (s$gross_efficiency %||% 20) / 100
-        modality <- s$modality %||% NULL
-      }
 
       switch(input$plot_type,
-        panel = plot_cpet_panel(a, language = lang, averaging_window = avg_window,
-          expected_efficiency = gross_efficiency, modality = modality, dark = dark),
+        panel = {
+          s <- read_settings()
+          plot_cpet_panel(
+            a,
+            language = lang,
+            averaging_window = s$averaging_window %||% 30,
+            expected_efficiency = (s$gross_efficiency %||% default_gross_efficiency_pct) / 100,
+            modality = s$modality %||% NULL,
+            dark = isTRUE(dark_mode())
+          )
+        },
         vslope = plot_v_slope(a, language = lang),
         vent_eq = plot_ventilatory_equivalents(a, language = lang),
         gas = plot_gas_exchange(a, language = lang),
         hr = plot_heart_rate(a, language = lang),
-        power = plot_power(a, language = lang, expected_efficiency = gross_efficiency),
-        predicted = plot_predicted_comparison(a, sport = sport, level = level, language = lang),
-        # Default
+        power = {
+          s <- read_settings()
+          plot_power(
+            a,
+            language = lang,
+            expected_efficiency = (s$gross_efficiency %||% default_gross_efficiency_pct) / 100
+          )
+        },
+        predicted = {
+          s <- read_settings()
+          sport_val <- s$athlete_sport
+          sport <- if (!is.null(sport_val) && nchar(sport_val) > 0 && sport_val != "general") {
+            sport_val
+          } else {
+            NULL
+          }
+          plot_predicted_comparison(
+            a,
+            sport = sport,
+            level = s$athlete_level %||% "recreational",
+            language = lang
+          )
+        },
         plot_cpet_panel(a, language = lang)
       )
     })
 
-    # Render static plot (9-panel patchwork)
-    output$static_plot <- shiny::renderPlot({
-      shiny::req(input$plot_type == "panel")
-      p <- current_plot()
-      shiny::req(p)
-      p
-    }, res = 96, bg = "transparent")
+    output$static_plot <- shiny::renderPlot(
+      {
+        shiny::req(input$plot_type == "panel")
+        p <- current_plot()
+        shiny::req(p)
+        p
+      },
+      res = 96,
+      bg = "transparent"
+    )
 
-    # Render interactive plot (all other types)
     output$interactive_plot <- plotly::renderPlotly({
       shiny::req(input$plot_type != "panel")
       p <- current_plot()
       shiny::req(p)
       plotly::ggplotly(p, tooltip = c("x", "y")) |>
-        plotlymath_to_unicode() |>
         plotly::config(displayModeBar = TRUE, displaylogo = FALSE)
     })
 
-    # Update plot type dropdown and static text on language change
     shiny::observeEvent(language(), {
       lang <- language()
-      shiny::updateSelectInput(session, "plot_type",
-        choices = stats::setNames(
-          c("panel", "vslope", "vent_eq", "gas", "hr", "power", "predicted"),
-          c(tr("plot_panel", lang), tr("plot_vslope", lang),
-            tr("plot_vent_eq", lang), tr("plot_gas", lang),
-            tr("plot_hr", lang), tr("plot_power", lang),
-            tr("plot_predicted", lang))
-        )
-      )
-
-      # Update card header text via JS
+      shiny::updateSelectInput(session, "plot_type", choices = plot_type_choices(lang))
       session$sendCustomMessage("update_text", as.list(stats::setNames(
         tr("section_graphs", lang),
         ns("plots_header")
       )))
     })
 
-    # Download handler
     output$download_plot <- shiny::downloadHandler(
       filename = function() {
         fmt <- input$download_format %||% "png"
@@ -239,7 +204,6 @@ mod_plots_server <- function(id, language, analysis, settings = NULL,
         p <- current_plot()
         fmt <- input$download_format %||% "png"
 
-        # Determine dimensions based on plot type
         if (input$plot_type == "panel") {
           width <- 12
           height <- 12
