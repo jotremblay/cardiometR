@@ -25,6 +25,10 @@ mod_report_ui <- function(id, language = "en") {
         shiny::textInput(
           ns("institution"),
           label = tr("institution", language),
+          value = paste0(
+            "Universit\u00e9 de Montr\u00e9al \u2014 Centre \u00c9PIC, ",
+            "Institut de Cardiologie de Montr\u00e9al"
+          ),
           placeholder = "e.g., Universit\u00e9 de Montr\u00e9al"
         ),
         shiny::textInput(
@@ -45,15 +49,16 @@ mod_report_ui <- function(id, language = "en") {
           ns("logo_choice"),
           label = tr("logo", language),
           choices = stats::setNames(
-            c("udem", "epic", "none", "custom"),
+            c("both", "udem", "epic", "none", "custom"),
             c(
+              tr("logo_both", language),
               tr("logo_udem", language),
               tr("logo_epic", language),
               tr("logo_none", language),
               tr("logo_custom", language)
             )
           ),
-          selected = "udem"
+          selected = "both"
         ),
 
         # Conditional file upload for custom logo
@@ -117,19 +122,33 @@ mod_report_server <- function(id, language, analysis, settings = shiny::reactive
   shiny::moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
-    # Get the selected logo path
-    logo_path <- shiny::reactive({
-      choice <- input$logo_choice %||% "udem"
+    udem_logo <- function() {
+      system.file("assets", "Ec-_kinesiologie_-act_-phy_officiel-RVB.png",
+                  package = "cardiometR")
+    }
+    epic_logo <- function() {
+      system.file("assets", "Centre_EPIC_ICM.jpg", package = "cardiometR")
+    }
 
-      if (choice == "udem") {
-        system.file("assets", "Ec-_kinesiologie_-act_-phy_officiel-RVB.png", package = "cardiometR")
-      } else if (choice == "epic") {
-        system.file("assets", "Centre_EPIC_ICM.jpg", package = "cardiometR")
-      } else if (choice == "custom" && !is.null(input$logo_custom)) {
-        input$logo_custom$datapath
-      } else {
-        NULL
-      }
+    # Every logo the report header shows. The default pairs the two
+    # institutions, which is how the reports are signed.
+    logo_paths <- shiny::reactive({
+      choice <- input$logo_choice %||% "both"
+
+      switch(choice,
+        both = c(udem_logo(), epic_logo()),
+        udem = udem_logo(),
+        epic = epic_logo(),
+        custom = if (!is.null(input$logo_custom)) input$logo_custom$datapath else character(),
+        character()
+      )
+    })
+
+    # The report config carries a single path, so a paired header falls
+    # back to the institutional logo.
+    logo_path <- shiny::reactive({
+      paths <- logo_paths()
+      if (length(paths) == 0) NULL else paths[[1]]
     })
 
     # Validate custom logo upload (PNG/JPEG magic bytes)
@@ -148,18 +167,11 @@ mod_report_server <- function(id, language, analysis, settings = shiny::reactive
       }
     })
 
-    # Render logo preview
-    output$logo_preview <- shiny::renderUI({
-      path <- logo_path()
+    # Browser source for one logo file.
+    logo_src <- function(path) {
+      if (is.null(path) || !nzchar(path) || !file.exists(path)) return(NULL)
 
-      if (is.null(path) || path == "" || !file.exists(path)) {
-        return(NULL)
-      }
-
-      if (input$logo_choice %in% c("udem", "epic")) {
-        src <- paste0("cardiometR/", basename(path))
-      } else {
-        # Encode custom upload as base64 data URI
+      if (identical(input$logo_choice, "custom")) {
         img_bytes <- readBin(path, "raw", file.info(path)$size)
         img_b64 <- jsonlite::base64_enc(img_bytes)
         ext <- tolower(tools::file_ext(input$logo_custom$name))
@@ -169,27 +181,44 @@ mod_report_server <- function(id, language, analysis, settings = shiny::reactive
           jpeg = "image/jpeg",
           "image/png"
         )
-        src <- paste0("data:", mime, ";base64,", img_b64)
+        paste0("data:", mime, ";base64,", img_b64)
+      } else {
+        paste0("cardiometR/", basename(path))
       }
+    }
+
+    # Render logo preview
+    output$logo_preview <- shiny::renderUI({
+      srcs <- Filter(Negate(is.null), lapply(logo_paths(), logo_src))
+      if (length(srcs) == 0) return(NULL)
 
       shiny::div(
-        class = "mt-2 mb-3 p-2 bg-light rounded text-center",
-        shiny::img(
-          src = src,
-          alt = "Logo preview",
-          style = "max-height: 60px; max-width: 100%;",
-          class = "img-fluid"
+        class = "logo-preview",
+        mapply(
+          function(src, i) {
+            shiny::tagList(
+              if (i > 1) shiny::span(class = "logo-preview-divider"),
+              shiny::img(src = src, alt = "Logo preview", class = "logo-preview-img")
+            )
+          },
+          srcs, seq_along(srcs), SIMPLIFY = FALSE
         )
       )
     })
 
     output$generate_report_btn <- shiny::renderUI({
       if (is_typst_available()) {
-        shiny::downloadButton(
-          ns("generate_report"),
-          label = tr("generate_report", language()),
-          class = "btn-primary w-100",
-          icon = shiny::icon("file-pdf")
+        shiny::tagList(
+          shiny::downloadButton(
+            ns("generate_report"),
+            label = tr("generate_report", language()),
+            class = "btn-primary w-100",
+            icon = shiny::icon("file-pdf")
+          ),
+          shiny::tags$small(
+            class = "text-muted d-block mt-2 text-center",
+            tr("report_render_note", language())
+          )
         )
       } else {
         shiny::tagList(
@@ -236,14 +265,15 @@ mod_report_server <- function(id, language, analysis, settings = shiny::reactive
       )
 
       # Logo choice dropdown
-      selected_logo <- input$logo_choice %||% "udem"
+      selected_logo <- input$logo_choice %||% "both"
       shiny::updateSelectInput(
         session,
         "logo_choice",
         label = tr("logo", lang),
         choices = stats::setNames(
-          c("udem", "epic", "none", "custom"),
+          c("both", "udem", "epic", "none", "custom"),
           c(
+            tr("logo_both", lang),
             tr("logo_udem", lang),
             tr("logo_epic", lang),
             tr("logo_none", lang),
@@ -285,78 +315,127 @@ mod_report_server <- function(id, language, analysis, settings = shiny::reactive
       m <- a@data@metadata
       peaks <- a@peaks
 
+      metric_cell <- function(label, value, unit) {
+        shiny::div(
+          class = "preview-metric",
+          shiny::div(class = "preview-metric-label", label),
+          shiny::div(class = "preview-metric-value", value),
+          shiny::div(class = "preview-metric-unit", unit)
+        )
+      }
+      kv <- function(key, value) {
+        shiny::div(
+          class = "preview-kv",
+          shiny::span(class = "preview-kv-key", key),
+          shiny::span(value)
+        )
+      }
+
       shiny::div(
         class = "report-preview-paper",
-        # Header preview
+        # Header: the logos and the two institution lines, as printed.
         shiny::div(
-          class = "border-bottom pb-3 mb-3",
-          if (nchar(input$institution %||% "") > 0) {
-            shiny::h5(class = "text-primary", input$institution)
-          },
-          if (nchar(input$lab_name %||% "") > 0) {
-            shiny::p(class = "text-muted mb-0", input$lab_name)
-          }
+          class = "preview-header",
+          local({
+            srcs <- Filter(Negate(is.null), lapply(logo_paths(), logo_src))
+            if (length(srcs) == 0) return(NULL)
+            shiny::div(
+              class = "preview-header-logos",
+              lapply(srcs, function(src) {
+                shiny::img(src = src, alt = "", class = "preview-header-logo")
+              })
+            )
+          }),
+          shiny::div(
+            class = "preview-header-text",
+            if (nzchar(input$institution %||% "")) {
+              shiny::div(class = "preview-institution", input$institution)
+            },
+            if (nzchar(input$lab_name %||% "")) {
+              shiny::div(
+                class = "preview-lab",
+                input$lab_name,
+                if (nzchar(input$lab_url %||% "")) {
+                  shiny::tagList(" \u00b7 ", sub("^https?://", "", sub("/$", "", input$lab_url)))
+                }
+              )
+            }
+          )
         ),
 
         # Title
-        shiny::h4(class = "text-center mb-3", tr("title", lang)),
+        shiny::h4(class = "text-center my-3", tr("title", lang)),
 
-        # Patient info
+        # Patient and test blocks
         shiny::div(
           class = "row mb-3",
           shiny::div(
             class = "col-6",
             shiny::tags$strong(tr("section_patient", lang)),
-            shiny::tags$dl(
-              class = "row mb-0 small",
-              shiny::tags$dt(class = "col-5", tr("participant_name", lang)),
-              shiny::tags$dd(class = "col-7", p@name),
-              shiny::tags$dt(class = "col-5", tr("participant_age", lang)),
-              shiny::tags$dd(class = "col-7",
-                             paste(format_age(p@age), tr("unit_years", lang))),
-              shiny::tags$dt(class = "col-5", tr("participant_sex", lang)),
-              shiny::tags$dd(class = "col-7",
-                             switch(p@sex,
-                                    "M" = tr("male", lang),
-                                    "F" = tr("female", lang),
-                                    tr("other", lang)))
+            shiny::div(
+              class = "mt-2",
+              kv(tr("participant_name", lang), p@name),
+              kv(tr("participant_age", lang),
+                 paste(format_age(p@age), tr("unit_years", lang))),
+              kv(tr("participant_sex", lang),
+                 switch(p@sex,
+                        "M" = tr("male", lang),
+                        "F" = tr("female", lang),
+                        tr("other", lang))),
+              kv(tr("participant_weight", lang), paste(p@weight_kg, "kg"))
             )
           ),
           shiny::div(
             class = "col-6",
             shiny::tags$strong(tr("section_test", lang)),
-            shiny::tags$dl(
-              class = "row mb-0 small",
-              shiny::tags$dt(class = "col-5", tr("test_date", lang)),
-              shiny::tags$dd(class = "col-7", format(m@test_date, "%Y-%m-%d")),
-              shiny::tags$dt(class = "col-5", tr("protocol", lang)),
-              shiny::tags$dd(class = "col-7", m@protocol),
-              shiny::tags$dt(class = "col-5", tr("device", lang)),
-              shiny::tags$dd(class = "col-7", m@device)
+            shiny::div(
+              class = "mt-2",
+              kv(tr("test_date", lang), format(m@test_date, "%Y-%m-%d")),
+              kv(tr("protocol", lang), m@protocol),
+              kv(tr("device", lang), m@device),
+              kv(tr("modality_label", lang),
+                 switch(settings()$modality %||% "cycling",
+                        treadmill = tr("modality_treadmill", lang),
+                        other = tr("modality_other", lang),
+                        tr("modality_cycling", lang)))
             )
           )
         ),
 
-        # Peak values summary
+        # Peak values as a metric row
         shiny::div(
-          class = "bg-light p-3 rounded",
+          class = "preview-panel",
           shiny::tags$strong(tr("peak_values", lang)),
-          shiny::tags$ul(
-            class = "mb-0 mt-2",
-            if (!is.null(peaks)) {
-              shiny::tagList(
-                shiny::tags$li(sprintf("VO2 peak: %.1f mL/kg/min", peaks@vo2_kg_peak)),
-                if (!is.null(peaks@hr_peak)) {
-                  shiny::tags$li(sprintf("%s: %d bpm", tr("hr", lang), round(peaks@hr_peak)))
-                },
-                if (!is.null(peaks@power_peak)) {
-                  shiny::tags$li(sprintf("%s: %d W", tr("power", lang), round(peaks@power_peak)))
-                },
-                shiny::tags$li(sprintf("RER: %.2f", peaks@rer_peak))
-              )
-            } else {
-              shiny::tags$li(tr("message_no_data", lang))
-            }
+          if (is.null(peaks)) {
+            shiny::p(class = "small text-muted mb-0 mt-2", tr("message_no_data", lang))
+          } else {
+            shiny::div(
+              class = "preview-metric-row",
+              metric_cell("VO2", sprintf("%.1f", peaks@vo2_kg_peak),
+                          tr("unit_ml_kg_min", lang)),
+              metric_cell(tr("hr", lang),
+                          if (!is.null(peaks@hr_peak)) round(peaks@hr_peak) else "--",
+                          tr("unit_bpm", lang)),
+              metric_cell(tr("power", lang),
+                          if (!is.null(peaks@power_peak)) round(peaks@power_peak) else "--",
+                          tr("unit_watts", lang)),
+              metric_cell(tr("rer", lang), sprintf("%.2f", peaks@rer_peak), "")
+            )
+          }
+        ),
+
+        # The two figures the report leads with.
+        shiny::div(
+          class = "preview-plot-row",
+          shiny::div(
+            class = "preview-plot",
+            shiny::div(class = "preview-plot-title", tr("plot_gas", lang)),
+            shiny::plotOutput(ns("preview_plot_gas"), height = "150px")
+          ),
+          shiny::div(
+            class = "preview-plot",
+            shiny::div(class = "preview-plot-title", tr("plot_vent_eq", lang)),
+            shiny::plotOutput(ns("preview_plot_vent"), height = "150px")
           )
         ),
 
@@ -365,26 +444,65 @@ mod_report_server <- function(id, language, analysis, settings = shiny::reactive
           shiny::div(
             class = "mt-3 pt-3 border-top",
             shiny::tags$strong(tr("threshold_results", lang)),
-            shiny::tags$ul(
-              class = "mb-0 mt-2",
-              shiny::tags$li(sprintf("VT1: %.0f mL/min", a@thresholds@vt1_vo2)),
+            shiny::p(
+              class = "small mt-2 mb-0",
+              sprintf("SV1 : %.0f mL/min", a@thresholds@vt1_vo2),
               if (!is.null(a@thresholds@vt2_vo2) && !is.na(a@thresholds@vt2_vo2)) {
-                shiny::tags$li(sprintf("VT2: %.0f mL/min", a@thresholds@vt2_vo2))
+                sprintf(" \u00b7 SV2 : %.0f mL/min", a@thresholds@vt2_vo2)
               }
             )
           )
         },
 
         # Clinical notes preview
-        if (nchar(input$clinical_notes %||% "") > 0) {
+        if (nzchar(input$clinical_notes %||% "")) {
           shiny::div(
             class = "mt-3 pt-3 border-top",
             shiny::tags$strong(tr("clinical_notes", lang)),
             shiny::p(class = "small mt-2 mb-0 fst-italic", input$clinical_notes)
           )
-        }
+        },
+
+        # Footer: how the numbers were produced, and who signs.
+        shiny::div(
+          class = "preview-footer",
+          shiny::div(
+            class = "preview-footer-note",
+            sprintf(
+              "cardiometR %s \u00b7 %s",
+              utils::packageVersion("cardiometR"),
+              sprintf(tr("preview_averaging_note", lang),
+                      settings()$averaging_window %||% 30)
+            ),
+            shiny::tags$br(),
+            sprintf(tr("preview_threshold_note", lang),
+                    format(input$signature_date %||% Sys.Date(), "%Y-%m-%d"))
+          ),
+          shiny::div(
+            class = "preview-signature",
+            shiny::div(class = "preview-signature-line"),
+            shiny::div(
+              class = "preview-signature-name",
+              if (nzchar(input$technician %||% "")) input$technician else tr("technician", lang)
+            )
+          )
+        )
       )  # end report-preview-paper div
     })
+
+    # The preview figures. They use the same functions the PDF uses, so
+    # what the operator sees is what gets printed.
+    output$preview_plot_gas <- shiny::renderPlot({
+      a <- analysis()
+      shiny::req(a)
+      plot_gas_exchange(a, language = language())
+    }, res = 96)
+
+    output$preview_plot_vent <- shiny::renderPlot({
+      a <- analysis()
+      shiny::req(a)
+      plot_ventilatory_equivalents(a, language = language())
+    }, res = 96)
 
     # Download handler for PDF generation
     output$generate_report <- shiny::downloadHandler(
