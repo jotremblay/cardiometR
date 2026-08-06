@@ -51,16 +51,24 @@ compute_resting_values <- function(data_avg, stages = NULL, window_s = 60) {
   # extract_stages() gives stage 0 to rest, warmup and recovery alike, so the
   # last minute of the leading stage-0 block is the end of the WARMUP. Reading
   # it as rest reports a resting VO2 several times too high.
-  rest_rows <- if (has_rest_phase(breaths)) {
-    breaths |> dplyr::filter(!is.na(.data$phase), .data$phase == "rest")
+  #
+  # The block ends at the first breath of any OTHER phase, not at the first
+  # exercise breath. A cart that writes REST again after the warm-up has
+  # begun would otherwise fold that later stretch into the resting mean.
+  leading <- if (has_rest_phase(breaths)) {
+    is_rest <- !is.na(breaths$phase) & breaths$phase == "rest"
+    is_other <- !is.na(breaths$phase) & !is_rest
+    boundary <- if (any(is_other)) min(breaths$time_s[is_other], na.rm = TRUE) else Inf
+    breaths[is_rest & breaths$time_s < boundary, , drop = FALSE]
   } else {
-    breaths |> dplyr::filter(!is.na(.data$stage), .data$stage == 0)
+    # No phase recorded, so the best available guess is everything before
+    # exercise, warm-up included.
+    exercise <- !is.na(breaths$stage) & breaths$stage > 0
+    if (!any(exercise)) return(NULL)
+    boundary <- min(breaths$time_s[exercise], na.rm = TRUE)
+    breaths[!is.na(breaths$stage) & breaths$stage == 0 &
+              breaths$time_s < boundary, , drop = FALSE]
   }
-  ex_rows <- breaths |> dplyr::filter(!is.na(.data$stage), .data$stage > 0)
-  if (nrow(rest_rows) == 0 || nrow(ex_rows) == 0) return(NULL)
-
-  ex_start <- min(ex_rows$time_s, na.rm = TRUE)
-  leading  <- rest_rows |> dplyr::filter(.data$time_s < ex_start)
   if (nrow(leading) == 0) return(NULL)
 
   duration_s <- max(leading$time_s) - min(leading$time_s)
