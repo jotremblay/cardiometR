@@ -324,13 +324,17 @@ mod_settings_server <- function(id, language, cpet_data = shiny::reactive(NULL))
       )))
 
       # Averaging method dropdown
+      # Passing `choices` without `selected` makes Shiny fall back to the
+      # first choice, so re-labelling a dropdown for a new language would
+      # silently discard what the user had picked.
       shiny::updateSelectInput(session, "avg_method",
         label = tr("averaging_method", lang),
         choices = stats::setNames(
           c("time", "breath", "rolling"),
           c(tr("method_time", lang), tr("method_breath", lang),
             tr("method_rolling", lang))
-        )
+        ),
+        selected = input$avg_method
       )
 
       # Averaging window slider
@@ -362,7 +366,8 @@ mod_settings_server <- function(id, language, cpet_data = shiny::reactive(NULL))
           c("cycling", "treadmill", "other"),
           c(tr("modality_cycling", lang), tr("modality_treadmill", lang),
             tr("modality_other", lang))
-        )
+        ),
+        selected = input$modality
       )
 
       # Numeric input labels (modality-aware)
@@ -389,17 +394,21 @@ mod_settings_server <- function(id, language, cpet_data = shiny::reactive(NULL))
           c("", "cycling", "running", "triathlon", "general"),
           c("--", tr("cycling", lang), tr("running", lang),
             tr("triathlon", lang), tr("general", lang))
-        )
+        ),
+        selected = input$athlete_sport
       )
 
-      # Athlete level dropdown
+      # Athlete level dropdown. The order has to match the one declared in the
+      # UI: it used to start with "elite" here, so the reset above landed on
+      # elite and every participant was silently compared against elite norms.
       shiny::updateSelectInput(session, "athlete_level",
         label = tr("athlete_level", lang),
         choices = stats::setNames(
-          c("elite", "competitive", "recreational", "sedentary"),
-          c(tr("elite", lang), tr("competitive", lang),
-            tr("recreational", lang), tr("sedentary", lang))
-        )
+          c("recreational", "competitive", "elite", "sedentary"),
+          c(tr("recreational", lang), tr("competitive", lang),
+            tr("elite", lang), tr("sedentary", lang))
+        ),
+        selected = input$athlete_level
       )
 
       # Report sections checkboxes

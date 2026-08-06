@@ -180,3 +180,60 @@ test_that("run_app function exists and has correct signature", {
   args <- formals(run_app)
   expect_true("language" %in% names(args) || length(args) >= 0)
 })
+
+
+# Re-labelling dropdowns for a new language ---------------------------------
+# Every updateSelectInput() that passes `choices` must also pass `selected`.
+# Shiny falls back to the first choice otherwise, so re-labelling a dropdown
+# silently discards whatever the user had picked. That is how every
+# participant ended up compared against elite normative data, and how the
+# averaging method flipped from rolling to time on start-up.
+
+test_that("the settings module never re-labels a dropdown without keeping the selection", {
+  source_file <- system.file("R", "mod_settings.R", package = "cardiometR")
+  if (source_file == "" || !file.exists(source_file)) {
+    source_file <- test_path("..", "..", "R", "mod_settings.R")
+  }
+  skip_if(!file.exists(source_file), "mod_settings.R source not available")
+
+  lines <- readLines(source_file, warn = FALSE)
+  starts <- grep("update\\w*Input\\(", lines)
+
+  offenders <- character()
+  for (start in starts) {
+    depth <- 0L
+    idx <- start
+    repeat {
+      depth <- depth +
+        lengths(regmatches(lines[[idx]], gregexpr("(", lines[[idx]], fixed = TRUE))) -
+        lengths(regmatches(lines[[idx]], gregexpr(")", lines[[idx]], fixed = TRUE)))
+      if (depth <= 0L || idx >= length(lines)) break
+      idx <- idx + 1L
+    }
+    block <- paste(lines[start:idx], collapse = " ")
+    if (grepl("choices", block) && !grepl("selected", block)) {
+      offenders <- c(offenders, trimws(lines[[start]]))
+    }
+  }
+
+  expect_identical(offenders, character())
+})
+
+test_that("the athlete level choices are declared in the same order everywhere", {
+  source_file <- system.file("R", "mod_settings.R", package = "cardiometR")
+  if (source_file == "" || !file.exists(source_file)) {
+    source_file <- test_path("..", "..", "R", "mod_settings.R")
+  }
+  skip_if(!file.exists(source_file), "mod_settings.R source not available")
+
+  lines <- paste(readLines(source_file, warn = FALSE), collapse = "\n")
+  orders <- regmatches(
+    lines,
+    gregexpr('c\\("recreational"[^)]*\\)|c\\("elite"[^)]*\\)', lines)
+  )[[1L]]
+
+  # Recreational must come first: it is the default, and a stray reset lands
+  # on whichever level is listed first.
+  expect_true(length(orders) >= 2)
+  expect_true(all(startsWith(orders, 'c("recreational"')))
+})
