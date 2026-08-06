@@ -10,7 +10,7 @@ mod_upload_ui <- function(id, language = "en") {
   ns <- shiny::NS(id)
 
   bslib::layout_columns(
-    col_widths = c(6, 6),
+    col_widths = c(6, 6, 12),
     fill = FALSE,
 
     # Upload card
@@ -49,7 +49,11 @@ mod_upload_ui <- function(id, language = "en") {
       bslib::card_body(
         shiny::uiOutput(ns("validation_display"))
       )
-    )
+    ),
+
+    # How the file was read. Collapsed by default: it only matters when
+    # something looks wrong, but then it is the first place to look.
+    shiny::uiOutput(ns("import_report_display"))
   )
 }
 
@@ -131,6 +135,15 @@ mod_upload_server <- function(id, language) {
         cpet_data(NULL)
         validation(NULL)
       })
+    })
+
+    # Render the import report
+    output$import_report_display <- shiny::renderUI({
+      report <- cpet_import_report(cpet_data())
+      if (is.null(report)) {
+        return(NULL)
+      }
+      import_report_panel(report, language())
     })
 
     # Render validation display
@@ -226,4 +239,154 @@ mod_upload_server <- function(id, language) {
       validation = validation
     )
   })
+}
+
+
+#' Build the "how this file was read" panel
+#'
+#' Kept out of the server function so it can be tested on its own, and so the
+#' server stays readable.
+#'
+#' @param report A [CpetImportReport].
+#' @param language Language code.
+#'
+#' @return A collapsed bslib accordion, or `NULL` when there is no report.
+#'
+#' @keywords internal
+import_report_panel <- function(report, language = "en") {
+  if (is.null(report)) {
+    return(NULL)
+  }
+
+  mapped <- report@columns[report@columns$status == "mapped", , drop = FALSE]
+  converted <- mapped[!is.na(mapped$factor) & mapped$factor != 1, , drop = FALSE]
+
+  header_line <- function(label, value) {
+    shiny::tags$div(
+      class = "d-flex gap-2",
+      shiny::tags$span(class = "text-muted", label),
+      shiny::tags$span(value)
+    )
+  }
+
+  summary_block <- shiny::tagList(
+    header_line(tr("import_format", language), report@dialect_label),
+    if (!is.na(report@sheet)) {
+      header_line(tr("import_sheet", language), report@sheet)
+    },
+    header_line(
+      tr("import_layout", language),
+      sprintf(tr("import_layout_detail", language),
+              report@layout$header_row, report@layout$data_row)
+    ),
+    shiny::tags$p(
+      class = "mt-2 mb-1 fw-semibold",
+      sprintf(tr("import_columns_recognised", language), nrow(mapped))
+    )
+  )
+
+  columns_table <- shiny::tags$table(
+    class = "table table-sm mb-2",
+    shiny::tags$thead(shiny::tags$tr(
+      shiny::tags$th(tr("import_col_source", language)),
+      shiny::tags$th(tr("import_col_canonical", language)),
+      shiny::tags$th(tr("import_col_unit", language))
+    )),
+    shiny::tags$tbody(lapply(seq_len(nrow(mapped)), function(i) {
+      row <- mapped[i, ]
+      unit <- if (!is.na(row$factor) && row$factor != 1) {
+        sprintf("%s to %s", row$unit_from, row$unit_to)
+      } else {
+        row$unit_to %||% ""
+      }
+      shiny::tags$tr(
+        shiny::tags$td(shiny::tags$code(row$source)),
+        shiny::tags$td(row$canonical),
+        shiny::tags$td(class = "text-muted", if (is.na(unit)) "" else unit)
+      )
+    }))
+  )
+
+  converted_block <- if (nrow(converted) > 0) {
+    shiny::tagList(
+      shiny::tags$p(class = "fw-semibold mb-1",
+                    tr("import_units_converted", language)),
+      shiny::tags$ul(lapply(seq_len(nrow(converted)), function(i) {
+        row <- converted[i, ]
+        shiny::tags$li(sprintf(
+          "%s: %s to %s (x%s)",
+          row$source, row$unit_from, row$unit_to, signif(row$factor, 6)
+        ))
+      }))
+    )
+  }
+
+  vocab_block <- if (!is.null(report@vocab) && nrow(report@vocab) > 0) {
+    shiny::tagList(
+      shiny::tags$p(class = "fw-semibold mb-1",
+                    tr("import_phase_labels", language)),
+      shiny::tags$ul(lapply(seq_len(nrow(report@vocab)), function(i) {
+        row <- report@vocab[i, ]
+        target <- if (is.na(row$canonical)) {
+          tr("import_unmapped_phase", language)
+        } else {
+          row$canonical
+        }
+        unit <- if (row$n == 1L) {
+          tr("import_phase_row", language)
+        } else {
+          tr("import_phase_rows", language)
+        }
+        shiny::tags$li(sprintf("%s to %s (%d %s)", row$raw, target,
+                               row$n, unit))
+      }))
+    )
+  }
+
+  unknown_block <- shiny::tagList(
+    shiny::tags$p(class = "fw-semibold mb-1", tr("import_unrecognised", language)),
+    if (length(report@unknown) == 0) {
+      shiny::tags$p(class = "text-muted",
+                    tr("import_unrecognised_none", language))
+    } else {
+      shiny::tags$ul(lapply(report@unknown, function(name) {
+        hint <- report@suggestions[[name]]
+        shiny::tags$li(
+          shiny::tags$code(name),
+          if (!is.null(hint)) {
+            shiny::tags$span(class = "text-muted",
+                             sprintf(" %s %s?", tr("import_suggestion", language),
+                                     paste(hint, collapse = ", ")))
+          }
+        )
+      }))
+    },
+    if (length(report@ignored) > 0) {
+      shiny::tags$p(
+        class = "text-muted small",
+        sprintf(tr("import_ignored", language), length(report@ignored))
+      )
+    }
+  )
+
+  warnings_block <- if (length(report@warnings) > 0) {
+    shiny::tagList(
+      shiny::tags$p(class = "fw-semibold mb-1", tr("import_warnings", language)),
+      shiny::tags$ul(lapply(report@warnings, shiny::tags$li))
+    )
+  }
+
+  bslib::accordion(
+    open = FALSE,
+    bslib::accordion_panel(
+      title = tr("import_report_title", language),
+      icon = shiny::icon("file-import"),
+      summary_block,
+      columns_table,
+      converted_block,
+      vocab_block,
+      unknown_block,
+      warnings_block
+    )
+  )
 }

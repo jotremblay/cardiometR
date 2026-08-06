@@ -10,7 +10,19 @@ and exports configured with different columns, now import correctly.
   summary of what it recognised, what it converted, and what it left out.
 * New `preview_cpet_columns()` shows how a file's columns will be read without
   importing it, and suggests a name for anything it does not recognise.
-* New `list_cpet_dialects()` lists the formats available.
+* New `list_cpet_dialects()` lists the formats available, and
+  `clear_dialect_cache()` picks up a format file you have just edited.
+* A `CpetImportReport` is kept on the object and reached with
+  `cpet_import_report()`. It records which format matched and why, where the
+  data block was, what every column became, the units converted and by how
+  much, the phase labels translated, and which participant details had to be
+  found by falling back to a fixed position. `extract_stages()` and
+  `average()` carry it across, so it survives the analysis.
+* The upload tab has a collapsed "how this file was read" panel showing the
+  same thing. It is the first place to look when a file half-imports.
+* Delimited files are supported: CSV, TSV and separated text, with the
+  separator worked out from the file and a decimal comma handled. A French CSV
+  written with semicolons needs no configuration.
 * Formats are described by YAML files under `inst/dialects`. Support for
   another cart, or for a local variation of an existing one, needs a new file
   rather than a change to the package. Files placed in the user's own

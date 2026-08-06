@@ -237,3 +237,62 @@ test_that("the athlete level choices are declared in the same order everywhere",
   expect_true(length(orders) >= 2)
   expect_true(all(startsWith(orders, 'c("recreational"')))
 })
+
+
+# Import report panel -------------------------------------------------------
+
+test_that("the import report panel renders in both languages", {
+  skip_if_not_installed("bslib")
+  example_file <- system.file("extdata", "example_cosmed.xlsx",
+                              package = "cardiometR")
+  skip_if(example_file == "", "Example COSMED file not found")
+
+  report <- cpet_import_report(read_cpet(example_file, quiet = TRUE))
+
+  for (lang in c("en", "fr")) {
+    panel <- import_report_panel(report, lang)
+    expect_true(inherits(panel, "shiny.tag") || inherits(panel, "shiny.tag.list"))
+
+    rendered <- as.character(panel)
+    # The source column names and the internal ones both have to be visible,
+    # since matching one to the other is the whole point of the panel.
+    expect_true(grepl("VO2", rendered, fixed = TRUE))
+    expect_true(grepl("vo2_ml", rendered, fixed = TRUE))
+    # And the unit conversion it applied.
+    expect_true(grepl("86400", rendered, fixed = TRUE))
+  }
+})
+
+test_that("the import report panel is absent without a report", {
+  expect_null(import_report_panel(NULL, "en"))
+})
+
+
+# Translation parity --------------------------------------------------------
+
+test_that("the English and French label files define the same keys", {
+  # Two translation files drift the moment a key is added to one and not the
+  # other, and nothing else in the package would notice.
+  en <- yaml::read_yaml(system.file("translations", "labels_en.yml",
+                                    package = "cardiometR"))
+  fr <- yaml::read_yaml(system.file("translations", "labels_fr.yml",
+                                    package = "cardiometR"))
+
+  expect_setequal(names(en), names(fr))
+  expect_true(all(nzchar(unlist(en))))
+  expect_true(all(nzchar(unlist(fr))))
+})
+
+test_that("a French label is not simply the English one left in place", {
+  en <- yaml::read_yaml(system.file("translations", "labels_en.yml",
+                                    package = "cardiometR"))
+  fr <- yaml::read_yaml(system.file("translations", "labels_fr.yml",
+                                    package = "cardiometR"))
+
+  # Plenty of entries are legitimately identical: units, abbreviations, and
+  # variable names. What would be wrong is most of the file matching.
+  shared <- intersect(names(en), names(fr))
+  identical_share <- mean(vapply(shared, function(k)
+    identical(en[[k]], fr[[k]]), logical(1)))
+  expect_lt(identical_share, 0.5)
+})
