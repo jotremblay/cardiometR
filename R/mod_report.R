@@ -312,9 +312,14 @@ mod_report_server <- function(id, language, analysis, settings = shiny::reactive
               shiny::tags$dt(class = "col-5", tr("participant_name", lang)),
               shiny::tags$dd(class = "col-7", p@name),
               shiny::tags$dt(class = "col-5", tr("participant_age", lang)),
-              shiny::tags$dd(class = "col-7", paste(p@age, tr("unit_years", lang))),
+              shiny::tags$dd(class = "col-7",
+                             paste(format_age(p@age), tr("unit_years", lang))),
               shiny::tags$dt(class = "col-5", tr("participant_sex", lang)),
-              shiny::tags$dd(class = "col-7", p@sex)
+              shiny::tags$dd(class = "col-7",
+                             switch(p@sex,
+                                    "M" = tr("male", lang),
+                                    "F" = tr("female", lang),
+                                    tr("other", lang)))
             )
           ),
           shiny::div(

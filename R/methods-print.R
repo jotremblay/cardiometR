@@ -7,7 +7,7 @@ method(print, Participant) <- function(x, ...) {
   cli::cli_dl(c(
     "ID" = x@id,
     "Name" = x@name,
-    "Age" = paste(x@age, "years"),
+    "Age" = paste(format_age(x@age), "years"),
     "Sex" = switch(x@sex, M = "Male", F = "Female", O = "Other"),
     "Height" = paste(x@height_cm, "cm"),
     "Weight" = paste(x@weight_kg, "kg")

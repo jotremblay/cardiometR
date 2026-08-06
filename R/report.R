@@ -431,7 +431,7 @@ build_template_data <- function(analysis, config, labels, clinical_notes, interp
       patient_dob = if (!is.null(participant@date_of_birth) && length(participant@date_of_birth) > 0) {
         format(participant@date_of_birth, "%Y-%m-%d")
       } else "",
-      patient_age = participant@age,
+      patient_age = format_age(participant@age),
       patient_sex = sex_label,
       patient_height = participant@height_cm,
       patient_weight = participant@weight_kg,
@@ -720,13 +720,13 @@ build_template_data <- function(analysis, config, labels, clinical_notes, interp
   # Use citation from predicted values (adapts to prediction source)
   if (language == "fr") {
     template_data$predicted_values_note <- sprintf(
-      "Valeurs pr\u00e9dites pour %s, %d ans. R\u00e9f. : %s.",
-      sex_desc, participant@age, predicted$citation_short
+      "Valeurs pr\u00e9dites pour %s, %s ans. R\u00e9f. : %s.",
+      sex_desc, format_age(participant@age), predicted$citation_short
     )
   } else {
     template_data$predicted_values_note <- sprintf(
-      "Predicted values for %s, age %d. Ref: %s.",
-      sex_desc, participant@age, predicted$citation_short
+      "Predicted values for %s, age %s. Ref: %s.",
+      sex_desc, format_age(participant@age), predicted$citation_short
     )
   }
 

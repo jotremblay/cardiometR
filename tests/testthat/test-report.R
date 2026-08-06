@@ -56,6 +56,47 @@ create_test_analysis <- function() {
 }
 
 
+# A participant whose age carries the fraction COSMED actually stores.
+create_fractional_age_analysis <- function() {
+  analysis <- create_test_analysis()
+  participant <- analysis@data@participant
+  participant@age <- 31.2902181427408
+  analysis@data@participant <- participant
+  analysis
+}
+
+
+# fractional age -----------------------------------------------------------
+
+test_that("a fractional age does not break report building", {
+  analysis <- create_fractional_age_analysis()
+
+  # COSMED stores age as a fraction of a year. The predicted-values note used
+  # sprintf("%d", age), which is an error in R for anything but a whole
+  # number, so generating a report for such a participant failed outright.
+  for (lang in c("en", "fr")) {
+    expect_no_error(
+      data <- build_template_data(
+        analysis, ReportConfig(language = lang), get_report_labels(lang),
+        NULL, NULL
+      )
+    )
+    expect_identical(data$patient_age, "31")
+  }
+})
+
+test_that("the report states age in whole years", {
+  analysis <- create_fractional_age_analysis()
+  data <- build_template_data(
+    analysis, ReportConfig(language = "fr"), get_report_labels("fr"), NULL, NULL
+  )
+
+  # Nothing anywhere in the report should carry the raw fraction.
+  flat <- unlist(data[vapply(data, is.character, logical(1))])
+  expect_false(any(grepl("31.29", flat, fixed = TRUE)))
+})
+
+
 # get_report_labels() tests ------------------------------------------------
 
 test_that("get_report_labels returns English labels by default", {

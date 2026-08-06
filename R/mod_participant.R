@@ -234,7 +234,7 @@ mod_participant_server <- function(id, language, cpet_data) {
 
         shiny::div(
           class = "stat-strip",
-          stat_cell(tr("participant_age", lang), as.character(p@age),
+          stat_cell(tr("participant_age", lang), format_age(p@age),
                     tr("unit_years", lang)),
           stat_cell(tr("participant_sex", lang), sex_label),
           stat_cell(tr("participant_height", lang), as.character(p@height_cm), "cm"),
