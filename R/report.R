@@ -550,7 +550,13 @@ build_template_data <- function(analysis, config, labels, clinical_notes, interp
       } else "-",
       vt2_hr = if (!is.null(thresholds@vt2_hr)) round(thresholds@vt2_hr, 0) else "-",
       vt2_power = if (!is.null(thresholds@vt2_power)) round(thresholds@vt2_power, 0) else "-",
-      threshold_method = thresholds@vt1_method %||% "V-slope",
+      # A hand-corrected threshold says so on the printed report, so the
+      # reader knows the value did not come from the detector.
+      threshold_method = if (identical(thresholds@vt1_method, "manual")) {
+        tr("threshold_method_manual", config@language)
+      } else {
+        thresholds@vt1_method %||% "V-slope"
+      },
       threshold_confidence = thresholds@confidence %||% "moderate"
     ))
   }
