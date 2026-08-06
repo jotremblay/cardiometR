@@ -6,7 +6,7 @@
       "runtimeExecutable": "Rscript",
       "runtimeArgs": [
         "-e",
-        "pkgload::load_all('.', quiet = TRUE); options(shiny.port = 4321, shiny.autoreload = TRUE); print(run_app())"
+        "pkgload::load_all('.', quiet = TRUE); options(shiny.port = 4321); print(run_app())"
       ],
       "port": 4321
     }

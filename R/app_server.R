@@ -72,6 +72,11 @@ language <- shiny::reactiveVal(getOption("cardiometR.language", "fr"))
     isTRUE(input$dark_mode == "dark")
   })
 
+  # The operator's manual threshold correction. The review module writes
+  # it, the results module reads it; keeping it here avoids a loop
+  # between the two.
+  threshold_override <- shiny::reactiveVal(NULL)
+
   # ---- Module: Results ----
   # Returns: list(analysis = reactive())
   results_result <- mod_results_server(
@@ -81,7 +86,17 @@ language <- shiny::reactiveVal(getOption("cardiometR.language", "fr"))
     participant = participant_result$participant,
     settings = settings_result$settings,
     prediction_source = participant_result$prediction_source,
-    dark_mode = dark_mode
+    dark_mode = dark_mode,
+    threshold_override = threshold_override
+  )
+
+  # ---- Module: Threshold review ----
+  mod_thresholds_server(
+    "thresholds",
+    language,
+    averaged_data = results_result$averaged_data,
+    settings = settings_result$settings,
+    override = threshold_override
   )
 
   # ---- Module: Plots ----

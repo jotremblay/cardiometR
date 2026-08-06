@@ -33,7 +33,8 @@ plot_type_choices <- function(language) {
 #' @return A Shiny UI element.
 #'
 #' @keywords internal
-mod_plots_ui <- function(id, language = "en", secondary_id = NULL) {
+mod_plots_ui <- function(id, language = "en", secondary_id = NULL,
+                         thresholds_id = NULL) {
   ns <- shiny::NS(id)
 
   plots_card <- bslib::card(
@@ -89,14 +90,11 @@ mod_plots_ui <- function(id, language = "en", secondary_id = NULL) {
     )
   )
 
-  if (is.null(secondary_id)) {
-    plots_card
-  } else {
-    shiny::tagList(
-      plots_card,
-      mod_results_secondary_ui(secondary_id)
-    )
-  }
+  shiny::tagList(
+    plots_card,
+    if (!is.null(thresholds_id)) mod_thresholds_ui(thresholds_id, language),
+    if (!is.null(secondary_id)) mod_results_secondary_ui(secondary_id)
+  )
 }
 
 #' Plots Module Server

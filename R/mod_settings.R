@@ -342,7 +342,7 @@ mod_settings_server <- function(id, language, cpet_data = shiny::reactive(NULL))
         breath = tr("method_breath", lang),
         tr("method_rolling", lang)
       )
-      paste(method_label, paste0(s$averaging_window, " s"), sep = " · ")
+      paste(method_label, paste0(s$averaging_window, " s"), sep = " \u00b7 ")
     })
 
     output$protocol_title_summary <- shiny::renderText({
@@ -358,7 +358,7 @@ mod_settings_server <- function(id, language, cpet_data = shiny::reactive(NULL))
         other = tr("modality_other", lang),
         tr("modality_cycling", lang)
       )
-      paste(protocol_label, modality_label, sep = " · ")
+      paste(protocol_label, modality_label, sep = " \u00b7 ")
     })
 
     output$threshold_title_summary <- shiny::renderText({
@@ -382,7 +382,7 @@ mod_settings_server <- function(id, language, cpet_data = shiny::reactive(NULL))
         sedentary = tr("sedentary", lang),
         tr("recreational", lang)
       )
-      paste(sport_label, level_label, sep = " · ")
+      paste(sport_label, level_label, sep = " \u00b7 ")
     })
 
     output$report_sections_title_summary <- shiny::renderText({

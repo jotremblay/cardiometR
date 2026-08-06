@@ -74,6 +74,120 @@
   }
 }
 
+.threshold-review {
+  border-color: var(--app-accent);
+}
+.threshold-review .radio-inline,
+.threshold-review .shiny-options-group {
+  display: flex;
+  gap: 0.25rem;
+  margin: 0;
+}
+.threshold-review .shiny-input-radiogroup .radio {
+  margin: 0;
+}
+.badge-proposal {
+  padding: 0.15rem 0.5rem;
+  border-radius: 10px;
+  background: #e7f1f7;
+  color: var(--app-accent);
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+.threshold-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 0.7rem 0.8rem;
+  border-radius: 6px;
+  background: var(--bs-success-bg-subtle, #d1e7dd);
+  color: var(--bs-success-text-emphasis, #0f5132);
+  font-size: 0.85rem;
+  margin-bottom: 0.6rem;
+}
+.method-card-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.6rem;
+  margin-bottom: 0.7rem;
+}
+.method-card {
+  border: 1px solid var(--app-card-border);
+  border-radius: 6px;
+  padding: 0.6rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+.method-card-head {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+}
+.method-card-tag {
+  margin-left: auto;
+  font-size: 0.62rem;
+  font-weight: 600;
+  color: var(--app-accent);
+}
+.method-card-values {
+  display: flex;
+  gap: 1rem;
+  border-top: 1px solid var(--app-card-border);
+  padding-top: 0.4rem;
+}
+.method-card-label {
+  font-size: 0.65rem;
+  color: var(--app-muted-fg);
+}
+.method-card-value {
+  font-size: 0.82rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.method-card-keep {
+  align-self: flex-end;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+.threshold-handles {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 1rem;
+}
+.readout-row {
+  display: flex;
+  border-top: 1px solid var(--app-card-border);
+  padding-top: 0.6rem;
+  margin-top: 0.4rem;
+}
+.readout-cell {
+  flex: 1;
+  padding-left: 0.75rem;
+  border-left: 1px solid var(--app-card-border);
+}
+.readout-cell:first-child {
+  border-left: 0;
+  padding-left: 0;
+}
+.readout-label {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--app-muted-fg);
+}
+.readout-value {
+  font-size: 1.05rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.readout-unit {
+  font-size: 0.65rem;
+  color: var(--app-muted-fg);
+}
+
 .participant-note {
   padding: 0.6rem 0.75rem;
   border: 1px solid var(--app-card-border);

@@ -66,7 +66,8 @@ mod_results_secondary_ui <- function(id) {
 #' @keywords internal
 mod_results_server <- function(id, language, cpet_data, participant, settings,
                                prediction_source = shiny::reactive("jones"),
-                               dark_mode = shiny::reactive(FALSE)) {
+                               dark_mode = shiny::reactive(FALSE),
+                               threshold_override = shiny::reactive(NULL)) {
   shiny::moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
@@ -108,7 +109,7 @@ mod_results_server <- function(id, language, cpet_data, participant, settings,
     })
 
     analysis <- shiny::eventReactive(
-      list(cpet_data(), settings(), participant()),
+      list(cpet_data(), settings(), participant(), threshold_override()),
       {
         data <- cpet_data()
         shiny::req(data)
@@ -150,6 +151,14 @@ mod_results_server <- function(id, language, cpet_data, participant, settings,
               )
               NULL
             })
+          }
+
+          # A manual correction replaces the detected VO2 values. The
+          # heart rate and power at the new point are read off the data,
+          # so every derived number stays consistent.
+          ov <- threshold_override()
+          if (!is.null(ov)) {
+            thresholds <- apply_threshold_override(thresholds, ov, data_avg)
           }
 
           shiny::incProgress(0.2, detail = tr("step_stages", lang))
@@ -888,7 +897,8 @@ mod_results_server <- function(id, language, cpet_data, participant, settings,
     }, bg = "transparent")
 
     list(
-      analysis = analysis
+      analysis = analysis,
+      averaged_data = averaged_data
     )
   })
 }

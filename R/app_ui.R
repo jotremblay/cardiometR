@@ -1,3 +1,19 @@
+#' Brand Subtitle Shown Under the App Name
+#'
+#' @param lang Language code.
+#' @return A character string, e.g. `"Analyse EECR - LPEBA - v0.6.0"`.
+#'
+#' @keywords internal
+app_brand_subtitle <- function(lang) {
+  paste(
+    tr("app_subtitle", lang),
+    "LPEBA",
+    paste0("v", utils::packageVersion("cardiometR")),
+    sep = " \u00b7 "
+  )
+}
+
+
 #' Main Application UI
 #'
 #' @description
@@ -6,22 +22,6 @@
 #'
 #' @return A Shiny UI definition.
 #'
-#' Brand Subtitle Shown Under the App Name
-#'
-#' @param lang Language code.
-#' @return A character string, e.g. `"Analyse EECR · LPEBA · v0.6.0"`.
-#'
-#' @keywords internal
-app_brand_subtitle <- function(lang) {
-  paste(
-    tr("app_subtitle", lang),
-    "LPEBA",
-    paste0("v", utils::packageVersion("cardiometR")),
-    sep = " · "
-  )
-}
-
-
 #' @keywords internal
 app_ui <- function() {
   lang <- getOption("cardiometR.language", "fr")
@@ -202,7 +202,8 @@ app_ui <- function() {
         bslib::layout_columns(
           col_widths = c(5, 7),
           mod_results_ui("results", lang),
-          mod_plots_ui("plots", lang, secondary_id = "results")
+          mod_plots_ui("plots", lang, secondary_id = "results",
+                       thresholds_id = "thresholds")
         )
       )
     ),

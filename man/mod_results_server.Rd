@@ -11,7 +11,8 @@ mod_results_server(
   participant,
   settings,
   prediction_source = shiny::reactive("jones"),
-  dark_mode = shiny::reactive(FALSE)
+  dark_mode = shiny::reactive(FALSE),
+  threshold_override = shiny::reactive(NULL)
 )
 }
 \arguments{
