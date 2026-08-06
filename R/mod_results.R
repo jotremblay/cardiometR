@@ -326,7 +326,7 @@ mod_results_server <- function(id, language, cpet_data, participant, settings,
       peaks <- a@peaks
       is_treadmill <- !is.null(peaks@speed_peak) ||
         (!is.null(a@protocol_config) && a@protocol_config@modality == "treadmill") ||
-        ("speed_kmh" %in% names(a@data@breaths))
+        has_signal(a@data@breaths, "speed_kmh")
 
       fmt <- function(x, digits = 1) {
         if (is.null(x) || !is.finite(x)) "--" else sprintf(paste0("%.", digits, "f"), x)
@@ -743,7 +743,7 @@ mod_results_server <- function(id, language, cpet_data, participant, settings,
       if (is.null(a) || is.null(a@stage_summary)) return(NULL)
 
       is_treadmill <- (!is.null(a@protocol_config) && a@protocol_config@modality == "treadmill") ||
-        ("speed_kmh" %in% names(a@data@breaths)) ||
+        has_signal(a@data@breaths, "speed_kmh") ||
         (!is.null(a@peaks) && !is.null(a@peaks@speed_peak))
 
       df <- if (is_treadmill && "speed_kmh" %in% names(a@stage_summary)) {

@@ -5,6 +5,9 @@
 \title{Average CPET Data}
 \usage{
 average(x, ...)
+
+## S7 method for class <cardiometR::CpetData>
+average(x, method = c("time", "breath", "rolling"), window = 30, ...)
 }
 \arguments{
 \item{x}{A CpetData object}

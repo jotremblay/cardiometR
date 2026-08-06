@@ -2,17 +2,25 @@
 % Please edit documentation in R/import.R
 \name{detect_cpet_format}
 \alias{detect_cpet_format}
-\title{Detect CPET File Format}
+\title{Choose the dialect for a file}
 \usage{
-detect_cpet_format(file)
+detect_cpet_format(file, sheet = NULL, format = NULL)
 }
 \arguments{
-\item{file}{Path to the CPET data file}
+\item{file}{Path to the data file.}
+
+\item{sheet}{Sheet name or number, for spreadsheets. \code{NULL} uses the sheet
+the format expects, falling back to the first one.}
+
+\item{format}{Format name, such as \code{"cosmed"}. \code{NULL} detects it from the
+file. See \code{\link[=list_cpet_dialects]{list_cpet_dialects()}}.}
 }
 \value{
-Character string indicating the detected format
+A list with \code{dialect}, \code{raw}, \code{score} and \code{why}.
 }
 \description{
-Attempts to detect the metabolic cart format from file contents.
+Reads a preview of the file, scores every available dialect against it, and
+returns the best match together with the grid it already read, so the file
+is not opened twice.
 }
 \keyword{internal}

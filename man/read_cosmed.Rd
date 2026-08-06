@@ -2,37 +2,26 @@
 % Please edit documentation in R/import.R
 \name{read_cosmed}
 \alias{read_cosmed}
-\title{Read COSMED Quark CPET Excel Export}
+\title{Read a COSMED Omnia or Quark CPET export}
 \usage{
-read_cosmed(file, sheet = "Data")
+read_cosmed(file, sheet = NULL, ...)
 }
 \arguments{
-\item{file}{Path to the xlsx file exported from COSMED Omnia software}
+\item{file}{Path to the data file.}
 
-\item{sheet}{Sheet name or index to read (default "Data")}
+\item{sheet}{Sheet name or number. \code{NULL} finds the data sheet whatever the
+export language calls it, so both \code{Data} and \code{Donnees} are handled.}
+
+\item{...}{Reserved for format-specific arguments.}
 }
 \value{
-A CpetData S7 object containing participant info, metadata, and breaths
+A \link{CpetData} object.
 }
 \description{
-Import breath-by-breath data from a COSMED Quark CPET xlsx export file.
-}
-\details{
-The COSMED xlsx format has a specific structure:
-\itemize{
-\item Columns 1-2: Participant information (ID, name, age, sex, height, weight, DOB)
-\item Columns 4-5: Test metadata (date, duration, protocol, etc.)
-\item Columns 7-8: Environmental conditions (temperature, pressure, humidity)
-\item Columns 10+: Breath-by-breath data starting from row 4
-}
-
-Row 1 contains variable names, row 2 contains units, row 3 is empty,
-and data starts from row 4.
+A convenience wrapper around \code{\link[=read_cpet]{read_cpet()}} for COSMED files.
 }
 \examples{
-\dontrun{
-data <- read_cosmed("path/to/cosmed_export.xlsx")
-print(data)
-}
+file <- system.file("extdata", "example_cosmed.xlsx", package = "cardiometR")
+read_cosmed(file)
 
 }

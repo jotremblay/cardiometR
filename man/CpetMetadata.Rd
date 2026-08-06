@@ -19,6 +19,10 @@
 \item{humidity_pct}{Optional relative humidity percentage}
 
 \item{technician}{Optional name of technician who conducted the test}
+
+\item{modality}{Optional test modality, "cycling" or "treadmill", read from
+the protocol and ergometer text at import. Lets modality be known even
+when the protocol is not named in English.}
 }
 \value{
 A CpetMetadata S7 object

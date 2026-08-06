@@ -1,0 +1,141 @@
+# COSMED Omnia / Quark CPET spreadsheet exports.
+#
+# Merged on top of _core.yml, which supplies the general column and value
+# vocabulary. Only what is peculiar to COSMED belongs here.
+#
+# Note that the layout block below is a HINT, not a rule. The importer finds
+# the header row, the units row and the first data row by looking at the
+# content, so an export configured with different columns, or with columns in a
+# different order, still reads correctly without editing this file.
+
+version: 1
+name: cosmed
+label: "COSMED Omnia / Quark CPET"
+extends: _core
+extensions: [xlsx, xls]
+
+# Omnia names the data sheet in the interface language.
+sheet: [Data, "Données", Donnees, Dati, Datos]
+
+# Each rule that matches adds its weight. The dialect with the highest total
+# wins. Weights are relative, not absolute.
+detect:
+  - where: sheet_names
+    matches: "^(Data|Donn[eé]es|Dati|Datos)$"
+    weight: 3
+  - where: cell
+    row: 1
+    col: 1
+    matches: "^ID"
+    weight: 4
+  - where: header
+    matches: "^(Rf|RQ|VO2/Kg|Analyz\\. Press\\.|npRQ|EEtot)$"
+    weight: 4
+
+layout:
+  header_block:
+    # Labels sit in these columns; the value is in the column to the right.
+    label_cols: [1, 4, 7]
+    max_rows: 25
+    # Used only if the label scan finds nothing, so that a file with unreadable
+    # labels still imports the way it always did. Each entry is [row, column].
+    positional:
+      participant_id: [1, 2]
+      last_name: [2, 2]
+      first_name: [3, 2]
+      sex: [4, 2]
+      age: [5, 2]
+      height_cm: [6, 2]
+      weight_kg: [7, 2]
+      date_of_birth: [8, 2]
+      test_date: [1, 5]
+      ergometer: [7, 5]
+      protocol: [8, 5]
+      pressure_mmhg: [1, 8]
+      temperature_c: [2, 8]
+      humidity_pct: [3, 8]
+  data:
+    first_col_hint: 10
+    max_scan_rows: 30
+
+# COSMED-specific column names, on top of the general aliases.
+aliases:
+  bf: [rf]
+  rer: [rq]
+  vt_l: [vt]
+  vo2_kg: ["vo2/kg"]
+  vo2_hr: ["vo2/hr"]
+  ve_vo2: ["ve/vo2"]
+  ve_vco2: ["ve/vco2"]
+  rpm: [revolution]
+  # Omnia labels the end-tidal columns "Pe", not "Pet".
+  peto2_mmhg: [peo2]
+  petco2_mmhg: [peco2]
+  # The real speed column. There is no column called "Speed" in an Omnia
+  # export, which is why speed never used to be imported at all. The units row
+  # reports m/s, and the conversion to km/h is handled from that.
+  speed_kmh: ["mark speed"]
+
+# Columns COSMED writes that cardiometR does not use. Listing them keeps the
+# import report focused on names that genuinely need attention. Both the
+# English and the French spellings are here, because Omnia translates these.
+ignore:
+  # inspired gas fractions
+  - fio2
+  - fico2
+  # ambient conditions, repeated on every row
+  - "amb. temp."
+  - "temp. amb."
+  - "rh amb"
+  - "hr amb"
+  - "analyz. press."
+  - "press. analyseur"
+  - pb
+  # energy expenditure
+  - eekc
+  - eeh
+  - eem
+  - eetot
+  - eekg
+  - dekc
+  - dem
+  - detot
+  - dekg
+  # substrate use
+  - pro
+  - fat
+  - lip
+  - cho
+  - "pro%"
+  - "fat%"
+  - "lip%"
+  - "cho%"
+  - nprq
+  # distance and relative time
+  - "gps dist."
+  - "dist. gps"
+  - logve
+  - "t rel"
+  - "mark dist."
+  - "distance marq."
+  - "phase time"
+  - "duree phase"
+  # reserves, predicted values, and estimated haemodynamics
+  - "vo2/kg%pred"
+  - br
+  - "res. resp."
+  - hrr
+  - "res. fc"
+  - sv
+  - "ves e"
+  - co
+  - "dc e"
+  # relative power, which has no internal column
+  - "puis."
+
+# Whole families of columns to ignore, as regular expressions matched against
+# the folded header. The 12-lead ECG blocks are 24 columns on their own, which
+# would otherwise fill the import report with names needing no action.
+ignore_patterns:
+  # ST segment amplitudes and slopes: "ST V1", "S aVR", and so on.
+  - "^s(t?)(i{1,3}|avr|avl|avf|v[1-6])$"

@@ -18,7 +18,7 @@ light-on-white theme used by Typst PDF reports.}
 A ggplot2 theme object.
 }
 \description{
-A minimalist ggplot2 theme built on \code{\link[ggplot2:ggtheme]{ggplot2::theme_minimal()}} tuned for
+A minimalist ggplot2 theme built on \code{\link[ggplot2:theme_minimal]{ggplot2::theme_minimal()}} tuned for
 cardiometR reports and the Shiny app. Uses an Inter/sans font stack,
 strong axis titles, subtle panel grid, white background, and 0.8 lwd
 axis lines. Designed to read well under light and dark UI surfaces.

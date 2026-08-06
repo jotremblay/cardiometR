@@ -2,32 +2,65 @@
 % Please edit documentation in R/import.R
 \name{read_cpet}
 \alias{read_cpet}
-\title{Read CPET Data (Generic Interface)}
+\title{Read CPET data from a metabolic cart export}
 \usage{
-read_cpet(file, format = NULL, ...)
+read_cpet(
+  file,
+  format = NULL,
+  sheet = NULL,
+  mapping = NULL,
+  units = NULL,
+  quiet = !rlang::is_interactive(),
+  ...
+)
 }
 \arguments{
-\item{file}{Path to the CPET data file}
+\item{file}{Path to the data file.}
 
-\item{format}{Optional format specification. If NULL, auto-detected from file.
-Options: "cosmed", "cortex", "vyntus"}
+\item{format}{Format name, such as \code{"cosmed"}. \code{NULL} detects it from the
+file. See \code{\link[=list_cpet_dialects]{list_cpet_dialects()}}.}
 
-\item{...}{Additional arguments passed to format-specific readers}
+\item{sheet}{Sheet name or number, for spreadsheets. \code{NULL} uses the sheet
+the format expects, falling back to the first one.}
+
+\item{mapping}{Optional named character vector naming columns explicitly, as
+\code{c("Some Header" = "vo2_ml")}. Overrides the format's own vocabulary. Use
+\code{\link[=preview_cpet_columns]{preview_cpet_columns()}} to see the headers a file actually contains.}
+
+\item{units}{Optional named character vector overriding units, as
+\code{c(vo2_ml = "L/min")}, keyed on the internal column names.}
+
+\item{quiet}{Suppress the summary printed to the console. Defaults to \code{TRUE}
+outside an interactive session.}
+
+\item{...}{Reserved for format-specific arguments.}
 }
 \value{
-A CpetData S7 object
+A \link{CpetData} object.
 }
 \description{
-Generic function to read CPET data from various metabolic cart formats.
-Currently supports COSMED Quark CPET xlsx exports.
+Reads breath-by-breath or averaged data from a metabolic cart file and
+returns a \link{CpetData} object. The file's layout, column names, and units are
+worked out from its contents, so exports in different languages, and exports
+configured with different columns, are all handled.
+}
+\details{
+Values are converted into the units the rest of the package expects: VO2 and
+VCO2 in mL/min, VE in L/min, time in seconds, speed in km/h, power in watts.
+Where a file states its units, those are used. Where it does not, the
+magnitude of the data is used instead, and the choice is reported.
+
+Phase labels are translated to \code{rest}, \code{warmup}, \code{exercise} and \code{recovery}
+whatever language the file is written in. A label that cannot be recognised
+becomes \code{NA} and is reported, rather than being guessed at.
 }
 \examples{
-\dontrun{
-# Auto-detect format
-data <- read_cpet("path/to/file.xlsx")
+file <- system.file("extdata", "example_cosmed.xlsx", package = "cardiometR")
+data <- read_cpet(file, quiet = TRUE)
+data@participant@name
 
-# Explicit format
-data <- read_cpet("path/to/file.xlsx", format = "cosmed")
 }
-
+\seealso{
+\code{\link[=preview_cpet_columns]{preview_cpet_columns()}} to inspect a file without importing it,
+\code{\link[=list_cpet_dialects]{list_cpet_dialects()}} for the formats available.
 }

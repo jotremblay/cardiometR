@@ -16,6 +16,16 @@ utils::globalVariables(c(
   "speed_kmh",
   "peto2_mmhg",
   "petco2_mmhg",
+  "feo2_pct",
+  "feco2_pct",
+  "bf",
+  "vt_l",
+  "vo2_kg",
+  "vo2_hr",
+  "spo2_pct",
+  "mets",
+  "rpm",
+  "marker",
 
   # Derived variables
   "ve_vo2",

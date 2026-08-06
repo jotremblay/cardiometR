@@ -24,6 +24,9 @@ ExerciseQualityCriteria(
   is_maximal = logical(0),
   determination = character(0)
 )
+
+## S7 method for class <cardiometR::ExerciseQualityCriteria>
+print(x, ...)
 }
 \arguments{
 \item{peak_rer}{Peak respiratory exchange ratio achieved}

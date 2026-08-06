@@ -2,17 +2,17 @@
 % Please edit documentation in R/import.R
 \name{detect_data_type}
 \alias{detect_data_type}
-\title{Detect if CPET data is breath-by-breath or time-averaged}
+\title{Detect whether data is breath-by-breath or already averaged}
 \usage{
 detect_data_type(breaths)
 }
 \arguments{
-\item{breaths}{Data frame with breath-by-breath data}
+\item{breaths}{A data frame of breath data.}
 }
 \value{
-List with is_averaged (logical) and averaging_window (numeric or NULL)
+A list with \code{is_averaged} and \code{averaging_window}.
 }
 \description{
-Detect if CPET data is breath-by-breath or time-averaged
+Detect whether data is breath-by-breath or already averaged
 }
 \keyword{internal}

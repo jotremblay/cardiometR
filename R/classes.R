@@ -88,6 +88,9 @@ Participant <- new_class("Participant",
 #' @param pressure_mmhg Optional barometric pressure in mmHg
 #' @param humidity_pct Optional relative humidity percentage
 #' @param technician Optional name of technician who conducted the test
+#' @param modality Optional test modality, "cycling" or "treadmill", read from
+#'   the protocol and ergometer text at import. Lets modality be known even
+#'   when the protocol is not named in English.
 #'
 #' @return A CpetMetadata S7 object
 #' @usage NULL
@@ -130,7 +133,12 @@ CpetMetadata <- new_class("CpetMetadata",
         NULL
       }
     ),
-    technician = class_character | NULL
+    technician = class_character | NULL,
+    # NULL comes first in the union on purpose. With the class first, S7
+    # builds a prototype of that class when the property is omitted, instead
+    # of leaving it NULL, and every existing CpetMetadata() call would have to
+    # be updated.
+    modality = new_property(NULL | class_character, default = NULL)
   )
 )
 

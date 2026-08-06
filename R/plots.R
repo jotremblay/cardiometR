@@ -321,9 +321,9 @@ plot_cpet_panel <- function(x,
 
   # Auto-detect modality if not specified
   if (is.null(modality)) {
-    if ("speed_kmh" %in% names(breaths) && any(!is.na(breaths$speed_kmh))) {
+    if (has_signal(breaths, "speed_kmh")) {
       modality <- "treadmill"
-    } else if ("power_w" %in% names(breaths) && any(!is.na(breaths$power_w))) {
+    } else if (has_signal(breaths, "power_w")) {
       modality <- "cycling"
     }
   }

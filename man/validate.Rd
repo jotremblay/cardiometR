@@ -5,6 +5,15 @@
 \title{Validate CPET Data}
 \usage{
 validate(x, ...)
+
+## S7 method for class <cardiometR::CpetData>
+validate(
+  x,
+  rest_duration_min = 2,
+  aberrant_threshold = 3,
+  language = "en",
+  ...
+)
 }
 \arguments{
 \item{x}{A CpetData object to validate}

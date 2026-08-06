@@ -4,6 +4,10 @@
 \alias{ProtocolQuality}
 \alias{print.ProtocolQuality}
 \title{Protocol Quality Class}
+\usage{
+## S7 method for class <cardiometR::ProtocolQuality>
+print(x, ...)
+}
 \arguments{
 \item{modality}{Exercise modality: "cycling" or "treadmill"}
 

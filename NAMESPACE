@@ -44,6 +44,7 @@ export(get_logo)
 export(get_normative_data)
 export(get_normative_data_cheer)
 export(has_resting)
+export(list_cpet_dialects)
 export(list_normative_categories)
 export(palette_cardiometr)
 export(percentile_from_z)
@@ -57,6 +58,7 @@ export(plot_v_slope)
 export(plot_ventilatory_equivalents)
 export(plot_vo2_power_slope)
 export(plot_zscore_strip)
+export(preview_cpet_columns)
 export(read_cosmed)
 export(read_cpet)
 export(run_app)
@@ -69,11 +71,15 @@ export(z_score)
 import(S7)
 importFrom(purrr,walk)
 importFrom(rlang,"%||%")
-importFrom(stats,coef)
-importFrom(stats,complete.cases)
-importFrom(stats,lm)
-importFrom(stats,median)
-importFrom(stats,sd)
-importFrom(stats,setNames)
-importFrom(utils,head)
-importFrom(utils,tail)
+importFrom(stats,
+  coef,
+  complete.cases,
+  lm,
+  median,
+  sd,
+  setNames
+)
+importFrom(utils,
+  head,
+  tail
+)

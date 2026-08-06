@@ -1,0 +1,293 @@
+# Brand-agnostic import vocabulary for cardiometR.
+#
+# This file is merged underneath every dialect file in this directory. A brand
+# file only has to declare what is peculiar to that brand; everything general
+# lives here.
+#
+# The English and French alias lists are BOTH active at all times. The language
+# of a file is a property of the file, not of the user: a francophone clinician
+# reading an English export is the common case, not the exception. Nothing here
+# is selected by the interface language.
+#
+# Aliases are compared after folding: accents removed, case ignored, all
+# punctuation and spaces stripped. So "Débit ventilatoire", "debit
+# ventilatoire" and "DEBIT-VENTILATOIRE" are the same alias, and you only need
+# to write one of them.
+#
+# To add a name your own cart uses, add it to the right list. To add a whole
+# cart, copy cosmed-omnia.yml and change the detection rules.
+
+version: 1
+
+columns:
+
+  # ---- required ------------------------------------------------------------
+
+  time_s:
+    unit: s
+    required: true
+    # "t rel" is deliberately absent. COSMED writes both an absolute "t" and a
+    # relative "t Rel"; claiming both makes them fight over the same column.
+    aliases:
+      en: [t, time, "elapsed time", "test time", elapsed]
+      fr: ["temps", "temps ecoule", "duree", "temps total", t]
+
+  vo2_ml:
+    unit: mL/min
+    required: true
+    aliases:
+      en: [vo2, "v'o2", "vo2 stpd", "vo2 abs", "o2 uptake",
+           "oxygen uptake", "oxygen consumption"]
+      fr: [vo2, "v'o2", "consommation d'oxygene", "vo2 absolue",
+           "consommation oxygene"]
+
+  vco2_ml:
+    unit: mL/min
+    required: true
+    aliases:
+      en: [vco2, "v'co2", "vco2 stpd", "co2 output", "co2 production"]
+      fr: [vco2, "v'co2", "production de co2", "rejet de co2",
+           "production co2"]
+
+  ve_l:
+    unit: L/min
+    required: true
+    aliases:
+      en: [ve, "v'e", "ve btps", "minute ventilation", ventilation]
+      fr: [ve, "v'e", "ventilation", "ventilation minute",
+           "debit ventilatoire", "ventilation par minute"]
+
+  rer:
+    required: true
+    aliases:
+      en: [rer, rq, r, "respiratory exchange ratio", "resp exchange ratio"]
+      fr: [qr, rer, rq, "quotient respiratoire", "rapport d'echange respiratoire"]
+
+  # ---- optional, but each one drives a feature -----------------------------
+
+  hr_bpm:
+    unit: bpm
+    aliases:
+      en: [hr, "heart rate", "hr bpm", bpm, "cardiac frequency"]
+      fr: [fc, "frequence cardiaque", "freq cardiaque", "frequence cardiaque"]
+
+  power_w:
+    unit: W
+    aliases:
+      en: [power, load, "work rate", watt, watts, workload, wr]
+      fr: [puissance, charge, "puissance mecanique", "charge de travail"]
+
+  speed_kmh:
+    unit: km/h
+    aliases:
+      en: [speed, velocity, "belt speed", "treadmill speed", "mark speed"]
+      fr: [vitesse, allure, "vitesse du tapis", "vitesse tapis",
+           "marqueur vitesse"]
+
+  phase:
+    type: text
+    aliases:
+      en: [phase, "test phase", segment, period]
+      fr: [phase, etape, periode, "phase du test"]
+
+  peto2_mmhg:
+    unit: mmHg
+    aliases:
+      en: [peto2, "pet o2", "et o2", "end tidal o2", "end-tidal o2"]
+      fr: [peto2, "o2 tele expiratoire", "po2 telexpiratoire"]
+
+  petco2_mmhg:
+    unit: mmHg
+    aliases:
+      en: [petco2, "pet co2", "et co2", "end tidal co2", "end-tidal co2"]
+      fr: [petco2, "co2 tele expiratoire", "pco2 telexpiratoire"]
+
+  # ---- carried through, not consumed by the analysis -----------------------
+
+  bf:
+    unit: 1/min
+    aliases:
+      en: [bf, rf, "breathing frequency", "respiratory rate", rr,
+           "resp rate", "breath rate"]
+      fr: [fr, "f resp", "freq resp", "frequence respiratoire",
+           "freq respiratoire", "rythme respiratoire"]
+
+  vt_l:
+    unit: L
+    aliases:
+      en: [vt, "tidal volume", "vt btps"]
+      fr: [vt, vc, "volume courant"]
+
+  vo2_kg:
+    unit: mL/min/kg
+    aliases:
+      en: ["vo2/kg", "vo2 kg", "relative vo2", "vo2 per kg"]
+      fr: ["vo2/kg", "vo2 relative", "vo2 par kg"]
+
+  vo2_hr:
+    unit: mL/beat
+    aliases:
+      en: ["vo2/hr", "o2 pulse", "oxygen pulse"]
+      fr: ["vo2/fc", "pouls d'oxygene", "pouls o2"]
+
+  ve_vo2:
+    aliases:
+      en: ["ve/vo2", "ventilatory equivalent for o2", "eqo2"]
+      fr: ["ve/vo2", "equivalent respiratoire en o2", "equivalent ventilatoire o2"]
+
+  ve_vco2:
+    aliases:
+      en: ["ve/vco2", "ventilatory equivalent for co2", "eqco2"]
+      fr: ["ve/vco2", "equivalent respiratoire en co2", "equivalent ventilatoire co2"]
+
+  feo2_pct:
+    unit: "%"
+    aliases:
+      en: [feo2, "fe o2", "mixed expired o2"]
+      fr: [feo2, "fraction expiree o2", "o2 expire"]
+
+  feco2_pct:
+    unit: "%"
+    aliases:
+      en: [feco2, "fe co2", "mixed expired co2"]
+      fr: [feco2, "fraction expiree co2", "co2 expire"]
+
+  spo2_pct:
+    unit: "%"
+    aliases:
+      en: [spo2, sao2, "oxygen saturation", "o2 saturation"]
+      fr: [spo2, sao2, "saturation en oxygene", "saturation o2"]
+
+  mets:
+    aliases:
+      en: [mets, met, "metabolic equivalent"]
+      fr: [mets, met, "equivalent metabolique"]
+
+  rpm:
+    unit: rpm
+    aliases:
+      en: [rpm, revolution, revolutions, cadence, "pedal rate"]
+      fr: [rpm, cadence, "tours par minute", "tr/min", revolutions]
+
+  marker:
+    type: text
+    aliases:
+      en: [marker, mark, event, comment, note]
+      fr: [marqueur, repere, evenement, commentaire, note]
+
+
+# ---- value vocabularies ----------------------------------------------------
+# These normalise the CONTENTS of a column, not its name. The phase values are
+# the important ones: the analysis layer compares them against English words in
+# six places, and a mismatch fails silently rather than loudly.
+
+vocabularies:
+
+  phase:
+    rest:
+      en: [rest, resting, baseline, pre, "pre test"]
+      fr: [repos, "au repos", "repos initial", base, "pre test"]
+    warmup:
+      en: [warmup, "warm up", warming, warm]
+      fr: [echauffement, "mise en train", "chauffe"]
+    exercise:
+      en: [exercise, exer, ex, work, load, test, stage, ramp, incremental]
+      fr: [exercice, effort, travail, charge, palier, epreuve, rampe,
+           "incremental"]
+    # Cooldown folds in here on purpose. See canonical_phases() in
+    # R/import-vocab.R for why emitting "cooldown" would break plotting.
+    recovery:
+      en: [recovery, recover, cooldown, "cool down", cool, post,
+           "post exercise"]
+      fr: [recuperation, recup, "recuperation active", "retour au calme",
+           "post effort"]
+    # Values that mean "no phase was recorded here". They become NA, the same
+    # as an unrecognised label, but without a warning, because there is
+    # nothing for the user to fix.
+    none:
+      en: [none, unassigned, unknown, "n/a", "-"]
+      fr: [aucun, aucune, "sans phase", "non defini"]
+
+  sex:
+    M:
+      en: [m, male, man]
+      # In French H is homme. In English F is female. Both work here only
+      # because H appears in no English list.
+      fr: [m, h, homme, masculin]
+    F:
+      en: [f, female, woman]
+      fr: [f, femme, feminin]
+
+  # Matched as regular expressions against the folded protocol and ergometer
+  # text, so partial words are fine. Stems are deliberately short: an Omnia
+  # export writes the ergometer as "Excalib.Sport(Dev#1)", which folds to
+  # "excalibsportdev1", so a pattern of "excalibur" would never fire.
+  modality:
+    treadmill: "tapis|treadmill|bruce|balke|naughton|course|marche|running|walk|run|woodway|trackmaster|quinton|hpcosmos"
+    cycling: "velo|cycle|cycling|bike|bicyclette|ergocycle|cycloergometre|ergometre|ergometer|watt|lode|excalib|monark|corival|ergoline|keiser|wattbike"
+
+
+# ---- header-block labels ---------------------------------------------------
+# Used to find participant and test details by reading the label cell next to
+# the value, instead of trusting a fixed row number.
+
+metadata_labels:
+
+  participant_id:
+    en: [id, id1, "subject id", "patient id", "subject code"]
+    fr: [id, id1, identifiant, "no dossier", "numero de dossier", "code sujet"]
+
+  last_name:
+    en: ["last name", surname, "family name"]
+    fr: [nom, "nom de famille"]
+
+  first_name:
+    en: ["first name", forename, "given name"]
+    fr: [prenom]
+
+  sex:
+    en: [gender, sex]
+    fr: [sexe, genre]
+
+  age:
+    en: [age]
+    fr: [age]
+
+  height_cm:
+    en: [height, stature]
+    fr: [taille, hauteur]
+
+  weight_kg:
+    en: [weight, "body mass", mass]
+    fr: [poids, masse, "masse corporelle"]
+
+  date_of_birth:
+    en: ["d.o.b.", dob, "date of birth", birthdate, birthday]
+    fr: ["date de naissance", ddn, "ne le", "nee le"]
+
+  test_date:
+    en: ["test date", date, "date of test", "exam date"]
+    fr: ["date du test", "date de l'epreuve", "date de l'examen", date]
+
+  ergometer:
+    en: [ergometer, device, equipment, "test device"]
+    fr: [ergometre, appareil, equipement, "appareil de test"]
+
+  protocol:
+    en: [protocol, "test protocol"]
+    fr: [protocole, "protocole du test"]
+
+  pressure_mmhg:
+    en: ["barometric pressure", "amb press", "ambient pressure", pb,
+         "atmospheric pressure"]
+    fr: ["pression barometrique", "pression atmospherique", "pression ambiante"]
+
+  temperature_c:
+    en: ["ambient temperature", "amb temp", temperature, "room temperature"]
+    fr: ["temperature ambiante", temperature, "temperature de la piece"]
+
+  humidity_pct:
+    en: ["ambient relative humidity", "rh amb", humidity,
+         "relative humidity"]
+    fr: ["humidite relative", "humidite ambiante", humidite,
+         "humidite relative ambiante"]

@@ -19,5 +19,10 @@ Useful links:
 \author{
 \strong{Maintainer}: Jonathan Tremblay \email{jonathan.tremblay@umontreal.ca}
 
+Authors:
+\itemize{
+  \item Jonathan Tremblay \email{jonathan.tremblay@umontreal.ca}
+}
+
 }
 \keyword{internal}

@@ -44,9 +44,10 @@ method(find_peaks, CpetData) <- function(x, averaging = 30, ...) {
     power_peak <- max(power_smooth, na.rm = TRUE)
   }
 
-  # Optional speed peak (treadmill tests)
+  # Optional speed peak (treadmill tests). A cycle test still carries a speed
+  # column, filled with zeros, so presence alone is not enough.
   speed_peak <- NULL
-  if ("speed_kmh" %in% names(breaths) && !all(is.na(breaths$speed_kmh))) {
+  if (has_signal(breaths, "speed_kmh")) {
     speed_smooth <- zoo::rollmean(breaths$speed_kmh, k = k, fill = NA, align = "center")
     speed_peak <- max(speed_smooth, na.rm = TRUE)
   }

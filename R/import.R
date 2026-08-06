@@ -1,378 +1,619 @@
-# COSMED CPET Data Import Functions
+# Reading CPET data files.
+#
+# One engine serves every supported metabolic cart. What differs between carts
+# lives in the YAML files under inst/dialects, not here. The engine finds the
+# data block by looking at the content rather than at fixed positions, so a
+# different export configuration of the same cart still reads correctly.
+#
+# The eight steps are: read the grid, choose a dialect, locate the data block,
+# resolve the column names, resolve and convert the units, normalise the value
+# vocabularies, read the header block by label, and build the object.
 
-#' Read COSMED Quark CPET Excel Export
+
+#' Read CPET data from a metabolic cart export
 #'
-#' Import breath-by-breath data from a COSMED Quark CPET xlsx export file.
+#' Reads breath-by-breath or averaged data from a metabolic cart file and
+#' returns a [CpetData] object. The file's layout, column names, and units are
+#' worked out from its contents, so exports in different languages, and exports
+#' configured with different columns, are all handled.
 #'
-#' @param file Path to the xlsx file exported from COSMED Omnia software
-#' @param sheet Sheet name or index to read (default "Data")
+#' @param file Path to the data file.
+#' @param format Format name, such as `"cosmed"`. `NULL` detects it from the
+#'   file. See [list_cpet_dialects()].
+#' @param sheet Sheet name or number, for spreadsheets. `NULL` uses the sheet
+#'   the format expects, falling back to the first one.
+#' @param mapping Optional named character vector naming columns explicitly, as
+#'   `c("Some Header" = "vo2_ml")`. Overrides the format's own vocabulary. Use
+#'   [preview_cpet_columns()] to see the headers a file actually contains.
+#' @param units Optional named character vector overriding units, as
+#'   `c(vo2_ml = "L/min")`, keyed on the internal column names.
+#' @param quiet Suppress the summary printed to the console. Defaults to `TRUE`
+#'   outside an interactive session.
+#' @param ... Reserved for format-specific arguments.
 #'
-#' @return A CpetData S7 object containing participant info, metadata, and breaths
+#' @return A [CpetData] object.
 #'
 #' @details
-#' The COSMED xlsx format has a specific structure:
-#' - Columns 1-2: Participant information (ID, name, age, sex, height, weight, DOB)
-#' - Columns 4-5: Test metadata (date, duration, protocol, etc.)
-#' - Columns 7-8: Environmental conditions (temperature, pressure, humidity)
-#' - Columns 10+: Breath-by-breath data starting from row 4
+#' Values are converted into the units the rest of the package expects: VO2 and
+#' VCO2 in mL/min, VE in L/min, time in seconds, speed in km/h, power in watts.
+#' Where a file states its units, those are used. Where it does not, the
+#' magnitude of the data is used instead, and the choice is reported.
 #'
-#' Row 1 contains variable names, row 2 contains units, row 3 is empty,
-#' and data starts from row 4.
+#' Phase labels are translated to `rest`, `warmup`, `exercise` and `recovery`
+#' whatever language the file is written in. A label that cannot be recognised
+#' becomes `NA` and is reported, rather than being guessed at.
 #'
 #' @examples
-#' \dontrun{
-#' data <- read_cosmed("path/to/cosmed_export.xlsx")
-#' print(data)
-#' }
+#' file <- system.file("extdata", "example_cosmed.xlsx", package = "cardiometR")
+#' data <- read_cpet(file, quiet = TRUE)
+#' data@participant@name
+#'
+#' @seealso [preview_cpet_columns()] to inspect a file without importing it,
+#'   [list_cpet_dialects()] for the formats available.
 #'
 #' @export
-read_cosmed <- function(file, sheet = "Data") {
+read_cpet <- function(file,
+                      format = NULL,
+                      sheet = NULL,
+                      mapping = NULL,
+                      units = NULL,
+                      quiet = !rlang::is_interactive(),
+                      ...) {
   if (!file.exists(file)) {
-    cli::cli_abort("File not found: {file}")
+    cli::cli_abort("File not found: {.file {file}}")
   }
 
-  # Read raw data without column names
-  raw <- readxl::read_excel(
-    file,
-    sheet = sheet,
-    col_names = FALSE,
-    .name_repair = "minimal"
+  imported <- import_cpet_file(
+    file = file, format = format, sheet = sheet,
+    mapping = mapping, units = units
   )
 
-  # Parse participant information
-  participant <- parse_cosmed_participant(raw)
+  if (!quiet) {
+    report_import(imported$report)
+  }
 
-  # Parse metadata
-  metadata <- parse_cosmed_metadata(raw)
+  imported$data
+}
 
-  # Parse breath-by-breath data
-  breaths <- parse_cosmed_breaths(raw)
 
-  # Detect if data is breath-by-breath or time-averaged
-  bxb_detection <- detect_data_type(breaths)
+#' Read a COSMED Omnia or Quark CPET export
+#'
+#' A convenience wrapper around [read_cpet()] for COSMED files.
+#'
+#' @inheritParams read_cpet
+#' @param sheet Sheet name or number. `NULL` finds the data sheet whatever the
+#'   export language calls it, so both `Data` and `Donnees` are handled.
+#'
+#' @return A [CpetData] object.
+#'
+#' @examples
+#' file <- system.file("extdata", "example_cosmed.xlsx", package = "cardiometR")
+#' read_cosmed(file)
+#'
+#' @export
+read_cosmed <- function(file, sheet = NULL, ...) {
+  read_cpet(file, format = "cosmed", sheet = sheet, ...)
+}
 
-  # Create and return CpetData object
-  CpetData(
-    participant = participant,
-    metadata = metadata,
+
+#' Run the import pipeline
+#'
+#' @inheritParams read_cpet
+#'
+#' @return A list with `data` (a [CpetData]) and `report` (a list describing
+#'   what the import did).
+#'
+#' @keywords internal
+import_cpet_file <- function(file, format = NULL, sheet = NULL,
+                             mapping = NULL, units = NULL) {
+  detected <- detect_cpet_format(file, sheet = sheet, format = format)
+  dialect <- detected$dialect
+  raw <- detected$raw
+
+  location <- locate_data_block(
+    raw$grid, dialect$lookup, dialect$required,
+    max_scan = dialect$layout$data$max_scan_rows %||% 30L
+  )
+
+  headers <- raw$grid[location$header_row, location$data_cols]
+  resolved <- resolve_columns(headers, dialect$lookup,
+                              ignore = dialect$ignore,
+                              ignore_patterns = dialect$ignore_patterns,
+                              user_mapping = mapping)
+
+  declared <- if (is.na(location$units_row)) {
+    rep(NA_character_, length(headers))
+  } else {
+    parse_unit(raw$grid[location$units_row, location$data_cols])
+  }
+
+  extracted <- extract_breaths(
+    grid = raw$grid, location = location, resolved = resolved,
+    declared_units = declared, dialect = dialect, user_units = units
+  )
+
+  vocab <- normalize_breath_vocabularies(extracted$breaths, dialect)
+  breaths <- vocab$breaths
+
+  header_block <- fill_from_positions(
+    scan_label_block(raw$grid, raw$typed, dialect),
+    raw$grid, raw$typed, dialect, location = location
+  )
+
+  participant <- build_participant(header_block, dialect)
+  metadata <- build_metadata(header_block, dialect, device_label = dialect$label)
+
+  breath_type <- detect_data_type(breaths)
+
+  data <- CpetData(
+    participant = participant$value,
+    metadata = metadata$value,
     breaths = breaths,
     stages = NULL,
-    is_averaged = bxb_detection$is_averaged,
-    averaging_window = bxb_detection$averaging_window
+    is_averaged = breath_type$is_averaged,
+    averaging_window = breath_type$averaging_window
+  )
+
+  report <- list(
+    file = file,
+    dialect = dialect$name,
+    dialect_label = dialect$label,
+    dialect_score = detected$score,
+    dialect_why = detected$why,
+    sheet = raw$sheet,
+    layout = location,
+    columns = extracted$columns,
+    unknown = resolved$unknown,
+    ignored = resolved$ignored,
+    conflicts = resolved$conflicts,
+    suggestions = resolved$suggestions,
+    vocab = vocab$table,
+    metadata_provenance = header_block$provenance,
+    warnings = c(extracted$warnings, vocab$warnings,
+                 participant$warnings, metadata$warnings)
+  )
+
+  list(data = data, report = report)
+}
+
+
+#' Choose the dialect for a file
+#'
+#' Reads a preview of the file, scores every available dialect against it, and
+#' returns the best match together with the grid it already read, so the file
+#' is not opened twice.
+#'
+#' @inheritParams read_cpet
+#'
+#' @return A list with `dialect`, `raw`, `score` and `why`.
+#'
+#' @keywords internal
+detect_cpet_format <- function(file, sheet = NULL, format = NULL) {
+  extension <- tolower(tools::file_ext(file))
+
+  read_with <- function(dialect) {
+    target <- sheet
+    if (is.null(target) && extension %in% c("xlsx", "xls") &&
+        length(dialect$sheet) > 0) {
+      available <- readxl::excel_sheets(file)
+      preferred <- unlist(dialect$sheet)
+      hit <- preferred[norm_key(preferred) %in% norm_key(available)]
+      if (length(hit) > 0) {
+        target <- available[[which(norm_key(available) == norm_key(hit[[1L]]))[[1L]]]]
+      }
+    }
+    read_raw_grid(file, sheet = target)
+  }
+
+  if (!is.null(format)) {
+    dialect <- load_dialect(format)
+    return(list(dialect = dialect, raw = read_with(dialect),
+                score = NA_real_, why = "format given by the caller"))
+  }
+
+  names_available <- names(find_dialect_files())
+  if (length(names_available) == 0) {
+    cli::cli_abort("No import formats are installed.")
+  }
+
+  sheet_names <- if (extension %in% c("xlsx", "xls")) {
+    tryCatch(readxl::excel_sheets(file), error = function(e) character())
+  } else {
+    character()
+  }
+
+  best <- NULL
+  for (name in names_available) {
+    dialect <- load_dialect(name)
+    raw <- tryCatch(read_with(dialect), error = function(e) NULL)
+    if (is.null(raw)) next
+
+    header_candidates <- as.character(
+      raw$grid[seq_len(min(5L, nrow(raw$grid))), , drop = FALSE]
+    )
+    scored <- score_dialect(dialect, list(
+      extension = extension,
+      sheet_names = sheet_names,
+      grid = raw$grid,
+      header_candidates = header_candidates
+    ))
+    if (is.null(best) || scored$score > best$score) {
+      best <- list(dialect = dialect, raw = raw,
+                   score = scored$score, why = scored$why)
+    }
+  }
+
+  if (is.null(best)) {
+    cli::cli_abort(c(
+      "Could not read {.file {basename(file)}} with any known format.",
+      "i" = "Formats available: {.val {names_available}}."
+    ))
+  }
+  if (length(best$why) == 0) {
+    best$why <- "no format matched strongly; used the best available"
+  }
+  best$why <- paste(best$why, collapse = "; ")
+  best
+}
+
+
+#' Pull the data block out of the grid and put it in canonical units
+#'
+#' @keywords internal
+#' @noRd
+extract_breaths <- function(grid, location, resolved, declared_units,
+                            dialect, user_units = NULL) {
+  rows <- seq.int(location$data_row, nrow(grid))
+  block <- grid[rows, location$data_cols, drop = FALSE]
+
+  canonical <- unname(resolved$mapping)
+  inline <- unname(resolved$inline_units)
+  source_names <- names(resolved$mapping)
+
+  columns <- list()
+  values <- list()
+  warnings <- character()
+
+  for (j in seq_along(canonical)) {
+    target <- canonical[[j]]
+    if (is.na(target)) {
+      columns[[length(columns) + 1L]] <- data.frame(
+        source = source_names[[j]], canonical = NA_character_,
+        unit_from = NA_character_, unit_to = NA_character_,
+        factor = NA_real_, unit_source = NA_character_,
+        status = if (source_names[[j]] %in% resolved$ignored) "ignored" else "unrecognised",
+        stringsAsFactors = FALSE
+      )
+      next
+    }
+
+    raw_values <- block[, j]
+
+    if (target %in% dialect$text_columns) {
+      values[[target]] <- trimws(as.character(raw_values))
+      columns[[length(columns) + 1L]] <- data.frame(
+        source = source_names[[j]], canonical = target,
+        unit_from = NA_character_, unit_to = NA_character_,
+        factor = NA_real_, unit_source = "text", status = "mapped",
+        stringsAsFactors = FALSE
+      )
+      next
+    }
+
+    numeric_values <- if (identical(target, "time_s")) {
+      as_seconds(raw_values)
+    } else {
+      as_numeric_loose(raw_values)
+    }
+
+    resolution <- resolve_unit(
+      values = numeric_values, canonical = target,
+      declared = declared_units[[j]], inline = inline[[j]],
+      dialect = dialect, user_units = user_units
+    )
+    converted <- convert_unit(numeric_values, target,
+                              from = resolution$unit, source = resolution$source)
+
+    values[[target]] <- converted$values
+    if (!is.na(resolution$note)) {
+      warnings <- c(warnings, resolution$note)
+    }
+    columns[[length(columns) + 1L]] <- data.frame(
+      source = source_names[[j]], canonical = target,
+      unit_from = converted$from %||% NA_character_,
+      unit_to = converted$to %||% NA_character_,
+      factor = converted$factor, unit_source = converted$source,
+      status = "mapped", stringsAsFactors = FALSE
+    )
+  }
+
+  breaths <- tibble::as_tibble(values)
+
+  missing_required <- setdiff(dialect$required, names(breaths))
+  if (length(missing_required) > 0) {
+    cli::cli_abort(c(
+      "This file is missing data cardiometR needs: {.field {missing_required}}.",
+      "i" = "Recognised: {.field {intersect(dialect$required, names(breaths))}}.",
+      "i" = "Run {.fn preview_cpet_columns} to see the file's own column names, \\
+             then pass {.arg mapping} to match them up."
+    ), class = "cardiometr_missing_required")
+  }
+
+  present <- intersect(dialect$required, names(breaths))
+  keep <- Reduce(`&`, lapply(present, function(col) !is.na(breaths[[col]])))
+  breaths <- breaths[keep, , drop = FALSE]
+
+  if (nrow(breaths) == 0) {
+    cli::cli_abort(c(
+      "Every data row was discarded because a required value was missing.",
+      "i" = "Check the units row and the first data row of the file."
+    ), class = "cardiometr_no_data")
+  }
+
+  # Required columns first, then the rest in a stable order. Anything not in
+  # the units table, such as the text columns, keeps its place at the end
+  # rather than being dropped.
+  preferred <- c(dialect$required,
+                 setdiff(names(.canonical_units), dialect$required))
+  ordered <- c(intersect(preferred, names(breaths)),
+               setdiff(names(breaths), preferred))
+  breaths <- breaths[, ordered, drop = FALSE]
+
+  # Phase is kept even when partly unrecognised, because it carries meaning
+  # the analysis needs. An empty event-marker column carries none.
+  breaths <- drop_empty_columns(breaths, protect = c(dialect$required, "phase"))
+
+  list(
+    breaths = breaths,
+    columns = do.call(rbind, columns),
+    warnings = warnings
   )
 }
 
 
-#' Parse Participant Information from COSMED Export
+#' Decide which unit a column's values are in
 #'
-#' @param raw Raw data frame from readxl
-#' @return A Participant S7 object
+#' Priority, highest first: an explicit override, the file's units row, a unit
+#' written into the header itself, the magnitude of the data, and finally
+#' whatever the format declares.
+#'
+#' Time is the exception. COSMED labels its time column as seconds while
+#' storing Excel day fractions, so for time the magnitude wins: a whole test
+#' spanning less than two units cannot be seconds.
+#'
 #' @keywords internal
-parse_cosmed_participant <- function(raw) {
-  # Extract participant data from columns 1-2, rows 1-8
-  get_value <- function(row) {
-    val <- as.character(raw[[2]][row])
-    if (is.na(val) || val == "") return(NULL)
-    val
+#' @noRd
+resolve_unit <- function(values, canonical, declared, inline, dialect,
+                         user_units = NULL) {
+  none <- NA_character_
+  note <- NA_character_
+
+  if (!is.null(user_units) && canonical %in% names(user_units)) {
+    return(list(unit = parse_unit(user_units[[canonical]]),
+                source = "user", note = none))
   }
 
-  # Parse fields
-  id <- get_value(1) %||% "Unknown"
-  last_name <- get_value(2) %||% ""
-  first_name <- get_value(3) %||% ""
-  name <- trimws(paste(first_name, last_name))
-  if (name == "") name <- "Unknown"
+  inline_unit <- if (is.na(inline)) NA_character_ else parse_unit(inline)
+  stated <- if (!is.na(declared)) declared else inline_unit
+  stated_source <- if (!is.na(declared)) "declared" else "inline"
 
-  gender_raw <- tolower(get_value(4) %||% "O")
-  sex <- dplyr::case_when(
-    grepl("male", gender_raw) & !grepl("female", gender_raw) ~ "M",
-    grepl("female", gender_raw) ~ "F",
-    grepl("^m$", gender_raw) ~ "M",
-    grepl("^f$", gender_raw) ~ "F",
-    TRUE ~ "O"
-  )
+  guess <- infer_unit_from_magnitude(values, canonical)
 
-  age <- as.numeric(get_value(5) %||% 30)
-  height_cm <- as.numeric(get_value(6) %||% 170)
-  weight_kg <- as.numeric(get_value(7) %||% 70)
+  if (identical(canonical, "time_s") && identical(guess$unit, "day")) {
+    return(list(unit = "day", source = "heuristic", note = none))
+  }
 
-  # Parse date of birth (row 8)
-  dob_raw <- get_value(8)
-  date_of_birth <- if (!is.null(dob_raw)) {
-    tryCatch(
-      as.Date(dob_raw),
-      error = function(e) NULL
-    )
+  if (!is.na(stated)) {
+    if (identical(guess$confidence, "high") && !is.na(guess$unit) &&
+        guess$unit != stated) {
+      note <- sprintf(
+        "%s: the file says %s but the values look like %s (%s). Kept %s.",
+        canonical, stated, guess$unit, guess$note, stated
+      )
+    }
+    return(list(unit = stated, source = stated_source, note = note))
+  }
+
+  if (!is.na(guess$unit) && guess$confidence %in% c("high", "low")) {
+    if (identical(guess$confidence, "low")) {
+      note <- sprintf("%s: no unit given; assumed %s (%s).",
+                      canonical, guess$unit,
+                      guess$note %||% "from the size of the values")
+    }
+    return(list(unit = guess$unit, source = "heuristic", note = note))
+  }
+
+  fallback <- if (canonical %in% names(dialect$declared_units)) {
+    unname(dialect$declared_units[[canonical]])
   } else {
-    NULL
+    NA_character_
+  }
+  list(unit = if (is.na(fallback)) none else parse_unit(fallback),
+       source = "assumed", note = none)
+}
+
+
+#' Translate phase labels into the canonical vocabulary
+#'
+#' @keywords internal
+#' @noRd
+normalize_breath_vocabularies <- function(breaths, dialect) {
+  table <- NULL
+  warnings <- character()
+
+  if ("phase" %in% names(breaths)) {
+    mapped <- normalize_phase(breaths$phase, vocab = dialect$phase_vocab)
+    breaths$phase <- mapped$values
+    table <- mapped$table
+    if (length(mapped$unmapped) > 0) {
+      warnings <- c(warnings, sprintf(
+        "Phase label%s %s could not be recognised, so those rows are unclassified.",
+        if (length(mapped$unmapped) > 1) "s" else "",
+        paste(sQuote(mapped$unmapped), collapse = ", ")
+      ))
+    }
   }
 
-  Participant(
-    id = id,
+  list(breaths = breaths, table = table, warnings = warnings)
+}
+
+
+#' @keywords internal
+#' @noRd
+build_participant <- function(header_block, dialect) {
+  found <- header_block$values
+  warnings <- character()
+
+  first_name <- as.character(found$first_name %||% "")
+  last_name <- as.character(found$last_name %||% "")
+  name <- trimws(paste(first_name, last_name))
+  if (!nzchar(name)) {
+    name <- "Unknown"
+  }
+
+  age <- as_measurement(found$age, range = c(0, 120))
+  height <- as_measurement(found$height_cm, "height_cm", range = c(50, 250))
+  weight <- as_measurement(found$weight_kg, "weight_kg", range = c(10, 300))
+
+  if (is.na(age)) {
+    warnings <- c(warnings, "Age was not found or is out of range; used 30.")
+    age <- 30
+  }
+  if (is.na(height)) {
+    warnings <- c(warnings, "Height was not found or is out of range; used 170 cm.")
+    height <- 170
+  }
+  if (is.na(weight)) {
+    warnings <- c(warnings, "Weight was not found or is out of range; used 70 kg.")
+    weight <- 70
+  }
+
+  value <- Participant(
+    id = as.character(found$participant_id %||% "Unknown"),
     name = name,
     age = age,
-    sex = sex,
-    height_cm = height_cm,
-    weight_kg = weight_kg,
+    sex = normalize_sex(found$sex, vocab = dialect$sex_vocab),
+    height_cm = height,
+    weight_kg = weight,
     sport = NULL,
-    date_of_birth = date_of_birth
+    date_of_birth = as_test_date(found$date_of_birth)
   )
+  list(value = value, warnings = warnings)
 }
 
 
-#' Parse Metadata from COSMED Export
-#'
-#' @param raw Raw data frame from readxl
-#' @return A CpetMetadata S7 object
 #' @keywords internal
-parse_cosmed_metadata <- function(raw) {
-  # Columns 4-5 contain test metadata
-  # Columns 7-8 contain environmental conditions
-  get_meta <- function(col, row) {
-    val <- as.character(raw[[col]][row])
-    if (is.na(val) || val == "" || val == "-") return(NULL)
-    val
+#' @noRd
+build_metadata <- function(header_block, dialect, device_label) {
+  found <- header_block$values
+  warnings <- character()
+
+  test_date <- as_test_date(found$test_date)
+  if (is.null(test_date)) {
+    warnings <- c(warnings,
+                  "The test date could not be read, so today's date was used.")
+    test_date <- Sys.Date()
   }
 
-  # Test date (column 5, row 1)
-  test_date_raw <- get_meta(5, 1)
-  test_date <- if (!is.null(test_date_raw)) {
-    tryCatch(
-      as.Date(test_date_raw),
-      error = function(e) Sys.Date()
-    )
+  ergometer <- as.character(found$ergometer %||% "")
+  protocol <- as.character(found$protocol %||% "Unknown")
+  device <- if (nzchar(ergometer)) {
+    paste(device_label, "-", ergometer)
   } else {
-    Sys.Date()
+    device_label
   }
 
-  # Protocol (column 5, row 8)
-  protocol <- get_meta(5, 8) %||% "Unknown"
+  modality <- detect_modality_from_text(
+    c(protocol, ergometer), patterns = dialect$modality_patterns
+  )
 
-  # Ergometer/device (column 5, row 7)
-  ergometer <- get_meta(5, 7) %||% "COSMED Quark CPET"
-  device <- paste("COSMED Quark CPET -", ergometer)
-
-  # Environmental conditions from columns 7-8
-  pressure_mmhg <- as.numeric(get_meta(8, 1))
-  temperature_c <- as.numeric(get_meta(8, 2))
-  humidity_pct <- as.numeric(get_meta(8, 3))
-
-  CpetMetadata(
+  value <- CpetMetadata(
     test_date = test_date,
     device = device,
     protocol = protocol,
     calibration_date = NULL,
-    temperature_c = temperature_c,
-    pressure_mmhg = pressure_mmhg,
-    humidity_pct = humidity_pct,
-    technician = NULL
+    temperature_c = or_null(as_measurement(found$temperature_c, range = c(10, 40))),
+    pressure_mmhg = or_null(as_measurement(found$pressure_mmhg, range = c(600, 900))),
+    humidity_pct = or_null(as_measurement(found$humidity_pct, range = c(0, 100))),
+    technician = NULL,
+    modality = if (is.na(modality)) NULL else modality
   )
+  list(value = value, warnings = warnings)
 }
 
 
-#' Parse Breath-by-Breath Data from COSMED Export
+#' Print a summary of what an import did
 #'
-#' @param raw Raw data frame from readxl
-#' @return A tibble of breath-by-breath data
+#' @param report The report list returned by [import_cpet_file()].
+#'
+#' @return Invisibly, the report.
+#'
 #' @keywords internal
-parse_cosmed_breaths <- function(raw) {
-  # Get column headers from row 1 (starting at column 10)
-  headers <- as.character(raw[1, 10:ncol(raw)])
-  units <- as.character(raw[2, 10:ncol(raw)])
+report_import <- function(report) {
+  cli::cli_h1("CPET import")
+  cli::cli_dl(c(
+    "File" = basename(report$file),
+    "Format" = "{report$dialect_label}",
+    "Sheet" = as.character(report$sheet %||% "-"),
+    "Layout" = "header row {report$layout$header_row}, data from row \\
+                {report$layout$data_row}"
+  ))
 
-  # Data starts at row 4 (index 4)
-  data_start <- 4
-  data_cols <- 10:ncol(raw)
+  columns <- report$columns
+  mapped <- columns[columns$status == "mapped", , drop = FALSE]
+  cli::cli_alert_success("{nrow(mapped)} column{?s} recognised")
 
-  # Extract data portion
-  breath_data <- raw[data_start:nrow(raw), data_cols]
-
-  # Set column names
-  names(breath_data) <- headers
-
-  # Identify text columns that should not be converted to numeric
-  text_columns <- c("Phase", "Marker")
-
-  # Convert numeric columns only
-  numeric_cols <- setdiff(names(breath_data), text_columns)
-  breath_data <- breath_data |>
-    dplyr::mutate(dplyr::across(dplyr::all_of(numeric_cols), as.numeric))
-
-  # Map COSMED column names to cardiometR standard names
-  column_mapping <- c(
-    "t" = "time_s",
-    "VO2" = "vo2_ml",
-    "VCO2" = "vco2_ml",
-    "VE" = "ve_l",
-    "RQ" = "rer",
-    "HR" = "hr_bpm",
-    "Power" = "power_w",
-    "Rf" = "bf",
-    "VT" = "vt_l",
-    "VE/VO2" = "ve_vo2",
-    "VE/VCO2" = "ve_vco2",
-    "VO2/Kg" = "vo2_kg",
-    "FeO2" = "feo2_pct",
-    "FeCO2" = "feco2_pct",
-    "PeO2" = "peto2_mmhg",
-    "PeCO2" = "petco2_mmhg",
-    "SpO2" = "spo2_pct",
-    "Speed" = "speed_kmh",
-    "Revolution" = "rpm",
-    "Phase" = "phase",
-    "Marker" = "marker",
-    "METS" = "mets",
-    "VO2/HR" = "vo2_hr"
-  )
-
-  # Rename columns that exist
-  for (old_name in names(column_mapping)) {
-    if (old_name %in% names(breath_data)) {
-      new_name <- column_mapping[old_name]
-      names(breath_data)[names(breath_data) == old_name] <- new_name
+  converted <- mapped[!is.na(mapped$factor) & mapped$factor != 1, , drop = FALSE]
+  if (nrow(converted) > 0) {
+    cli::cli_h3("Units converted")
+    for (i in seq_len(nrow(converted))) {
+      row <- converted[i, ]
+      cli::cli_li("{.val {row$source}} to {.field {row$canonical}}: \\
+                   {row$unit_from} to {row$unit_to}, \\
+                   x{signif(row$factor, 6)}")
     }
   }
 
-  # Select and order standard columns (keeping only what exists)
-  standard_cols <- c(
-    "time_s", "vo2_ml", "vco2_ml", "ve_l", "rer",
-    "hr_bpm", "power_w", "speed_kmh", "bf", "vt_l",
-    "ve_vo2", "ve_vco2", "vo2_kg",
-    "peto2_mmhg", "petco2_mmhg", "spo2_pct",
-    "phase", "marker", "mets", "vo2_hr", "rpm"
-  )
-
-  available_cols <- standard_cols[standard_cols %in% names(breath_data)]
-  breaths <- breath_data |>
-    dplyr::select(dplyr::any_of(available_cols))
-
-  # Validate required columns
-  required_cols <- c("time_s", "vo2_ml", "vco2_ml", "ve_l", "rer")
-  missing_required <- setdiff(required_cols, names(breaths))
-  if (length(missing_required) > 0) {
-    cli::cli_abort("COSMED file missing required columns: {paste(missing_required, collapse = ', ')}")
-  }
-
-  # Remove rows with NA in required columns
-  breaths <- breaths |>
-    dplyr::filter(
-      !is.na(.data[["time_s"]]),
-      !is.na(.data[["vo2_ml"]]),
-      !is.na(.data[["vco2_ml"]]),
-      !is.na(.data[["ve_l"]]),
-      !is.na(.data[["rer"]])
-    )
-
-  # Convert time from Excel day fraction to seconds when needed
-  # Excel stores time as fraction of a day (1 = 24 hours = 86400 seconds)
-  if ("time_s" %in% names(breaths)) {
-    max_time <- suppressWarnings(max(breaths$time_s, na.rm = TRUE))
-    if (is.finite(max_time) && max_time <= 2) {
-      breaths <- breaths |>
-        dplyr::mutate(time_s = time_s * 86400)
+  if (!is.null(report$vocab) && nrow(report$vocab) > 0) {
+    cli::cli_h3("Phase labels")
+    for (i in seq_len(nrow(report$vocab))) {
+      row <- report$vocab[i, ]
+      cli::cli_li("{.val {row$raw}} to {.val {row$canonical %||% 'unrecognised'}} \\
+                   ({row$n} row{?s})")
     }
   }
 
-  # Ensure required columns have non-missing data
-  for (col in required_cols) {
-    if (all(is.na(breaths[[col]]))) {
-      cli::cli_abort("Required column {col} contains only missing values")
+  if (length(report$unknown) > 0) {
+    cli::cli_h3("Not recognised, and left out")
+    cli::cli_ul(report$unknown)
+    for (name in names(report$suggestions)) {
+      cli::cli_alert_info("{.val {name}}: did you mean \\
+                           {.val {report$suggestions[[name]]}}?")
     }
   }
 
-  # Convert phase to character if present
-  if ("phase" %in% names(breaths)) {
-    breaths$phase <- as.character(breaths$phase)
+  if (!is.null(report$conflicts) && nrow(report$conflicts) > 0) {
+    for (i in seq_len(nrow(report$conflicts))) {
+      row <- report$conflicts[i, ]
+      cli::cli_alert_warning("{.field {row$canonical}}: kept {.val {row$kept}}, \\
+                              left out {.val {row$dropped}}")
+    }
   }
 
-  tibble::as_tibble(breaths)
+  for (warning in report$warnings) {
+    cli::cli_alert_warning(warning)
+  }
+
+  invisible(report)
 }
 
 
-#' Read CPET Data (Generic Interface)
+#' Detect whether data is breath-by-breath or already averaged
 #'
-#' Generic function to read CPET data from various metabolic cart formats.
-#' Currently supports COSMED Quark CPET xlsx exports.
+#' @param breaths A data frame of breath data.
 #'
-#' @param file Path to the CPET data file
-#' @param format Optional format specification. If NULL, auto-detected from file.
-#'   Options: "cosmed", "cortex", "vyntus"
-#' @param ... Additional arguments passed to format-specific readers
+#' @return A list with `is_averaged` and `averaging_window`.
 #'
-#' @return A CpetData S7 object
-#'
-#' @examples
-#' \dontrun{
-#' # Auto-detect format
-#' data <- read_cpet("path/to/file.xlsx")
-#'
-#' # Explicit format
-#' data <- read_cpet("path/to/file.xlsx", format = "cosmed")
-#' }
-#'
-#' @export
-read_cpet <- function(file, format = NULL, ...) {
-  if (!file.exists(file)) {
-    cli::cli_abort("File not found: {file}")
-  }
-
-  # Auto-detect format if not specified
-  if (is.null(format)) {
-    format <- detect_cpet_format(file)
-  }
-
-  # Dispatch to appropriate reader
-  switch(tolower(format),
-    cosmed = read_cosmed(file, ...),
-    cli::cli_abort("Unsupported format: {format}. Currently supported: cosmed")
-  )
-}
-
-
-#' Detect CPET File Format
-#'
-#' Attempts to detect the metabolic cart format from file contents.
-#'
-#' @param file Path to the CPET data file
-#' @return Character string indicating the detected format
-#' @keywords internal
-detect_cpet_format <- function(file) {
-  ext <- tolower(tools::file_ext(file))
-
-  if (ext %in% c("xlsx", "xls")) {
-    # Try to detect from content
-    tryCatch({
-      # Read first few rows
-      preview <- readxl::read_excel(
-        file,
-        n_max = 5,
-        col_names = FALSE,
-        .name_repair = "minimal"
-      )
-
-      # Check for COSMED-specific patterns
-      # COSMED has "ID1" in first cell, metadata in specific layout
-      first_cell <- as.character(preview[[1]][1])
-      if (!is.na(first_cell) && grepl("^ID", first_cell)) {
-        return("cosmed")
-      }
-
-      # Default to cosmed for xlsx files
-      return("cosmed")
-    }, error = function(e) {
-      cli::cli_warn("Could not auto-detect format, defaulting to cosmed")
-      return("cosmed")
-    })
-  }
-
-  cli::cli_abort("Cannot detect format for file: {file}")
-}
-
-
-#' Detect if CPET data is breath-by-breath or time-averaged
-#'
-#' @param breaths Data frame with breath-by-breath data
-#' @return List with is_averaged (logical) and averaging_window (numeric or NULL)
 #' @keywords internal
 detect_data_type <- function(breaths) {
   if (nrow(breaths) < 10 || !"time_s" %in% names(breaths)) {
@@ -389,7 +630,6 @@ detect_data_type <- function(breaths) {
   median_interval <- stats::median(intervals)
   cv <- stats::sd(intervals) / mean(intervals)
 
-  # Regular intervals (CV < 5%) with window >= 3s suggest time-averaged
   common_windows <- c(5, 10, 15, 20, 30)
   matched_window <- common_windows[which.min(abs(common_windows - median_interval))]
 

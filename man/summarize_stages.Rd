@@ -5,6 +5,14 @@
 \title{Summarize Data by Stage}
 \usage{
 summarize_stages(x, ...)
+
+## S7 method for class <cardiometR::CpetData>
+summarize_stages(
+  x,
+  method = c("last30s", "last60s", "mean", "peak"),
+  window_s = 30,
+  ...
+)
 }
 \arguments{
 \item{x}{A CpetData object with stages defined}

@@ -25,6 +25,9 @@ DataQualityReport(
   overall_rating = character(0),
   recommendations = list()
 )
+
+## S7 method for class <cardiometR::DataQualityReport>
+print(x, ...)
 }
 \arguments{
 \item{n_breaths}{Total number of breaths in dataset}

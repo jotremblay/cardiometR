@@ -14,6 +14,9 @@ QualityAssessment(
   test_interpretable = logical(0),
   summary_text = character(0)
 )
+
+## S7 method for class <cardiometR::QualityAssessment>
+print(x, ...)
 }
 \arguments{
 \item{exercise_criteria}{ExerciseQualityCriteria S7 object}

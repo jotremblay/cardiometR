@@ -6,6 +6,9 @@
 \title{Assess Protocol Quality}
 \usage{
 assess_protocol_quality(x, ...)
+
+## S7 method for class <cardiometR::CpetData>
+assess_protocol_quality(x, modality = "auto", expected_slope = NULL, ...)
 }
 \arguments{
 \item{x}{A CpetData object with stages defined}
