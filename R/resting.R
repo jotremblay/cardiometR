@@ -47,8 +47,16 @@ compute_resting_values <- function(data_avg, stages = NULL, window_s = 60) {
     breaths$stage <- sv[idx]
   }
 
-  rest_rows <- breaths |> dplyr::filter(!is.na(.data$stage), .data$stage == 0)
-  ex_rows   <- breaths |> dplyr::filter(!is.na(.data$stage), .data$stage > 0)
+  # Use the recorded phase when there is one. Stage 0 is not the rest period:
+  # extract_stages() gives stage 0 to rest, warmup and recovery alike, so the
+  # last minute of the leading stage-0 block is the end of the WARMUP. Reading
+  # it as rest reports a resting VO2 several times too high.
+  rest_rows <- if (has_rest_phase(breaths)) {
+    breaths |> dplyr::filter(!is.na(.data$phase), .data$phase == "rest")
+  } else {
+    breaths |> dplyr::filter(!is.na(.data$stage), .data$stage == 0)
+  }
+  ex_rows <- breaths |> dplyr::filter(!is.na(.data$stage), .data$stage > 0)
   if (nrow(rest_rows) == 0 || nrow(ex_rows) == 0) return(NULL)
 
   ex_start <- min(ex_rows$time_s, na.rm = TRUE)
