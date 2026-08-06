@@ -3,6 +3,7 @@
 #' @name extract_stages
 #' @rdname extract_stages
 #' @export
+#' @usage NULL
 method(extract_stages, CpetData) <- function(x,
                                               protocol = c("step", "ramp", "auto"),
                                               stage_duration = 180,
@@ -460,6 +461,7 @@ detect_power_increment <- function(power) {
 #' @name summarize_stages
 #' @rdname summarize_stages
 #' @export
+#' @usage NULL
 method(summarize_stages, CpetData) <- function(x,
                                                 method = c("last30s", "last60s", "mean", "peak"),
                                                 window_s = 30,

@@ -15,6 +15,7 @@ get_numeric_cols <- function(df, exclude = NULL) {
 #' @name average
 #' @rdname average
 #' @export
+#' @usage NULL
 method(average, CpetData) <- function(x,
                                        method = c("time", "breath", "rolling"),
                                        window = 30,

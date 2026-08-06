@@ -13,6 +13,7 @@ vmsg <- function(language, en, fr, ...) {
 #' @name validate
 #' @rdname validate
 #' @export
+#' @usage NULL
 method(validate, CpetData) <- function(x,
                                         rest_duration_min = 2,
                                         aberrant_threshold = 3,

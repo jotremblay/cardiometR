@@ -551,6 +551,7 @@ build_metadata <- function(header_block, dialect, device_label) {
 #' @return Invisibly, `x`.
 #'
 #' @name print.CpetImportReport
+#' @usage NULL
 #' @keywords internal
 method(print, CpetImportReport) <- function(x, ...) {
   cli::cli_h1("CPET import")

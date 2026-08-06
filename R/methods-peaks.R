@@ -3,6 +3,7 @@
 #' @name find_peaks
 #' @rdname find_peaks
 #' @export
+#' @usage NULL
 method(find_peaks, CpetData) <- function(x, averaging = 30, ...) {
   breaths <- x@breaths
   weight_kg <- x@participant@weight_kg

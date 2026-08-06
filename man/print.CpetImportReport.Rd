@@ -3,10 +3,6 @@
 \name{print.CpetImportReport}
 \alias{print.CpetImportReport}
 \title{Print a summary of what an import did}
-\usage{
-## S7 method for class <cardiometR::CpetImportReport>
-print(x, ...)
-}
 \arguments{
 \item{x}{A \link{CpetImportReport}.}
 

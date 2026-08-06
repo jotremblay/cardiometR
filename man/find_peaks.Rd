@@ -5,9 +5,6 @@
 \title{Find Peak Values}
 \usage{
 find_peaks(x, ...)
-
-## S7 method for class <cardiometR::CpetData>
-find_peaks(x, averaging = 30, ...)
 }
 \arguments{
 \item{x}{A CpetData object}

@@ -3,6 +3,7 @@
 #' @name detect_thresholds
 #' @rdname detect_thresholds
 #' @export
+#' @usage NULL
 method(detect_thresholds, CpetData) <- function(x,
                                                 methods = c("v_slope", "ve_vo2", "ve_vco2"),
                                                 window_s = 30,

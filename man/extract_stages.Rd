@@ -5,15 +5,6 @@
 \title{Extract Exercise Stages}
 \usage{
 extract_stages(x, ...)
-
-## S7 method for class <cardiometR::CpetData>
-extract_stages(
-  x,
-  protocol = c("step", "ramp", "auto"),
-  stage_duration = 180,
-  increment = NULL,
-  ...
-)
 }
 \arguments{
 \item{x}{A CpetData object}

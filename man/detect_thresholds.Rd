@@ -5,14 +5,6 @@
 \title{Detect Ventilatory Thresholds}
 \usage{
 detect_thresholds(x, ...)
-
-## S7 method for class <cardiometR::CpetData>
-detect_thresholds(
-  x,
-  methods = c("v_slope", "ve_vo2", "ve_vco2"),
-  window_s = 30,
-  ...
-)
 }
 \arguments{
 \item{x}{A CpetData object (should be averaged)}

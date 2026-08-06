@@ -6,17 +6,6 @@
 \title{Assess Maximal Exercise Criteria}
 \usage{
 assess_maximal_criteria(x, ...)
-
-## S7 method for class <cardiometR::CpetData>
-assess_maximal_criteria(
-  x,
-  rpe = NULL,
-  lactate = NULL,
-  rer_threshold = 1.1,
-  hr_threshold_pct = 85,
-  plateau_threshold = 150,
-  ...
-)
 }
 \arguments{
 \item{x}{A CpetData object or CpetAnalysis object}

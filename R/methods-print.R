@@ -234,8 +234,6 @@ method(print, ReportConfig) <- function(x, ...) {
 }
 
 
-#' @rdname ExerciseQualityCriteria
-#' @name print.ExerciseQualityCriteria
 method(print, ExerciseQualityCriteria) <- function(x, ...) {
   cli::cli_h3("Maximal Exercise Criteria (ACSM)")
 
@@ -301,8 +299,6 @@ method(print, ExerciseQualityCriteria) <- function(x, ...) {
 }
 
 
-#' @rdname ProtocolQuality
-#' @name print.ProtocolQuality
 method(print, ProtocolQuality) <- function(x, ...) {
   cli::cli_h3("Protocol Quality Assessment")
 
@@ -354,8 +350,6 @@ method(print, ProtocolQuality) <- function(x, ...) {
 }
 
 
-#' @rdname DataQualityReport
-#' @name print.DataQualityReport
 method(print, DataQualityReport) <- function(x, ...) {
   cli::cli_h3("Data Quality Report")
 
@@ -410,8 +404,6 @@ method(print, DataQualityReport) <- function(x, ...) {
 }
 
 
-#' @rdname QualityAssessment
-#' @name print.QualityAssessment
 method(print, QualityAssessment) <- function(x, ...) {
   cli::cli_h1("Quality Assessment")
 

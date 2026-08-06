@@ -6,9 +6,6 @@
 \title{Compute Overall Quality Assessment}
 \usage{
 assess_quality(x, ...)
-
-## S7 method for class <cardiometR::CpetData>
-assess_quality(x, rpe = NULL, lactate = NULL, ...)
 }
 \arguments{
 \item{x}{A CpetData or CpetAnalysis object}

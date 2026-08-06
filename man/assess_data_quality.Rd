@@ -6,9 +6,6 @@
 \title{Assess Data Quality}
 \usage{
 assess_data_quality(x, ...)
-
-## S7 method for class <cardiometR::CpetData>
-assess_data_quality(x, aberrant_threshold = 3, ...)
 }
 \arguments{
 \item{x}{A CpetData object}
