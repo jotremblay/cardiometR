@@ -232,11 +232,27 @@ populate_phase1_metrics <- function(analysis, stage_summary, breath_df,
     stratum <- get_normative_data(sport = sport, level = level, sex = sex, age = age)
 
     vo2_peak_val <- tryCatch(analysis@peaks@vo2_kg_peak, error = function(e) NA_real_)
-    map_per_kg_z <- z_score(analysis@map_per_kg %||% NA_real_, stratum, metric = "map_per_kg")
+
+    # The normative power values are per kilogram, so an absolute wattage has
+    # to be divided by body mass before it can be compared with them. PPO gets
+    # its own z: it equals MAP only when the last stage was completed, and
+    # diverges from it whenever the participant stopped part way through,
+    # which is the usual way a maximal test ends.
+    weight_kg <- tryCatch(participant@weight_kg, error = function(e) NA_real_)
+    per_kg <- function(watts) {
+      if (!is.numeric(watts) || !length(watts) || !is.finite(watts[[1L]]) ||
+          !is.numeric(weight_kg) || !is.finite(weight_kg) || weight_kg <= 0) {
+        return(NA_real_)
+      }
+      watts[[1L]] / weight_kg
+    }
+
     list(
       vo2_peak_z   = z_score(vo2_peak_val, stratum, metric = "vo2max"),
-      map_per_kg_z = map_per_kg_z,
-      ppo_z        = map_per_kg_z  # PPO (W) and MAP (W/kg) share the same z once scaled
+      map_per_kg_z = z_score(analysis@map_per_kg %||% NA_real_, stratum,
+                             metric = "map_per_kg"),
+      ppo_z        = z_score(per_kg(analysis@ppo_watts %||% NA_real_), stratum,
+                             metric = "map_per_kg")
     )
   }, error = function(e) { cli::cli_warn("Z-score computation failed: {e$message}"); NULL })
 
