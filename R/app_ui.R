@@ -6,6 +6,22 @@
 #'
 #' @return A Shiny UI definition.
 #'
+#' Brand Subtitle Shown Under the App Name
+#'
+#' @param lang Language code.
+#' @return A character string, e.g. `"Analyse EECR · LPEBA · v0.6.0"`.
+#'
+#' @keywords internal
+app_brand_subtitle <- function(lang) {
+  paste(
+    tr("app_subtitle", lang),
+    "LPEBA",
+    paste0("v", utils::packageVersion("cardiometR")),
+    sep = " · "
+  )
+}
+
+
 #' @keywords internal
 app_ui <- function() {
   lang <- getOption("cardiometR.language", "fr")
@@ -42,22 +58,35 @@ app_ui <- function() {
         class = "app-logo-plate",
         shiny::img(
           src = "cardiometR/Ec-_kinesiologie_-act_-phy_officiel-RVB.png",
-          alt = "UdeM Logo",
+          alt = "Universite de Montreal - kinesiologie",
           class = "app-logo app-logo-udem"
-        )
-      ),
-      shiny::span(
-        class = "app-logo-plate",
+        ),
+        shiny::span(class = "app-logo-divider"),
+        shiny::img(
+          src = "cardiometR/Centre_EPIC_ICM.jpg",
+          alt = "Centre EPIC - Institut de Cardiologie de Montreal",
+          class = "app-logo app-logo-epic"
+        ),
+        shiny::span(class = "app-logo-divider"),
         shiny::img(
           src = "cardiometR/lpeba_logo.svg",
-          alt = "LPEBA Logo",
+          alt = "LPEBA",
           class = "app-logo app-logo-lab"
         )
       ),
-      shiny::span(class = "app-brand-title", tr("app_title", lang))
+      shiny::div(
+        class = "app-brand-text",
+        shiny::span(class = "app-brand-title", "cardiometR"),
+        shiny::span(
+          class = "app-brand-subtitle",
+          id = "app_brand_subtitle",
+          app_brand_subtitle(lang)
+        )
+      )
     ),
     theme = theme,
     fillable = TRUE,
+    navbar_options = bslib::navbar_options(bg = "#1f2d3d", theme = "dark"),
 
     # Global app styles/scripts
     header = shiny::tagList(

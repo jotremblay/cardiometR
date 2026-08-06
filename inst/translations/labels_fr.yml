@@ -1,6 +1,7 @@
 # French labels for cardiometR
 # Application UI
 app_title: "Analyse CPET"
+app_subtitle: "Analyse EECR"
 language_changed: "Langue changée en français"
 upload_prompt: "Déposez le fichier xlsx COSMED ici"
 no_file_selected: "Aucun fichier sélectionné"
@@ -41,6 +42,9 @@ calibration_date: "Date de calibration"
 
 # Analysis Settings
 settings_title: "Paramètres d'analyse"
+settings_scope: "Appliqués à ce test"
+settings_changed_hint: "Les valeurs modifiées par rapport aux réglages du laboratoire sont marquées d'un point."
+analyze: "Analyser"
 averaging_method: "Méthode de moyennage"
 averaging_window: "Fenêtre de moyennage (s)"
 method_time: "Basé sur le temps"
@@ -51,12 +55,17 @@ protocol_ramp: "Protocole en rampe"
 protocol_auto: "Détection automatique"
 stage_duration: "Durée du palier (s)"
 threshold_methods: "Méthodes de détection des seuils"
+threshold_method_count: "%d méthodes actives"
+report_section_count: "%d sur %d incluses"
+athlete_none: "Aucune comparaison"
 
 # Results
 results_title: "Résultats"
 stage_results: "Résultats par palier"
 peak_values: "Valeurs maximales"
 threshold_results: "Seuils ventilatoires"
+pct_of_peak: "% pointe"
+threshold_table_caption: "Estimation ponctuelle par consensus V-slope · plage complète dans « Estimations et mises en garde »."
 
 # Report
 report_title: "Rapport d'analyse CPET"
@@ -171,6 +180,8 @@ protocol_quality: "Qualité du protocole"
 data_quality: "Qualité des données"
 stage_details: "Analyse par palier"
 recommendations: "Recommandations"
+stage_count: "%d paliers"
+recommendation_count: "%d éléments"
 optional_criteria: "Critères optionnels (si disponibles)"
 
 # Maximal criteria labels
@@ -423,6 +434,7 @@ upload_complete: "Téléversement terminé"
 # Validation de l'upload + retour édition participant
 info_label: "Info"
 breaths_label: "Respirations"
+configure_analysis: "Configurer l'analyse"
 error_label: "Erreur"
 
 # Import report panel

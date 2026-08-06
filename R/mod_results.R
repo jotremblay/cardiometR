@@ -403,6 +403,7 @@ mod_results_server <- function(id, language, cpet_data, participant, settings,
                               tr("resting_values_title", lang))),
         shiny::div(
           class = "stat-strip",
+          style = "--app-stat-cols: 6;",
           stat_cell("VO2", int_fmt(r$vo2_rest), tr("unit_ml_min", lang)),
           stat_cell(tr("vo2_kg", lang), fmt(r$vo2_kg_rest, 1),
                     tr("unit_ml_kg_min", lang)),
@@ -547,35 +548,47 @@ mod_results_server <- function(id, language, cpet_data, participant, settings,
       }
 
       th <- a@thresholds
+      peak_vo2 <- if (!is.null(a@peaks)) a@peaks@vo2_peak else NULL
+      pct_peak <- function(vo2) {
+        if (is.null(peak_vo2) || !is.finite(peak_vo2) || peak_vo2 <= 0) return("--")
+        paste0(round(vo2 / peak_vo2 * 100), " %")
+      }
 
-      shiny::tags$table(
-        class = "table table-sm table-clean",
-        shiny::tags$thead(
-          shiny::tags$tr(
-            shiny::tags$th(""),
-            shiny::tags$th(paste("VO2", tr("unit_ml_min", lang))),
-            shiny::tags$th(tr("hr", lang)),
-            shiny::tags$th(tr("power", lang))
+      shiny::tagList(
+        shiny::tags$table(
+          class = "table table-sm table-clean",
+          shiny::tags$thead(
+            shiny::tags$tr(
+              shiny::tags$th(""),
+              shiny::tags$th(paste("VO2", tr("unit_ml_min", lang))),
+              shiny::tags$th(tr("pct_of_peak", lang)),
+              shiny::tags$th(tr("hr", lang)),
+              shiny::tags$th(tr("power", lang))
+            )
+          ),
+          shiny::tags$tbody(
+            if (!is.null(th@vt1_vo2) && !is.na(th@vt1_vo2)) {
+              shiny::tags$tr(
+                shiny::tags$td(shiny::strong(tr("vt1", lang))),
+                shiny::tags$td(round(th@vt1_vo2)),
+                shiny::tags$td(pct_peak(th@vt1_vo2)),
+                shiny::tags$td(if (!is.null(th@vt1_hr)) round(th@vt1_hr) else "--"),
+                shiny::tags$td(if (!is.null(th@vt1_power)) round(th@vt1_power) else "--")
+              )
+            },
+            if (!is.null(th@vt2_vo2) && !is.na(th@vt2_vo2)) {
+              shiny::tags$tr(
+                shiny::tags$td(shiny::strong(tr("vt2", lang))),
+                shiny::tags$td(round(th@vt2_vo2)),
+                shiny::tags$td(pct_peak(th@vt2_vo2)),
+                shiny::tags$td(if (!is.null(th@vt2_hr)) round(th@vt2_hr) else "--"),
+                shiny::tags$td(if (!is.null(th@vt2_power)) round(th@vt2_power) else "--")
+              )
+            }
           )
         ),
-        shiny::tags$tbody(
-          if (!is.null(th@vt1_vo2) && !is.na(th@vt1_vo2)) {
-            shiny::tags$tr(
-              shiny::tags$td(shiny::strong(tr("vt1", lang))),
-              shiny::tags$td(round(th@vt1_vo2)),
-              shiny::tags$td(if (!is.null(th@vt1_hr)) round(th@vt1_hr) else "--"),
-              shiny::tags$td(if (!is.null(th@vt1_power)) round(th@vt1_power) else "--")
-            )
-          },
-          if (!is.null(th@vt2_vo2) && !is.na(th@vt2_vo2)) {
-            shiny::tags$tr(
-              shiny::tags$td(shiny::strong(tr("vt2", lang))),
-              shiny::tags$td(round(th@vt2_vo2)),
-              shiny::tags$td(if (!is.null(th@vt2_hr)) round(th@vt2_hr) else "--"),
-              shiny::tags$td(if (!is.null(th@vt2_power)) round(th@vt2_power) else "--")
-            )
-          }
-        )
+        shiny::tags$small(class = "text-muted d-block",
+                          tr("threshold_table_caption", lang))
       )
     })
 

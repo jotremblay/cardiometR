@@ -117,10 +117,13 @@ language <- shiny::reactiveVal(getOption("cardiometR.language", "fr"))
     bslib::nav_select("main_navbar", "upload")
   })
 
-  # Auto-navigate to Configure tab after successful upload
-  shiny::observeEvent(upload_result$cpet_data(), {
-    if (!is.null(upload_result$cpet_data())) {
-      bslib::nav_select("main_navbar", "configure")
-    }
-  })
+  # The operator decides when to move on, so they can read the validation
+  # report first.
+  shiny::observeEvent(upload_result$go_configure(), {
+    bslib::nav_select("main_navbar", "configure")
+  }, ignoreInit = TRUE)
+
+  shiny::observeEvent(settings_result$go_results(), {
+    bslib::nav_select("main_navbar", "results")
+  }, ignoreInit = TRUE)
 }

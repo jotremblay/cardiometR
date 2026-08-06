@@ -23,18 +23,21 @@
 .app-logo-plate {
   display: inline-flex;
   align-items: center;
-  background: #ffffff;
-  padding: 3px 8px;
-  border-radius: 6px;
-  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.04);
+  gap: 0.7rem;
+  background: rgba(255, 255, 255, 0.96);
+  padding: 5px 11px;
+  border-radius: 8px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
 }
-[data-bs-theme="dark"] .app-logo-plate {
-  background: rgba(255, 255, 255, 0.92);
+.app-logo-plate .app-logo-divider {
+  width: 1px;
+  align-self: stretch;
+  background: rgba(31, 45, 61, 0.14);
 }
 
 .stat-strip {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(var(--app-stat-cols, 5), 1fr);
   gap: 0.9rem;
   padding: 0.65rem 0.75rem;
   background: var(--app-soft-bg);
@@ -69,6 +72,25 @@
   .stat-strip {
     grid-template-columns: repeat(2, 1fr);
   }
+}
+
+.settings-footer {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding-top: 0.9rem;
+}
+
+.accordion-hint {
+  margin-left: auto;
+  padding-right: 0.6rem;
+  font-size: 0.78rem;
+  color: var(--app-muted-fg);
+  font-weight: 400;
+}
+.accordion-button {
+  display: flex;
+  align-items: center;
 }
 
 .card h6, .card .section-title {
@@ -121,18 +143,36 @@
   flex-shrink: 0;
 }
 .app-brand .app-logo-udem {
-  height: 52px;
+  height: 38px;
+}
+.app-brand .app-logo-epic {
+  height: 34px;
 }
 .app-brand .app-logo-lab {
-  height: 66px;
+  height: 56px;
+  width: 58px;
   max-width: none;
-  transform: translateY(4px);
+  object-position: center;
+}
+.app-brand-text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding-left: 2px;
 }
 .app-brand-title {
   font-weight: 700;
-  font-size: clamp(1.45rem, 1.2rem + 0.7vw, 2rem);
+  font-size: 1.5rem;
+  letter-spacing: -0.4px;
   line-height: 1;
-  color: var(--bs-body-color, #1f2d3d);
+  color: #ffffff;
+  white-space: nowrap;
+}
+.app-brand-subtitle {
+  font-size: 0.69rem;
+  line-height: 1;
+  letter-spacing: 0.04em;
+  color: rgba(255, 255, 255, 0.62);
   white-space: nowrap;
 }
 .navbar .navbar-nav {
@@ -168,8 +208,17 @@
   line-height: 1;
   vertical-align: middle;
 }
+.navbar .nav-link {
+  border-radius: 6px 6px 0 0;
+}
+.navbar .nav-link:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
 .navbar .nav-link.active {
   font-weight: 600;
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.1);
+  box-shadow: inset 0 -3px 0 0 var(--app-accent);
 }
 .navbar .app-toolbar {
   display: flex;

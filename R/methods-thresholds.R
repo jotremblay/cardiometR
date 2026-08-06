@@ -130,6 +130,13 @@ normalize_threshold_methods <- function(methods) {
     )
   }
 
+  # The end-tidal gases are picked as one option in the app, but they drive
+  # two separate detectors: PetO2 rises at VT1, PetCO2 falls at VT2.
+  is_end_tidal <- gsub("[^a-z0-9]", "", tolower(methods)) == "endtidal"
+  if (any(is_end_tidal)) {
+    methods <- c(methods[!is_end_tidal], "peto2", "petco2")
+  }
+
   normalized <- vapply(methods, normalize_one, character(1), USE.NAMES = FALSE)
   normalized <- normalized[!is.na(normalized) & nzchar(normalized)]
   unique(normalized)

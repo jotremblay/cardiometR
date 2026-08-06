@@ -226,17 +226,34 @@ mod_upload_server <- function(id, language) {
               shiny::tags$dt(class = "col-sm-4", tr("test_date", lang)),
               shiny::tags$dd(class = "col-sm-8", format(data@metadata@test_date, "%Y-%m-%d")),
               shiny::tags$dt(class = "col-sm-4", tr("breaths_label", lang)),
-              shiny::tags$dd(class = "col-sm-8", nrow(data@breaths))
+              shiny::tags$dd(class = "col-sm-8", nrow(data@breaths)),
+              shiny::tags$dt(class = "col-sm-4", tr("device", lang)),
+              shiny::tags$dd(class = "col-sm-8", data@metadata@device)
+            )
+          )
+        },
+
+        # Move on to the analysis settings.
+        if (!is.null(cpet_data())) {
+          shiny::div(
+            class = "d-flex justify-content-end mt-3",
+            shiny::actionButton(
+              ns("go_configure"),
+              label = tr("configure_analysis", lang),
+              icon = shiny::icon("arrow-right"),
+              class = "btn-primary btn-sm"
             )
           )
         }
       )
     })
 
+
     # Return reactive values
     list(
       cpet_data = cpet_data,
-      validation = validation
+      validation = validation,
+      go_configure = shiny::reactive(input$go_configure)
     )
   })
 }

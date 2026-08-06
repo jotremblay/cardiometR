@@ -72,14 +72,22 @@ mod_quality_ui <- function(id, language = "en") {
       # Stage details (collapsible)
       bslib::accordion(
         id = ns("stage_accordion"),
+        open = "stage_details",
         bslib::accordion_panel(
-          title = shiny::span(id = ns("stage_details_title"), tr("stage_details", language)),
+          title = shiny::tagList(
+            shiny::span(id = ns("stage_details_title"), tr("stage_details", language)),
+            shiny::span(class = "accordion-hint", shiny::textOutput(ns("stage_count"), inline = TRUE))
+          ),
           value = "stage_details",
           icon = shiny::icon("table"),
           DT::dataTableOutput(ns("stage_table"))
         ),
         bslib::accordion_panel(
-          title = shiny::span(id = ns("recommendations_title"), tr("recommendations", language)),
+          title = shiny::tagList(
+            shiny::span(id = ns("recommendations_title"), tr("recommendations", language)),
+            shiny::span(class = "accordion-hint text-warning",
+                        shiny::textOutput(ns("recommendation_count"), inline = TRUE))
+          ),
           value = "recommendations",
           icon = shiny::icon("lightbulb"),
           shiny::uiOutput(ns("recommendations"))
@@ -486,6 +494,23 @@ mod_quality_server <- function(id, language, cpet_data, analysis) {
       )
 
       shiny::div(class = "metrics-list", items)
+    })
+
+    # Counts shown on the accordion headers, so the operator sees how much
+    # is inside without opening the panel.
+    output$stage_count <- shiny::renderText({
+      q <- quality()
+      stages <- if (is.null(q)) NULL else q@protocol_quality@stage_details
+      if (is.null(stages) || nrow(stages) == 0) return("")
+      sprintf(tr("stage_count", language()), nrow(stages))
+    })
+
+    output$recommendation_count <- shiny::renderText({
+      q <- quality()
+      if (is.null(q)) return("")
+      n <- length(q@data_quality@recommendations)
+      if (n == 0) return("")
+      sprintf(tr("recommendation_count", language()), n)
     })
 
     # Render stage table

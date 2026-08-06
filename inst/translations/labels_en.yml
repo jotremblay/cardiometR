@@ -1,6 +1,7 @@
 # English labels for cardiometR
 # Application UI
 app_title: "CPET Analysis"
+app_subtitle: "CPET analysis"
 language_changed: "Language changed to English"
 upload_prompt: "Drop COSMED xlsx file here"
 no_file_selected: "No file selected"
@@ -41,6 +42,9 @@ calibration_date: "Calibration Date"
 
 # Analysis Settings
 settings_title: "Analysis Settings"
+settings_scope: "Applied to this test"
+settings_changed_hint: "Values changed from the laboratory defaults carry a dot."
+analyze: "Analyse"
 averaging_method: "Averaging Method"
 averaging_window: "Averaging Window (s)"
 method_time: "Time-based"
@@ -51,12 +55,17 @@ protocol_ramp: "Ramp protocol"
 protocol_auto: "Auto-detect"
 stage_duration: "Stage Duration (s)"
 threshold_methods: "Threshold Detection Methods"
+threshold_method_count: "%d methods active"
+report_section_count: "%d of %d included"
+athlete_none: "No comparison"
 
 # Results
 results_title: "Results"
 stage_results: "Stage Results"
 peak_values: "Peak Values"
 threshold_results: "Ventilatory Thresholds"
+pct_of_peak: "% peak"
+threshold_table_caption: "Point estimate from the V-slope consensus; the full range is under 'Estimates and caveats'."
 
 # Report
 report_title: "CPET Analysis Report"
@@ -171,6 +180,8 @@ protocol_quality: "Protocol Quality"
 data_quality: "Data Quality"
 stage_details: "Stage-by-Stage Analysis"
 recommendations: "Recommendations"
+stage_count: "%d stages"
+recommendation_count: "%d items"
 optional_criteria: "Optional Criteria (if available)"
 
 # Maximal criteria labels
@@ -423,6 +434,7 @@ upload_complete: "Upload complete"
 # Upload validation + participant edit feedback
 info_label: "Info"
 breaths_label: "Breaths"
+configure_analysis: "Configure the analysis"
 error_label: "Error"
 
 # Import report panel

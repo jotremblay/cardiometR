@@ -9,11 +9,30 @@
 mod_settings_ui <- function(id, language = "en") {
   ns <- shiny::NS(id)
 
+  # An accordion header carries its own title plus a one-line summary of
+  # what is set inside it, so the operator can read the whole
+  # configuration without opening five panels.
+  panel_title <- function(ns, title_id, label) {
+    shiny::tagList(
+      shiny::span(id = ns(title_id), label),
+      shiny::span(
+        class = "accordion-hint",
+        shiny::textOutput(ns(paste0(title_id, "_summary")), inline = TRUE)
+      )
+    )
+  }
+
   bslib::card(
     bslib::card_header(
+      class = "d-flex align-items-center",
       shiny::span(
         shiny::icon("sliders"),
-        shiny::span(id = ns("settings_header"), tr("nav_configure", language))
+        shiny::span(id = ns("settings_header"), tr("settings_title", language))
+      ),
+      shiny::span(
+        id = ns("settings_scope"),
+        class = "ms-auto small text-muted fw-normal",
+        tr("settings_scope", language)
       )
     ),
     bslib::card_body(
@@ -23,7 +42,7 @@ mod_settings_ui <- function(id, language = "en") {
 
         # Averaging settings
         bslib::accordion_panel(
-          title = shiny::span(id = ns("avg_title"), tr("averaging_section", language)),
+          title = panel_title(ns, "avg_title", tr("averaging_section", language)),
           value = "averaging",
           icon = shiny::icon("chart-area"),
 
@@ -49,27 +68,9 @@ mod_settings_ui <- function(id, language = "en") {
           )
         ),
 
-        # Threshold detection settings
-        bslib::accordion_panel(
-          title = shiny::span(id = ns("threshold_title"), tr("threshold_section", language)),
-          value = "thresholds",
-          icon = shiny::icon("crosshairs"),
-
-          shiny::checkboxGroupInput(
-            ns("threshold_methods"),
-            label = tr("threshold_methods", language),
-            choices = c(
-              "V-slope" = "v_slope",
-              "VE/VO2" = "ve_vo2",
-              "VE/VCO2" = "ve_vco2"
-            ),
-            selected = c("v_slope", "ve_vo2")
-          )
-        ),
-
         # Protocol settings
         bslib::accordion_panel(
-          title = shiny::span(id = ns("protocol_title"), tr("protocol_section", language)),
+          title = panel_title(ns, "protocol_title", tr("protocol_section", language)),
           value = "protocol",
           icon = shiny::icon("person-running"),
 
@@ -118,12 +119,43 @@ mod_settings_ui <- function(id, language = "en") {
             min = 30,
             max = 600,
             step = 30
+          ),
+          shiny::conditionalPanel(
+            condition = sprintf("$('#%s').val() == 'cycling'", ns("modality")),
+            ns = ns,
+            shiny::numericInput(
+              ns("gross_efficiency"),
+              label = tr("gross_efficiency_setting", language),
+              value = default_gross_efficiency_pct,
+              min = 10,
+              max = 35,
+              step = 1
+            )
+          )
+        ),
+
+        # Threshold detection settings
+        bslib::accordion_panel(
+          title = panel_title(ns, "threshold_title", tr("threshold_section", language)),
+          value = "thresholds",
+          icon = shiny::icon("crosshairs"),
+
+          shiny::checkboxGroupInput(
+            ns("threshold_methods"),
+            label = tr("threshold_methods", language),
+            choices = c(
+              "V-slope" = "v_slope",
+              "VE/VO2" = "ve_vo2",
+              "PetO2 / PetCO2" = "end_tidal",
+              "VE/VCO2" = "ve_vco2"
+            ),
+            selected = c("v_slope", "ve_vo2", "end_tidal")
           )
         ),
 
         # Athlete comparison settings
         bslib::accordion_panel(
-          title = shiny::span(id = ns("athlete_title"), tr("athlete_comparison", language)),
+          title = panel_title(ns, "athlete_title", tr("athlete_comparison", language)),
           value = "athlete",
           icon = shiny::icon("medal"),
 
@@ -150,24 +182,12 @@ mod_settings_ui <- function(id, language = "en") {
               ),
               selected = "recreational"
             )
-          ),
-          shiny::conditionalPanel(
-            condition = sprintf("$('#%s').val() == 'cycling'", ns("modality")),
-            ns = ns,
-            shiny::numericInput(
-              ns("gross_efficiency"),
-              label = tr("gross_efficiency_setting", language),
-              value = default_gross_efficiency_pct,
-              min = 10,
-              max = 35,
-              step = 1
-            )
           )
         ),
 
         # Report sections toggle
         bslib::accordion_panel(
-          title = shiny::span(id = ns("report_sections_title"), tr("report_sections_label", language)),
+          title = panel_title(ns, "report_sections_title", tr("report_sections_label", language)),
           value = "report_sections",
           icon = shiny::icon("list-check"),
 
@@ -192,6 +212,25 @@ mod_settings_ui <- function(id, language = "en") {
             selected = c("protocol_details", "stage_table", "athlete_profile",
                          "population_norms", "estimates_caveats")
           )
+        )
+      ),
+      shiny::div(
+        class = "settings-footer",
+        shiny::span(
+          id = ns("settings_footer_hint"),
+          class = "small text-muted flex-grow-1",
+          tr("settings_changed_hint", language)
+        ),
+        shiny::actionButton(
+          ns("reset_settings"),
+          label = tr("reset", language),
+          class = "btn-outline-secondary btn-sm"
+        ),
+        shiny::actionButton(
+          ns("go_results"),
+          label = tr("analyze", language),
+          icon = shiny::icon("arrow-right"),
+          class = "btn-primary btn-sm"
         )
       )
     )
@@ -294,6 +333,84 @@ mod_settings_server <- function(id, language, cpet_data = shiny::reactive(NULL))
       )
     })
 
+    # One-line summaries on the accordion headers.
+    output$avg_title_summary <- shiny::renderText({
+      s <- settings()
+      lang <- language()
+      method_label <- switch(s$averaging_method,
+        time = tr("method_time", lang),
+        breath = tr("method_breath", lang),
+        tr("method_rolling", lang)
+      )
+      paste(method_label, paste0(s$averaging_window, " s"), sep = " · ")
+    })
+
+    output$protocol_title_summary <- shiny::renderText({
+      s <- settings()
+      lang <- language()
+      protocol_label <- switch(s$protocol,
+        step = tr("protocol_step", lang),
+        ramp = tr("protocol_ramp", lang),
+        tr("protocol_auto", lang)
+      )
+      modality_label <- switch(s$modality,
+        treadmill = tr("modality_treadmill", lang),
+        other = tr("modality_other", lang),
+        tr("modality_cycling", lang)
+      )
+      paste(protocol_label, modality_label, sep = " · ")
+    })
+
+    output$threshold_title_summary <- shiny::renderText({
+      n <- length(settings()$threshold_methods)
+      sprintf(tr("threshold_method_count", language()), n)
+    })
+
+    output$athlete_title_summary <- shiny::renderText({
+      s <- settings()
+      lang <- language()
+      if (is.null(s$athlete_sport)) return(tr("athlete_none", lang))
+      sport_label <- switch(s$athlete_sport,
+        running = tr("running", lang),
+        triathlon = tr("triathlon", lang),
+        general = tr("general", lang),
+        tr("cycling", lang)
+      )
+      level_label <- switch(s$athlete_level,
+        competitive = tr("competitive", lang),
+        elite = tr("elite", lang),
+        sedentary = tr("sedentary", lang),
+        tr("recreational", lang)
+      )
+      paste(sport_label, level_label, sep = " · ")
+    })
+
+    output$report_sections_title_summary <- shiny::renderText({
+      sprintf(
+        tr("report_section_count", language()),
+        length(settings()$report_sections),
+        11L
+      )
+    })
+
+    # Put the laboratory defaults back.
+    shiny::observeEvent(input$reset_settings, {
+      shiny::updateSelectInput(session, "avg_method", selected = "rolling")
+      shiny::updateSliderInput(session, "avg_window", value = 30)
+      shiny::updateCheckboxGroupInput(session, "threshold_methods",
+                                      selected = c("v_slope", "ve_vo2"))
+      shiny::updateRadioButtons(session, "protocol_type", selected = "auto")
+      shiny::updateSelectInput(session, "athlete_sport", selected = "")
+      shiny::updateSelectInput(session, "athlete_level", selected = "recreational")
+      shiny::updateNumericInput(session, "gross_efficiency",
+                                value = default_gross_efficiency_pct)
+      shiny::updateCheckboxGroupInput(
+        session, "report_sections",
+        selected = c("protocol_details", "stage_table", "athlete_profile",
+                     "population_norms", "estimates_caveats")
+      )
+    })
+
     # Track non-default settings and show badge indicators
     shiny::observeEvent(settings(), {
       s <- settings()
@@ -317,11 +434,15 @@ mod_settings_server <- function(id, language, cpet_data = shiny::reactive(NULL))
 
       # Update card header and accordion panel titles via JS
       session$sendCustomMessage("update_text", as.list(stats::setNames(
-        c(tr("nav_configure", lang), tr("averaging_section", lang), tr("threshold_section", lang),
-          tr("protocol_section", lang), tr("athlete_comparison", lang), tr("report_sections_label", lang)),
+        c(tr("settings_title", lang), tr("averaging_section", lang), tr("threshold_section", lang),
+          tr("protocol_section", lang), tr("athlete_comparison", lang), tr("report_sections_label", lang),
+          tr("settings_scope", lang), tr("settings_changed_hint", lang)),
         c(ns("settings_header"), ns("avg_title"), ns("threshold_title"),
-          ns("protocol_title"), ns("athlete_title"), ns("report_sections_title"))
+          ns("protocol_title"), ns("athlete_title"), ns("report_sections_title"),
+          ns("settings_scope"), ns("settings_footer_hint"))
       )))
+      shiny::updateActionButton(session, "reset_settings", label = tr("reset", lang))
+      shiny::updateActionButton(session, "go_results", label = tr("analyze", lang))
 
       # Averaging method dropdown
       # Passing `choices` without `selected` makes Shiny fall back to the
@@ -434,7 +555,8 @@ mod_settings_server <- function(id, language, cpet_data = shiny::reactive(NULL))
 
     # Return settings
     list(
-      settings = settings
+      settings = settings,
+      go_results = shiny::reactive(input$go_results)
     )
   })
 }
