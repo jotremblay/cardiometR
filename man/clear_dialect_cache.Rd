@@ -2,7 +2,7 @@
 % Please edit documentation in R/import-dialects.R
 \name{clear_dialect_cache}
 \alias{clear_dialect_cache}
-\title{Clear the dialect cache}
+\title{Forget the loaded format descriptions}
 \usage{
 clear_dialect_cache()
 }
@@ -10,6 +10,15 @@ clear_dialect_cache()
 Invisibly \code{NULL}.
 }
 \description{
-Useful when editing a dialect file during a session.
+Format files are read once and kept for the rest of the session. Call this
+after editing one, or after adding one to your own dialect directory, so the
+change takes effect without restarting R.
 }
-\keyword{internal}
+\examples{
+clear_dialect_cache()
+list_cpet_dialects()
+
+}
+\seealso{
+\code{\link[=list_cpet_dialects]{list_cpet_dialects()}}, \code{\link[=read_cpet]{read_cpet()}}
+}

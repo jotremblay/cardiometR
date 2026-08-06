@@ -61,6 +61,107 @@ print(data@metadata)
 head(data@breaths)
 ```
 
+`read_cpet()` works out what it is reading from the contents of the file, so an
+export in French, or one configured with a different set of columns, needs no
+extra arguments. Values are converted into the units the rest of the package
+expects, and phase labels are translated to `rest`, `warmup`, `exercise` and
+`recovery` whatever language the file uses.
+
+Run interactively, it prints what it recognised, what it converted, and what it
+left out. That summary is kept on the object:
+
+```{r}
+#| label: import-report
+#| eval: false
+report <- cpet_import_report(data)
+
+# Which source column became which internal one, and in what units
+report@columns[report@columns$status == "mapped", ]
+
+# Anything it could not place
+report@unknown
+```
+
+### When a Column Is Not Recognised
+
+`preview_cpet_columns()` reads only the top of a file and reports how each
+column would be interpreted. It works even on a file that `read_cpet()`
+refuses, so it is the place to start when an import fails or a variable you
+expected is missing.
+
+```{r}
+#| label: preview-columns
+#| eval: false
+preview_cpet_columns("path/to/export.xlsx")
+```
+
+The `source` column gives each header exactly as the file spells it. Pass those
+spellings back if you need to name a column yourself:
+
+```{r}
+#| label: manual-mapping
+#| eval: false
+data <- read_cpet(
+  "path/to/export.xlsx",
+  mapping = c("Debit ventilatoire" = "ve_l"),
+  units   = c(vo2_ml = "L/min")
+)
+```
+
+### Adding Support for Your Own Metabolic Cart
+
+Formats are described by YAML files rather than by R code, so a cart the
+package has never seen can be added without changing the package. Start from
+one of the packaged descriptions:
+
+```{r}
+#| label: list-dialects
+#| eval: false
+list_cpet_dialects()
+```
+
+Copy the closest one into your own dialect directory, edit it, and tell
+cardiometR where to look:
+
+```{r}
+#| label: user-dialect
+#| eval: false
+dir.create(file.path(tools::R_user_dir("cardiometR", "config"), "dialects"),
+           recursive = TRUE)
+
+# ... write my-cart.yml there ...
+
+clear_dialect_cache()
+list_cpet_dialects()
+```
+
+A description needs surprisingly little. Everything general, including the
+English and French names for each variable and the phase vocabulary, is
+inherited from the shared `_core.yml`, so a new file only declares what is
+peculiar to that cart:
+
+``` yaml
+version: 1
+name: mycart
+label: "Acme Cart 3000"
+extends: _core
+extensions: [csv]
+
+detect:
+  - where: header
+    matches: "^AcmeTime$"
+    weight: 9
+
+aliases:
+  time_s: ["acmetime"]
+  vo2_ml: ["acme o2"]
+```
+
+You can also point at a directory with the `cardiometR.dialect_dir` option or
+the `CARDIOMETR_DIALECTS` environment variable. A file whose name matches a
+packaged one replaces it, which is the way to adjust a supported cart for a
+local quirk without waiting for a release.
+
 ### Basic Analysis Workflow
 
 ```{r}

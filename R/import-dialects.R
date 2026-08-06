@@ -78,13 +78,21 @@ read_dialect_file <- function(path) {
 }
 
 
-#' Clear the dialect cache
+#' Forget the loaded format descriptions
 #'
-#' Useful when editing a dialect file during a session.
+#' Format files are read once and kept for the rest of the session. Call this
+#' after editing one, or after adding one to your own dialect directory, so the
+#' change takes effect without restarting R.
 #'
 #' @return Invisibly `NULL`.
 #'
-#' @keywords internal
+#' @examples
+#' clear_dialect_cache()
+#' list_cpet_dialects()
+#'
+#' @seealso [list_cpet_dialects()], [read_cpet()]
+#'
+#' @export
 clear_dialect_cache <- function() {
   rm(list = ls(envir = .dialect_cache), envir = .dialect_cache)
   invisible(NULL)

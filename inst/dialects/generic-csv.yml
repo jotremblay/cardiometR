@@ -1,0 +1,32 @@
+# Plain delimited exports: CSV, TSV, and tab or semicolon separated text.
+#
+# For carts that write a simple table with no header block, and for data
+# exported out of another tool. The column vocabulary comes from _core.yml, so
+# English and French names are both recognised here too.
+#
+# The separator is worked out from the file, and a decimal comma is handled, so
+# a French CSV written with semicolons needs no configuration.
+
+version: 1
+name: csv
+label: "Delimited text (CSV, TSV)"
+extends: _core
+extensions: [csv, tsv, txt]
+
+detect:
+  # There is nothing inside a bare CSV that identifies a manufacturer, so the
+  # extension is the whole signal. Any cart-specific dialect that also claims
+  # the extension will outscore this one on its own content rules.
+  - where: header
+    matches: "."
+    weight: 1
+
+layout:
+  header_block:
+    # No participant block to read. Leaving this empty stops the label scan
+    # from mistaking a data column for someone's age.
+    label_cols: []
+    max_rows: 0
+  data:
+    first_col_hint: 1
+    max_scan_rows: 5
