@@ -356,6 +356,64 @@ EconomyMetrics <- new_class("EconomyMetrics",
 )
 
 
+# CpetImportReport -----------------------------------------------------------
+
+#' Record of how a file was imported
+#'
+#' Returned by [cpet_import_report()] for any object read with [read_cpet()].
+#' It records which format was recognised and why, where the data block was
+#' found, what each column became, which units were converted and by how much,
+#' which phase labels were translated, and anything that had to be guessed or
+#' left out.
+#'
+#' @param file Path the data was read from.
+#' @param dialect Short name of the format that matched.
+#' @param dialect_label Human-readable name of that format.
+#' @param dialect_score Detection score. `NA` when the caller named the format.
+#' @param dialect_why What made that format match.
+#' @param sheet Sheet that was read, or `NA` for a delimited file.
+#' @param layout Header row, units row, first data row, and data columns.
+#' @param columns One row per source column: the name it had, the internal name
+#'   it became, its unit before and after, the conversion factor, where the
+#'   unit came from, and whether it was mapped, ignored or unrecognised.
+#' @param unknown Source columns that matched nothing.
+#' @param ignored Columns this format is known to write and cardiometR does not
+#'   use.
+#' @param conflicts Internal names claimed by more than one source column.
+#' @param suggestions Near-miss alias hints for the unrecognised columns.
+#' @param vocab Phase labels found, what they became, and how many rows each
+#'   covered.
+#' @param metadata Where each participant and test detail was read from, and
+#'   whether it was found by its label or by falling back to a fixed position.
+#' @param warnings Anything the import had to assume or could not do.
+#'
+#' @return A CpetImportReport S7 object.
+#' @usage NULL
+#'
+#' @seealso [read_cpet()], [preview_cpet_columns()]
+#'
+#' @export
+CpetImportReport <- new_class("CpetImportReport",
+  properties = list(
+    file = class_character,
+    dialect = class_character,
+    dialect_label = class_character,
+    dialect_score = class_numeric,
+    dialect_why = class_character,
+    sheet = class_character,
+    layout = class_list,
+    columns = class_data.frame,
+    unknown = class_character,
+    ignored = class_character,
+    conflicts = class_data.frame,
+    suggestions = class_list,
+    vocab = NULL | class_data.frame,
+    metadata = class_data.frame,
+    warnings = class_character
+  )
+)
+
+
 # CpetData -------------------------------------------------------------------
 
 #' CPET Data Class
@@ -372,6 +430,8 @@ EconomyMetrics <- new_class("EconomyMetrics",
 #' @param stages Optional data.frame of stage annotations
 #' @param is_averaged Logical indicating if data has been averaged
 #' @param averaging_window Numeric window size in seconds (if averaged)
+#' @param import_report Optional [CpetImportReport] describing how the file was
+#'   read. Set by [read_cpet()]; `NULL` for objects built by hand.
 #'
 #' @return A CpetData S7 object
 #' @usage NULL
@@ -394,7 +454,10 @@ CpetData <- new_class("CpetData",
     breaths = class_data.frame,
     stages = class_data.frame | NULL,
     is_averaged = class_logical,
-    averaging_window = class_numeric | NULL
+    averaging_window = class_numeric | NULL,
+    # NULL first in the union, so omitting it yields NULL rather than a
+    # prototype report. See the note on CpetMetadata@modality.
+    import_report = new_property(NULL | CpetImportReport, default = NULL)
   ),
   validator = function(self) {
     errors <- character()

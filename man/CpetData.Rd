@@ -18,6 +18,9 @@ ve_vo2, ve_vco2.}
 \item{is_averaged}{Logical indicating if data has been averaged}
 
 \item{averaging_window}{Numeric window size in seconds (if averaged)}
+
+\item{import_report}{Optional \link{CpetImportReport} describing how the file was
+read. Set by \code{\link[=read_cpet]{read_cpet()}}; \code{NULL} for objects built by hand.}
 }
 \value{
 A CpetData S7 object

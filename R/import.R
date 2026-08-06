@@ -69,7 +69,7 @@ read_cpet <- function(file,
   )
 
   if (!quiet) {
-    report_import(imported$report)
+    print(imported$report)
   }
 
   imported$data
@@ -145,22 +145,13 @@ import_cpet_file <- function(file, format = NULL, sheet = NULL,
 
   breath_type <- detect_data_type(breaths)
 
-  data <- CpetData(
-    participant = participant$value,
-    metadata = metadata$value,
-    breaths = breaths,
-    stages = NULL,
-    is_averaged = breath_type$is_averaged,
-    averaging_window = breath_type$averaging_window
-  )
-
-  report <- list(
+  report <- CpetImportReport(
     file = file,
     dialect = dialect$name,
     dialect_label = dialect$label,
-    dialect_score = detected$score,
+    dialect_score = as.numeric(detected$score),
     dialect_why = detected$why,
-    sheet = raw$sheet,
+    sheet = as.character(raw$sheet %||% NA_character_),
     layout = location,
     columns = extracted$columns,
     unknown = resolved$unknown,
@@ -168,9 +159,19 @@ import_cpet_file <- function(file, format = NULL, sheet = NULL,
     conflicts = resolved$conflicts,
     suggestions = resolved$suggestions,
     vocab = vocab$table,
-    metadata_provenance = header_block$provenance,
+    metadata = header_block$provenance,
     warnings = c(extracted$warnings, vocab$warnings,
                  participant$warnings, metadata$warnings)
+  )
+
+  data <- CpetData(
+    participant = participant$value,
+    metadata = metadata$value,
+    breaths = breaths,
+    stages = NULL,
+    is_averaged = breath_type$is_averaged,
+    averaging_window = breath_type$averaging_window,
+    import_report = report
   )
 
   list(data = data, report = report)
@@ -544,23 +545,24 @@ build_metadata <- function(header_block, dialect, device_label) {
 
 #' Print a summary of what an import did
 #'
-#' @param report The report list returned by [import_cpet_file()].
+#' @param x A [CpetImportReport].
+#' @param ... Unused.
 #'
-#' @return Invisibly, the report.
+#' @return Invisibly, `x`.
 #'
+#' @name print.CpetImportReport
 #' @keywords internal
-report_import <- function(report) {
+method(print, CpetImportReport) <- function(x, ...) {
   cli::cli_h1("CPET import")
   cli::cli_dl(c(
-    "File" = basename(report$file),
-    "Format" = "{report$dialect_label}",
-    "Sheet" = as.character(report$sheet %||% "-"),
-    "Layout" = "header row {report$layout$header_row}, data from row \\
-                {report$layout$data_row}"
+    "File" = basename(x@file),
+    "Format" = x@dialect_label,
+    "Sheet" = if (is.na(x@sheet)) "-" else x@sheet,
+    "Layout" = "header row {x@layout$header_row}, data from row \\
+                {x@layout$data_row}"
   ))
 
-  columns <- report$columns
-  mapped <- columns[columns$status == "mapped", , drop = FALSE]
+  mapped <- x@columns[x@columns$status == "mapped", , drop = FALSE]
   cli::cli_alert_success("{nrow(mapped)} column{?s} recognised")
 
   converted <- mapped[!is.na(mapped$factor) & mapped$factor != 1, , drop = FALSE]
@@ -574,37 +576,38 @@ report_import <- function(report) {
     }
   }
 
-  if (!is.null(report$vocab) && nrow(report$vocab) > 0) {
+  if (!is.null(x@vocab) && nrow(x@vocab) > 0) {
     cli::cli_h3("Phase labels")
-    for (i in seq_len(nrow(report$vocab))) {
-      row <- report$vocab[i, ]
-      cli::cli_li("{.val {row$raw}} to {.val {row$canonical %||% 'unrecognised'}} \\
+    for (i in seq_len(nrow(x@vocab))) {
+      row <- x@vocab[i, ]
+      cli::cli_li("{.val {row$raw}} to \\
+                   {.val {row$canonical %||% 'unrecognised'}} \\
                    ({row$n} row{?s})")
     }
   }
 
-  if (length(report$unknown) > 0) {
+  if (length(x@unknown) > 0) {
     cli::cli_h3("Not recognised, and left out")
-    cli::cli_ul(report$unknown)
-    for (name in names(report$suggestions)) {
+    cli::cli_ul(x@unknown)
+    for (name in names(x@suggestions)) {
       cli::cli_alert_info("{.val {name}}: did you mean \\
-                           {.val {report$suggestions[[name]]}}?")
+                           {.val {x@suggestions[[name]]}}?")
     }
   }
 
-  if (!is.null(report$conflicts) && nrow(report$conflicts) > 0) {
-    for (i in seq_len(nrow(report$conflicts))) {
-      row <- report$conflicts[i, ]
+  if (nrow(x@conflicts) > 0) {
+    for (i in seq_len(nrow(x@conflicts))) {
+      row <- x@conflicts[i, ]
       cli::cli_alert_warning("{.field {row$canonical}}: kept {.val {row$kept}}, \\
                               left out {.val {row$dropped}}")
     }
   }
 
-  for (warning in report$warnings) {
+  for (warning in x@warnings) {
     cli::cli_alert_warning(warning)
   }
 
-  invisible(report)
+  invisible(x)
 }
 
 

@@ -201,3 +201,61 @@ test_that("optional channels that hold no data are dropped", {
   # Required columns are never dropped, whatever they hold.
   expect_true(all(c("time_s", "vo2_ml", "vco2_ml", "ve_l", "rer") %in% names(b)))
 })
+
+
+# ---- the import report -----------------------------------------------------
+
+test_that("an import report is attached and describes what happened", {
+  f <- example_cosmed_file()
+  skip_if(f == "", "Example COSMED file not found")
+  report <- cpet_import_report(read_cpet(f, quiet = TRUE))
+
+  expect_s7_class(report, CpetImportReport)
+  expect_identical(report@dialect, "cosmed")
+  expect_identical(report@sheet, "Data")
+  expect_equal(report@layout$header_row, 1L)
+  expect_equal(report@layout$data_row, 4L)
+
+  # Every column in the file is accounted for, one way or another.
+  expect_setequal(unique(report@columns$status),
+                  c("mapped", "ignored"))
+  expect_length(report@unknown, 0)
+
+  # The units it converted are recorded with the factor it used.
+  time_row <- report@columns[report@columns$canonical == "time_s" &
+                               !is.na(report@columns$canonical), ]
+  expect_equal(time_row$factor, 86400)
+  expect_identical(time_row$unit_source, "heuristic")
+
+  # And where each participant detail came from.
+  expect_true(all(c("age", "weight_kg", "test_date") %in% report@metadata$field))
+})
+
+test_that("the report survives averaging and stage extraction", {
+  f <- example_cosmed_file()
+  skip_if(f == "", "Example COSMED file not found")
+  data <- read_cpet(f, quiet = TRUE)
+
+  # Both rebuild the CpetData, and both must carry the report across or it
+  # vanishes the moment any analysis runs.
+  expect_false(is.null(cpet_import_report(extract_stages(data))))
+  expect_false(is.null(cpet_import_report(
+    suppressWarnings(average(data, method = "time", window = 30))
+  )))
+})
+
+test_that("an object built by hand has no import report", {
+  f <- example_cosmed_file()
+  skip_if(f == "", "Example COSMED file not found")
+  data <- read_cpet(f, quiet = TRUE)
+
+  # The property is declared NULL-first in its union so that omitting it
+  # yields NULL rather than an empty prototype report.
+  by_hand <- CpetData(
+    participant = data@participant,
+    metadata = data@metadata,
+    breaths = data@breaths,
+    is_averaged = FALSE
+  )
+  expect_null(cpet_import_report(by_hand))
+})

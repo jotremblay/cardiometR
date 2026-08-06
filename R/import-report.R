@@ -1,6 +1,27 @@
 # Inspecting how a file will be interpreted, before or after importing it.
 
 
+#' Get the import report attached to a CpetData object
+#'
+#' @param x A [CpetData] object.
+#'
+#' @return A [CpetImportReport], or `NULL` when the object was not produced by
+#'   [read_cpet()].
+#'
+#' @examples
+#' file <- system.file("extdata", "example_cosmed.xlsx", package = "cardiometR")
+#' data <- read_cpet(file, quiet = TRUE)
+#' report <- cpet_import_report(data)
+#' report@columns[report@columns$status == "mapped", c("source", "canonical")]
+#'
+#' @seealso [read_cpet()], [preview_cpet_columns()]
+#'
+#' @export
+cpet_import_report <- function(x) {
+  tryCatch(x@import_report, error = function(e) NULL)
+}
+
+
 #' See how a data file's columns will be interpreted
 #'
 #' Reads only the top of a file, works out which format it is and where its

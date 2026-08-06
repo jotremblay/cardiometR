@@ -34,7 +34,8 @@ method(extract_stages, CpetData) <- function(x,
     breaths = dplyr::left_join(breaths, stages, by = "time_s"),
     stages = stages,
     is_averaged = x@is_averaged,
-    averaging_window = x@averaging_window
+    averaging_window = x@averaging_window,
+    import_report = x@import_report
   )
 }
 

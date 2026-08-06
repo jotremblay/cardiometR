@@ -38,7 +38,8 @@ method(average, CpetData) <- function(x,
     breaths = averaged_breaths,
     stages = x@stages,
     is_averaged = TRUE,
-    averaging_window = window
+    averaging_window = window,
+    import_report = x@import_report
   )
 }
 
