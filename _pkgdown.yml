@@ -86,6 +86,7 @@ reference:
     desc: Interactive application
     contents:
       - run_app
+      - check_setup
 
   - title: Internationalization
     desc: Bilingual support (EN/FR)

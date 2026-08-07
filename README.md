@@ -10,15 +10,22 @@ Analyze **Cardiopulmonary Exercise Testing (CPET)** data from COSMED Quark metab
 
 ## Features
 
-- Import COSMED Quark Excel exports with automatic parsing
+- Import COSMED Quark Excel exports, delimited files, and other carts
+  through a described dialect; every import carries a report of how the
+  file was read
 - S7 classes with built-in physiological validation
-- Peak detection via rolling averages (ATS/ACCP)
-- Ventilatory threshold methods: V-slope, VE/VO2, VE/VCO2, end-tidal gases
-- Test-quality and maximal-effort assessment
+- Peak detection via rolling averages (ATS/ACCP), plus resting values
+  taken from the rest block
+- Ventilatory threshold methods: V-slope, VE/VO2, VE/VCO2, end-tidal
+  gases, with a consensus estimate and a plausible range
+- Threshold review in the app: accept the proposal, correct it by hand,
+  or compare the methods
+- Test-quality and maximal-effort assessment against ACSM criteria
 - Nine-panel clinical CPET plot
-- Interactive Shiny app with EN/FR toggle
-- Typst-based PDF reports (bilingual)
 - Normative comparison against athlete and general-population registries
+- Movement economy, power metrics, and longitudinal comparison
+- Interactive Shiny app with EN/FR toggle
+- Typst-based clinical PDF reports (bilingual)
 
 ## Installation
 
@@ -145,16 +152,29 @@ generate_report(
 Launch the Shiny app for clinical use:
 
 ```r
-run_app()           # English interface
-run_app(language = "fr")  # French interface
+run_app()                 # French interface (default)
+run_app(language = "en")  # English interface
 ```
 
-The app provides:
-- Drag-and-drop file import
-- Participant info editing
-- Interactive visualization
-- Quality assessment
-- PDF report generation
+The app has five steps, one per tab:
+
+1. **Téléverser / Upload** — drop a COSMED file. The validation card
+   reports errors, warnings and how the file was read.
+2. **Configurer / Configure** — correct the participant fields and set
+   the analysis. Every accordion header summarises what is set inside it.
+3. **Résultats / Results** — peak values, resting values, thresholds,
+   the nine-panel plot, and normative z-scores.
+4. **Qualité / Quality** — ACSM maximal-effort criteria, protocol and
+   data quality, stage-by-stage deviations.
+5. **Rapport / Report** — configure the header, read the preview, and
+   render the PDF.
+
+**Reviewing the thresholds.** The Results tab proposes thresholds and
+lets the operator correct them. Three modes: read the automatic
+consensus, move VT1 and VT2 by hand, or compare the detection methods
+side by side and keep one. A manual correction re-reads heart rate and
+power at the new points, and the report prints it as the detection
+method.
 
 ## Quality Assessment
 
@@ -174,14 +194,15 @@ quality@overall_grade
 
 ## Documentation
 
-- **Vignette**: `vignette("introduction", package = "cardiometR")`
-- **Function reference**: See `?cardiometR` for package help
+- **Vignettes**: `introduction`, `s7-classes`, `shiny-app`, `reports`
+  — open one with `vignette("introduction", package = "cardiometR")`
+- **Function reference**: see `?cardiometR` for package help
+- **Setup check**: `check_setup()` reports what is missing on a machine
 - **Translations**: `inst/translations/labels_{en,fr}.yml`
 
 ## References
 
 - ATS/ACCP Statement on Cardiopulmonary Exercise Testing. *Am J Respir Crit Care Med*. 2003;167(2):211-277.
-- Beaver WL, Wasserman K, Whipp BJ. A new method for detecting anaerobic threshold by gas exchange. *J Appl Physiol*. 1986;60(6):2020-2027.
 
 ## Related Packages
 
