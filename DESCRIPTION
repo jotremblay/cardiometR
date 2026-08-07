@@ -30,7 +30,10 @@ Imports:
     bslib,
     DT,
     plotly,
-    htmltools
+    htmltools,
+    patchwork,
+    tibble,
+    jsonlite
 Suggests:
     testthat (>= 3.0.0),
     shinytest2,
@@ -38,13 +41,10 @@ Suggests:
     knitr,
     rmarkdown,
     quarto,
-    patchwork,
-    tibble,
     lintr,
     pkgdown,
     scales,
     glue,
-    jsonlite,
     brand.yml
 Config/testthat/edition: 3
 VignetteBuilder: quarto

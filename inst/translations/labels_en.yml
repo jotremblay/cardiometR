@@ -72,7 +72,8 @@ threshold_table_caption: "Point estimate from the V-slope consensus; the full ra
 report_title: "CPET Analysis Report"
 report_generated: "Report generated successfully"
 report_error: "Error generating report"
-report_pdf_unavailable: "PDF rendering unavailable (Typst not installed)"
+report_pdf_unavailable: "PDF rendering unavailable: Typst is missing."
+report_pdf_fix: "Install Quarto (quarto.org), which bundles Typst, then restart the app."
 
 # Variables
 vo2: "VO2"

@@ -72,7 +72,8 @@ threshold_table_caption: "Estimation ponctuelle par consensus V-slope · plage c
 report_title: "Rapport d'analyse CPET"
 report_generated: "Rapport généré avec succès"
 report_error: "Erreur lors de la génération du rapport"
-report_pdf_unavailable: "Génération PDF indisponible (Typst non installé)"
+report_pdf_unavailable: "Génération PDF indisponible : Typst est absent."
+report_pdf_fix: "Installez Quarto (quarto.org), qui inclut Typst, puis relancez l'application."
 
 # Variables
 vo2: "VO2"

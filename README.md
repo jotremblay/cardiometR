@@ -22,10 +22,34 @@ Analyze **Cardiopulmonary Exercise Testing (CPET)** data from COSMED Quark metab
 
 ## Installation
 
+**1. Install the package.** Every package the app needs comes with it.
+
 ```r
-# Install from GitHub
 # install.packages("pak")
 pak::pak("jotremblay/cardiometR")
+```
+
+**2. Install Quarto.** It bundles Typst, which renders the PDF reports.
+Download it from [quarto.org](https://quarto.org/docs/get-started/). The
+app runs without it, but the PDF button stays disabled.
+
+**3. Check the machine.** This says what is present and what to fix.
+
+```r
+cardiometR::check_setup()
+```
+
+**4. Start the app.**
+
+```r
+cardiometR::run_app()
+```
+
+There is a sample COSMED export in the package, so you can try the app
+before you have data of your own:
+
+```r
+system.file("extdata", "example_cosmed.xlsx", package = "cardiometR")
 ```
 
 ## Quick Start

@@ -229,9 +229,11 @@ mod_report_server <- function(id, language, analysis, settings = shiny::reactive
             shiny::icon("file-pdf"),
             tr("generate_report", language())
           ),
-          shiny::tags$small(
-            class = "text-muted d-block mt-2",
-            tr("report_pdf_unavailable", language())
+          shiny::div(
+            class = "alert alert-warning small mt-2 mb-0",
+            shiny::tags$strong(tr("report_pdf_unavailable", language())),
+            shiny::tags$br(),
+            tr("report_pdf_fix", language())
           )
         )
       }
