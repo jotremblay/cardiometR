@@ -660,3 +660,43 @@ test_that("Report with real COSMED data works", {
   tbl <- create_summary_table(analysis)
   expect_s3_class(tbl, "gt_tbl")
 })
+
+
+test_that("the report renders when the test has a resting block", {
+  skip_if(
+    !requireNamespace("typr", quietly = TRUE) && !nzchar(Sys.which("typst")),
+    "Neither typr package nor typst CLI available"
+  )
+
+  # The resting strip is only emitted when a rest block exists, so a
+  # template fault there escapes every fixture that starts at exercise.
+  analysis <- create_test_analysis()
+  analysis@resting <- list(
+    vo2_rest = 498, vo2_kg_rest = 5.8, hr_rest = 71,
+    ve_rest = 12.4, rer_rest = 0.83, duration_s = 180,
+    window_s = 60, n_breaths = 21
+  )
+  analysis@map_watts <- 250
+  analysis@ppo_watts <- 280
+  analysis@map_per_kg <- 3.5
+  analysis@kuipers_fraction <- 0.6
+
+  config <- ReportConfig(language = "fr", institution = "Test")
+  labels <- get_report_labels("fr")
+  template_data <- build_template_data(analysis, config, labels,
+                                       clinical_notes = NULL,
+                                       interpretation = NULL,
+                                       athlete_sport = "cycling",
+                                       athlete_level = "recreational")
+  template_data$has_graphs <- FALSE
+
+  expect_true(template_data$has_resting)
+
+  output_file <- tempfile(fileext = ".pdf")
+  on.exit(unlink(output_file), add = TRUE)
+
+  expect_no_error(
+    render_typst_report(get_template_path(), template_data, output_file)
+  )
+  expect_equal(rawToChar(readBin(output_file, what = "raw", n = 4)), "%PDF")
+})

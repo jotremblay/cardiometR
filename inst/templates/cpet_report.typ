@@ -208,8 +208,8 @@
 // ══════ 01 Athlete profile ══════
 
 {{#if has_athlete_profile}}
-#sec[{{section_athlete_profile}}]
 #block(breakable: false, width: 100%)[
+  #sec[{{section_athlete_profile}}]
   #grid(
     columns: (1fr, 1fr, 1fr),
     block(inset: (right: 5mm, y: 1.5mm))[
@@ -240,14 +240,17 @@
 // ══════ 02 Resting values ══════
 
 {{#if has_resting}}
-#sec[{{resting_title}}]
-#block(breakable: false, width: 100%, stroke: (top: 0.5pt + rule_soft, bottom: 0.5pt + rule_soft), inset: (y: 1.8mm))[
-  #let restcell(k, v, u) = align(center)[
-    #text(size: 7pt, tracking: 0.4pt, fill: faint)[#upper[#k]]
+#block(breakable: false, width: 100%)[
+  #sec[{{resting_title}}]
+  #block(width: 100%, stroke: (top: 0.5pt + rule_soft, bottom: 0.5pt + rule_soft), inset: (y: 1.8mm))[
+  // Parameters are not named `v`: that would shadow Typst's own #v()
+  // spacing function inside the body.
+  #let restcell(name, amount, unit) = align(center)[
+    #text(size: 7pt, tracking: 0.4pt, fill: faint)[#upper[#name]]
     #v(0.3mm)
-    #text(size: 12pt, weight: 700)[#v]
+    #text(size: 12pt, weight: 700)[#amount]
     #v(0.3mm)
-    #text(size: 7pt, fill: faint)[#u]
+    #text(size: 7pt, fill: faint)[#unit]
   ]
   #grid(
     columns: (1fr, 1fr, 1fr, 1fr, 1fr, 1fr),
@@ -255,19 +258,21 @@
     restcell[VO#sub[2]/kg][{{resting_vo2_kg}}][mL/kg/min],
     restcell[{{label_hr_unit}}][{{resting_hr}}][bpm],
     restcell[VE][{{resting_ve}}][L/min],
-    restcell[{{label_rer_peak}}][{{resting_rer}}][],
+    restcell[{{label_rer_short}}][{{resting_rer}}][],
     restcell[{{resting_duration_label}}][{{resting_duration}}][m:ss]
-  )
+    )
+  ]
+  #v(1mm)
+  #caption[{{resting_caption}}]
 ]
-#v(1mm)
-#caption[{{resting_caption}}]
 {{/if}}
 
 // ══════ 03 Test validity ══════
 
 {{#if has_validity}}
-#sec[{{section_validity}}]
-#block(breakable: false, width: 100%, stroke: 0.5pt + rule_soft, inset: (x: 3.5mm, y: 2.5mm))[
+#block(breakable: false, width: 100%)[
+  #sec[{{section_validity}}]
+  #block(width: 100%, stroke: 0.5pt + rule_soft, inset: (x: 3.5mm, y: 2.5mm))[
   #grid(
     columns: (auto, 1fr),
     column-gutter: 4mm,
@@ -277,16 +282,17 @@
       #text(size: 9pt, weight: 700, fill: {{validity_color}})[{{validity_title}}]
       #v(0.8mm)
       #text(size: 8.5pt, fill: mid_ink)[{{validity_detail}}]
-    ]
-  )
+      ]
+    )
+  ]
 ]
 {{/if}}
 
 // ══════ 04 VO2-power relationship ══════
 
 {{#if graph_slope}}
-#sec[{{section_vo2_power_slope}}]
 #block(breakable: false, width: 100%)[
+  #sec[{{section_vo2_power_slope}}]
   #image("{{graph_slope}}", width: 100%)
   #v(1mm)
   #caption[{{caption_vo2_power_slope}} {{slope_caption}}]
@@ -295,8 +301,8 @@
 
 // ══════ 05 Detailed results ══════
 
-#sec[{{section_detailed_results}}]
 #block(breakable: false, width: 100%)[
+  #sec[{{section_detailed_results}}]
   #clinical_table(
     columns: (2.6fr, 1fr, 1fr, 1fr),
     align_spec: (left, center, center, center),
@@ -316,8 +322,8 @@
 // ══════ 06 Population norms ══════
 
 {{#if has_population_norms}}
-#sec[{{pn_section_title}}]
 #block(breakable: false, width: 100%)[
+  #sec[{{pn_section_title}}]
   #caption[_{{pn_description}} — {{pn_citation_short}}_]
   #v(1.5mm)
   #clinical_table(
@@ -350,8 +356,8 @@
 // ══════ Economy (optional, kept from the analysis) ══════
 
 {{#if has_economy_metrics}}
-#sec[{{section_economy}}]
 #block(breakable: false, width: 100%)[
+  #sec[{{section_economy}}]
   #grid(
     columns: (1fr, 1fr),
     {{#if gross_efficiency}}
@@ -379,8 +385,8 @@
 // ══════ 08 Ventilatory thresholds ══════
 
 {{#if has_vt_table}}
-#sec[{{section_thresholds}}]
 #block(breakable: false, width: 100%)[
+  #sec[{{section_thresholds}}]
   #clinical_table(
     columns: (1.6fr, 1fr, 1fr, 1fr, 1fr),
     align_spec: (left, center, center, center, center),
@@ -458,8 +464,8 @@
 // ══════ 10 Nine-panel display ══════
 
 {{#if graph_panel}}
-#sec[{{section_graphs}}]
 #block(breakable: false, width: 100%)[
+  #sec[{{section_graphs}}]
   #image("{{graph_panel}}", width: 100%)
   #v(1mm)
   #caption[{{caption_panel}}]
@@ -470,8 +476,8 @@
 
 {{#if has_longitudinal}}
 {{#if graph_longitudinal}}
-#sec[{{section_longitudinal}}]
 #block(breakable: false, width: 100%)[
+  #sec[{{section_longitudinal}}]
   #image("{{graph_longitudinal}}", width: 100%)
   #v(1mm)
   #caption[{{caption_longitudinal}}]
@@ -482,8 +488,8 @@
 // ══════ 11 Estimates and caveats ══════
 
 {{#if has_estimates_caveats}}
-#sec[{{estimates_and_caveats}}]
 #block(breakable: false, width: 100%)[
+  #sec[{{estimates_and_caveats}}]
   #grid(
     columns: (1.4fr, 1fr),
     column-gutter: 6mm,
@@ -533,8 +539,8 @@
 // ══════ 13 Analysis parameters ══════
 
 {{#if has_analysis_params}}
-#sec[{{section_analysis_params}}]
 #block(breakable: false, width: 100%)[
+  #sec[{{section_analysis_params}}]
   #grid(
     columns: (1fr, 1fr),
     row-gutter: 1.4mm,

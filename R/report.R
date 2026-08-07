@@ -203,6 +203,7 @@ get_report_labels <- function(language = "en") {
     label_power_peak_row = "Power peak (W)",
     label_o2_pulse = "O#sub[2] pulse (mL/beat)",
     label_hr_unit = "HR (bpm)",
+    label_rer_short = "RER",
 
     # Signatures
     label_technician_signature = "Technician Signature",
@@ -329,6 +330,7 @@ get_report_labels <- function(language = "en") {
     label_power_peak_row = "Puissance pic (W)",
     label_o2_pulse = "Pouls O#sub[2] (mL/battement)",
     label_hr_unit = "FC (bpm)",
+    label_rer_short = "QR",
 
     # Signatures
     label_technician_signature = "Signature du technicien",
@@ -1569,6 +1571,13 @@ build_phase7_template_data <- function(analysis, language, report_sections,
   }
 
   # VO2-power slope caption
+  # Figure titles and captions live in the translation files; the report
+  # only sees what is forwarded here.
+  for (key in c("section_vo2_power_slope", "section_zscore_strip",
+                "caption_vo2_power_slope", "caption_zscore_strip")) {
+    out[[key]] <- escape_typst(tr(key, language))
+  }
+
   slope <- analysis@vo2_power_slope
   if (is.list(slope) && !is.null(slope$slope) && length(slope$slope) == 1 &&
       is.numeric(slope$slope) && !is.na(slope$slope) && is.finite(slope$slope)) {
