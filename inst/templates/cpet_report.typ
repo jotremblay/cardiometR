@@ -1,88 +1,71 @@
 // CPET Report Template for cardiometR
 // Bilingual support (English/French)
+// Clinical layout: numbered sections, hairline rules, no decorative fills.
 
-// Document setup
 #set document(
   title: "{{title}}",
   author: "{{institution}}"
 )
 
-// Color definitions - UdeM brand colors
-#let primary = rgb("#0054A6")      // UdeM Blue
-#let accent = rgb("#00A3E0")       // Light blue accent
-#let success = rgb("#10B981")      // Green for positive values
-#let warning = rgb("#F59E0B")      // Amber for warnings
-#let danger = rgb("#EF4444")       // Red for concerns
+// Palette. Ink and rules are neutral; the accent carries the section
+// numbering and the values that matter.
+#let primary = rgb("#0054A6")
+#let ink = rgb("#16181c")
+#let body_ink = rgb("#26292e")
+#let mid_ink = rgb("#3a414c")
+#let muted = rgb("#5c6675")
+#let faint = rgb("#8b95a3")
+#let pale = rgb("#9aa4b2")
+#let rule_strong = rgb("#c9d2dd")
+#let rule_soft = rgb("#d8dee6")
+#let rule_hair = rgb("#e6e9ee")
+#let ok = rgb("#0e7a52")
+#let vt1_col = rgb("#B45309")
+#let vt2_col = rgb("#8C4A73")
 
 #set page(
-  paper: "a4",
-  margin: (top: 3.2cm, bottom: 2cm, left: 2cm, right: 2cm),
+  paper: "us-letter",
+  margin: (top: 2.9cm, bottom: 1.6cm, left: 1.5cm, right: 1.5cm),
   header: [
     #grid(
-      columns: (1fr, 1fr),
-      gutter: 1em,
-      align(left + horizon)[
-        #grid(
-          columns: (auto, auto),
-          gutter: 0.8em,
-          align(left + horizon)[
-            {{#if logo_path}}
-            #box(
-              height: 1.35cm,
-            )[
-              #align(center + horizon)[
-                #image("{{logo_path}}", height: 1.15cm)
-              ]
-            ]
-            {{/if}}
-          ],
-          align(left + horizon)[
-            {{#if lab_logo_path}}
-            #box(
-              height: 1.35cm,
-            )[
-              #align(center + horizon)[
-                #image("{{lab_logo_path}}", height: 1.30cm)
-              ]
-            ]
-            {{/if}}
-          ]
-        )
-      ],
-      align(right + top)[
+      columns: (auto, auto, auto, 1fr, auto),
+      column-gutter: 4mm,
+      align: horizon,
+      {{#if logo_path}}
+      image("{{logo_path}}", height: 6.5mm),
+      {{else}}
+      [],
+      {{/if}}
+      {{#if epic_logo_path}}
+      image("{{epic_logo_path}}", height: 5.5mm),
+      {{else}}
+      [],
+      {{/if}}
+      {{#if lab_logo_path}}
+      image("{{lab_logo_path}}", height: 7.5mm),
+      {{else}}
+      [],
+      {{/if}}
+      [],
+      align(right)[
         #stack(
           dir: ttb,
-          spacing: 0.4em,
-          text(weight: "bold", size: 9pt, fill: primary)[{{institution_line1}}],
-          {{#if institution_line2}}
-          text(weight: "bold", size: 9pt, fill: primary)[{{institution_line2}}],
-          {{/if}}
-          {{#if lab_name_line1}}
-          {{#if lab_url}}
-          link("{{lab_url}}")[#text(size: 8pt, fill: accent)[{{lab_name_line1}}]],
-          {{#if lab_name_line2}}
-          link("{{lab_url}}")[#text(size: 8pt, fill: accent)[{{lab_name_line2}}]],
-          {{/if}}
-          {{else}}
-          text(size: 8pt, fill: accent)[{{lab_name_line1}}],
-          {{#if lab_name_line2}}
-          text(size: 8pt, fill: accent)[{{lab_name_line2}}],
-          {{/if}}
-          {{/if}}
-          {{/if}}
-          text(size: 8pt, fill: luma(100))[{{report_date}}]
+          spacing: 0.6mm,
+          text(size: 7.5pt, weight: 600)[{{institution}}],
+          text(size: 7.5pt, fill: muted)[{{lab_name}}],
+          text(size: 7pt, fill: faint)[{{running_header}}]
         )
       ]
     )
-    #v(0.3em)
-    #line(length: 100%, stroke: 1.5pt + primary)
+    #v(1.8mm)
+    #line(length: 100%, stroke: 0.5pt + rule_strong)
   ],
   footer: [
-    #line(length: 100%, stroke: 0.5pt + luma(200))
-    #v(0.3em)
-    #set text(size: 8pt, fill: luma(120))
+    #line(length: 100%, stroke: 0.5pt + rule_strong)
+    #v(1.2mm)
+    #set text(size: 7.5pt, fill: faint)
     #grid(
-      columns: (1fr, 1fr, 1fr),
+      columns: (1fr, auto, 1fr),
       align(left)[{{footer_left}}],
       align(center)[#context counter(page).display("1 / 1", both: true)],
       align(right)[_cardiometR_]
@@ -90,786 +73,500 @@
   ]
 )
 
-// Use modern professional fonts with fallbacks
 #set text(
   font: ("Inter", "Helvetica Neue", "Arial", "sans-serif"),
-  size: 10pt
+  size: 9.5pt,
+  fill: ink
 )
+#set par(leading: 0.55em, justify: false)
 
 // Readable subscripts/superscripts (default 0.6em is too small in small text)
 #set sub(size: 0.8em)
 #set super(size: 0.8em)
 
-// Monospace for data values
 #show raw: set text(font: ("SF Mono", "Menlo", "Monaco", "monospace"))
 
-#set heading(numbering: none)
-
-#show heading.where(level: 1): it => [
-  #set text(size: 13pt, weight: "bold", fill: primary)
-  #block(above: 1.2em, below: 0.6em)[
-    #box(width: 4pt, height: 1em, fill: primary, baseline: 20%)
-    #h(0.5em)
-    #it.body
-  ]
-]
-
-#show heading.where(level: 2): it => [
-  #set text(size: 11pt, weight: "semibold", fill: luma(60))
-  #block(above: 1em, below: 0.5em)[#it]
-]
-
-// Title block - sleek gradient header
-#block(
-  fill: gradient.linear(primary, primary.darken(30%), angle: 135deg),
-  inset: (x: 2em, y: 1.5em),
-  radius: 8pt,
-  width: 100%,
-  stroke: none
-)[
-  #align(center)[
-    #text(size: 22pt, weight: "bold", fill: white, tracking: 0.5pt)[
-      {{title}}
-    ]
-    #v(0.5em)
-    #text(size: 12pt, fill: white.transparentize(20%), style: "italic")[
-      {{subtitle}}
-    ]
-  ]
-]
-
-#v(0.8em)
-
-// Patient Information
-#block(
-  stroke: (left: 3pt + primary),
-  inset: (left: 1em, y: 0.8em, right: 0.5em),
-  width: 100%
-)[
-  #text(size: 11pt, weight: "bold", fill: primary)[{{section_patient}}]
-  #v(0.5em)
+// Numbered section rule. The counter keeps the numbers contiguous even
+// when the operator switches a section off.
+#let seccount = counter("cardiometr-section")
+#let sec(title) = block(above: 4mm, below: 2mm, width: 100%)[
+  #seccount.step()
   #grid(
-    columns: (1fr, 1fr),
-    gutter: 1.5em,
-    table(
-      columns: (7em, 1fr),
-      stroke: none,
-      inset: (x: 0pt, y: 4pt),
-      [#text(fill: luma(80))[{{label_name}}]], [#text(weight: "semibold")[{{patient_name}}]],
-      [#text(fill: luma(80))[{{label_id}}]], [{{patient_id}}],
-      [#text(fill: luma(80))[{{label_age}} / {{label_sex}}]], [{{patient_age}} {{label_years}} / {{patient_sex}}],
-    ),
-    table(
-      columns: (7em, 1fr),
-      stroke: none,
-      inset: (x: 0pt, y: 4pt),
-      [#text(fill: luma(80))[{{label_height}} / {{label_weight}}]], [{{patient_height}} cm / {{patient_weight}} kg],
-      [#text(fill: luma(80))[{{label_bmi}}]], [{{patient_bmi}} kg/m#super[2]],
-      [#text(fill: luma(80))[{{label_sport}}]], [{{patient_sport}}],
-    )
+    columns: (auto, auto, 1fr),
+    column-gutter: 2.5mm,
+    align: horizon,
+    text(size: 7.5pt, weight: 600, fill: pale)[#context {
+      let n = seccount.get().first()
+      if n < 10 [0#n] else [#n]
+    }],
+    text(size: 9pt, weight: 700, tracking: 1.2pt, fill: primary)[#upper(title)],
+    line(length: 100%, stroke: 0.5pt + rule_soft)
   )
 ]
 
-#v(0.8em)
+// A key/value line in the identity band.
+#let kv(k, v) = (
+  text(size: 8pt, fill: muted)[#k],
+  text(size: 8.5pt, weight: 600)[#v]
+)
 
-// Pre-Test Conditions (optional)
-{{#if has_pretest_conditions}}
-#block(
-  stroke: (left: 3pt + luma(180)),
-  inset: (left: 1em, y: 0.8em, right: 0.5em),
-  width: 100%
-)[
+// A figure caption, set as running text rather than a numbered float.
+#let caption(body) = text(size: 7.5pt, fill: muted)[#body]
+
+// Table styling shared by every table in the report: open sides, one
+// heavy rule above the header, hairlines between rows.
+#let clinical_table(columns: (), align_spec: auto, ..cells) = table(
+  columns: columns,
+  align: align_spec,
+  inset: (x: 3mm, y: 1.7mm),
+  stroke: (x, y) => (
+    top: if y == 0 { 1pt + ink } else if y == 1 { 0.5pt + ink } else { 0.4pt + rule_hair },
+    bottom: 0.4pt + rule_hair
+  ),
+  ..cells
+)
+
+#let th(body) = text(size: 7.5pt, weight: 600, tracking: 0.6pt, fill: mid_ink)[#upper(body)]
+
+
+// ══════ Title block ══════
+
+#block(above: 0mm, below: 2.2mm, width: 100%)[
+  #line(length: 100%, stroke: 2pt + primary)
+  #v(2.2mm)
   #grid(
-    columns: (auto, 1fr),
-    gutter: 0.5em,
-    align(horizon)[🍽],
-    text(size: 11pt, weight: "bold", fill: luma(60))[{{section_pretest}}]
+    columns: (1fr, auto),
+    align: bottom,
+    text(size: 7.5pt, weight: 700, tracking: 1.5pt, fill: primary)[{{report_kicker}}],
+    text(size: 7.5pt, fill: muted)[{{record_line}}]
   )
-  #v(0.5em)
-  #grid(
-    columns: (1fr, 1fr, 1fr, 1fr),
-    gutter: 1em,
-    // Nutritional State
-    [
-      #text(size: 8pt, fill: luma(100))[{{label_nutritional_state}}]
-      #v(0.2em)
-      #text(weight: "semibold")[{{nutritional_state}}]
-      {{#if last_meal_hours}}
-      #text(size: 8pt, fill: luma(100))[ ({{last_meal_hours}}{{label_hours_ago}})]
-      {{/if}}
-    ],
-    // Fatigue State
-    [
-      #text(size: 8pt, fill: luma(100))[🔋 {{label_fatigue_state}}]
-      #v(0.2em)
-      #text(weight: "semibold")[{{fatigue_state}}]
-    ],
-    // Medications
-    [
-      #text(size: 8pt, fill: luma(100))[💊 {{label_medications}}]
-      #v(0.2em)
-      #text(weight: "semibold")[{{medication_list}}]
-    ],
-    // Caffeine
-    [
-      #text(size: 8pt, fill: luma(100))[☕ {{label_caffeine}}]
-      #v(0.2em)
-      {{#if caffeine_intake}}
-      #text(weight: "semibold")[{{caffeine_mg}} mg]
-      {{else}}
-      #text(weight: "semibold")[—]
-      {{/if}}
-    ]
-  )
+  #v(1mm)
+  #text(size: 17pt, weight: 700)[{{patient_name}}]
+  #v(0.6mm)
+  #text(size: 9.5pt, fill: muted, style: "italic")[{{test_summary_line}}]
 ]
-#v(0.8em)
-{{/if}}
 
-// Protocol Details (optional)
-{{#if has_protocol_details}}
-#block(
-  stroke: (left: 3pt + luma(180)),
-  inset: (left: 1em, y: 0.8em, right: 0.5em),
-  width: 100%
-)[
-  #grid(
-    columns: (auto, 1fr),
-    gutter: 0.5em,
-    align(horizon)[⚙️],
-    text(size: 11pt, weight: "bold", fill: luma(60))[{{section_protocol_details}}]
-  )
-  #v(0.5em)
-  #grid(
-    columns: (1fr, 1fr),
-    gutter: 1.5em,
-    // Protocol Parameters
-    [
-      #table(
-        columns: (8em, 1fr),
-        stroke: none,
-        inset: (x: 0pt, y: 3pt),
-        [#text(size: 9pt, fill: luma(100))[{{label_modality}}]], [#text(weight: "semibold")[{{protocol_modality_label}}]],
-        [#text(size: 9pt, fill: luma(100))[{{label_starting_intensity}}]], [#text(weight: "semibold")[{{starting_intensity_display}}]],
-        [#text(size: 9pt, fill: luma(100))[{{label_increment}}]], [#text(weight: "semibold")[{{increment_size_display}}]],
-        [#text(size: 9pt, fill: luma(100))[{{label_stage_duration}}]], [#text(weight: "semibold")[{{stage_duration_display}}]],
-        {{#if data_type}}
-        [#text(size: 9pt, fill: luma(100))[{{label_data_type}}]], [#text(weight: "semibold")[{{data_type}}]],
-        {{/if}}
-      )
-    ],
-    // Equipment
-    [
-      #table(
-        columns: (8em, 1fr),
-        stroke: none,
-        inset: (x: 0pt, y: 3pt),
-        {{#if equipment_model}}
-        [#text(size: 9pt, fill: luma(100))[{{label_equipment}}]], [#text(weight: "semibold")[{{equipment_model}}]],
-        {{/if}}
-        {{#if analyzer_model}}
-        [#text(size: 9pt, fill: luma(100))[{{label_analyzer}}]], [#text(weight: "semibold")[{{analyzer_model}}]],
-        {{/if}}
-      )
-    ]
-  )
-]
-#v(0.8em)
-{{/if}}
+// ══════ Identity band: participant, pre-test, protocol ══════
 
-// Athlete Profile (Phase 7) — three-column headline
-{{#if has_athlete_profile}}
-#block(breakable: false)[
-  #block[
-    #text(size: 18pt)[🚴] #h(0.4em) #heading(level: 1, outlined: false)[{{section_athlete_profile}}]
-  ]
-
+#block(width: 100%, above: 2.8mm, below: 2.8mm, stroke: (top: 0.5pt + rule_soft, bottom: 0.5pt + rule_soft), inset: (y: 2mm))[
   #grid(
     columns: (1fr, 1fr, 1fr),
-    gutter: 1em,
-    block(
-      fill: primary.lighten(94%),
-      stroke: (top: 3pt + primary),
-      inset: 0.9em,
-      radius: (bottom: 6pt),
-      width: 100%
-    )[
-      #align(center)[
-        #text(size: 9pt, weight: "semibold", fill: luma(80))[{{ap_card1_label}}]
-        #v(0.2em)
-        #text(size: 22pt, weight: "bold", fill: primary)[{{ap_card1_value}}]
-        #v(0.1em)
-        #text(size: 8pt, fill: luma(110))[{{ap_card1_unit}}]
-        #v(0.3em)
-        #text(size: 8pt)[{{ap_card1_zline}}]
-      ]
+    column-gutter: 0mm,
+    block(inset: (right: 5mm))[
+      #grid(
+        columns: (22mm, 1fr),
+        row-gutter: 1mm,
+        column-gutter: 2mm,
+        ..kv([{{label_id}}], [{{patient_id}}]),
+        ..kv([{{label_age}} / {{label_sex}}], [{{patient_age}} {{label_years}} / {{patient_sex}}]),
+        ..kv([{{label_height}} / {{label_weight}}], [{{patient_height}} cm / {{patient_weight}} kg]),
+        ..kv([{{label_bmi}}], [{{patient_bmi}} kg/m#super[2]]),
+        ..kv([{{label_sport}}], [{{patient_sport}}])
+      )
     ],
-    block(
-      fill: accent.lighten(94%),
-      stroke: (top: 3pt + accent),
-      inset: 0.9em,
-      radius: (bottom: 6pt),
-      width: 100%
-    )[
-      #align(center)[
-        #text(size: 9pt, weight: "semibold", fill: luma(80))[{{ap_card2_label}}]
-        #v(0.2em)
-        #text(size: 22pt, weight: "bold", fill: accent)[{{ap_card2_value}}]
-        #v(0.1em)
-        #text(size: 8pt, fill: luma(110))[{{ap_card2_unit}}]
-        #v(0.3em)
-        #text(size: 8pt)[{{ap_card2_zline}}]
-      ]
+    block(inset: (left: 5mm, right: 5mm), stroke: (left: 0.5pt + rule_hair))[
+      #text(size: 7pt, weight: 700, tracking: 1.1pt, fill: faint)[#upper[{{section_pretest}}]]
+      #v(1mm)
+      #grid(
+        columns: (24mm, 1fr),
+        row-gutter: 1mm,
+        column-gutter: 2mm,
+        {{#if has_pretest_conditions}}
+        ..kv([{{label_nutritional_state}}], [{{nutritional_state}}]),
+        ..kv([{{label_fatigue_state}}], [{{fatigue_state}}]),
+        ..kv([{{label_medications}}], [{{medication_list}}]),
+        {{#if caffeine_intake}}
+        ..kv([{{label_caffeine}}], [{{caffeine_mg}} mg]),
+        {{else}}
+        ..kv([{{label_caffeine}}], [—]),
+        {{/if}}
+        {{else}}
+        ..kv([—], [—]),
+        {{/if}}
+      )
     ],
-    block(
-      fill: warning.lighten(94%),
-      stroke: (top: 3pt + warning),
-      inset: 0.9em,
-      radius: (bottom: 6pt),
-      width: 100%
-    )[
-      #align(center)[
-        #text(size: 9pt, weight: "semibold", fill: luma(80))[{{ap_card3_label}}]
-        #v(0.2em)
-        #text(size: 22pt, weight: "bold", fill: warning)[{{ap_card3_value}}]
-        #v(0.1em)
-        #text(size: 8pt, fill: luma(110))[{{ap_card3_unit}}]
-        #v(0.3em)
-        #text(size: 8pt)[{{ap_card3_zline}}]
-      ]
+    block(inset: (left: 5mm), stroke: (left: 0.5pt + rule_hair))[
+      #text(size: 7pt, weight: 700, tracking: 1.1pt, fill: faint)[#upper[{{section_protocol_details}}]]
+      #v(1mm)
+      #grid(
+        columns: (24mm, 1fr),
+        row-gutter: 1mm,
+        column-gutter: 2mm,
+        ..kv([{{label_modality}}], [{{protocol_modality_label}}]),
+        ..kv([{{label_starting_intensity}}], [{{starting_intensity_display}}]),
+        ..kv([{{label_increment}}], [{{increment_size_display}}]),
+        {{#if equipment_model}}
+        ..kv([{{label_equipment}}], [{{equipment_model}}]),
+        {{else}}
+        ..kv([{{label_stage_duration}}], [{{stage_duration_display}}]),
+        {{/if}}
+      )
     ]
   )
 ]
+
+// ══════ 01 Athlete profile ══════
+
+{{#if has_athlete_profile}}
+#sec[{{section_athlete_profile}}]
+#block(breakable: false, width: 100%)[
+  #grid(
+    columns: (1fr, 1fr, 1fr),
+    block(inset: (right: 5mm, y: 1.5mm))[
+      #text(size: 7.5pt, weight: 600, tracking: 0.5pt, fill: muted)[#upper[{{ap_card1_label}}]]
+      #v(0.6mm)
+      #text(size: 20pt, weight: 700)[{{ap_card1_value}}] #h(1.5mm) #text(size: 7.5pt, fill: faint)[{{ap_card1_unit}}]
+      #v(0.6mm)
+      #text(size: 7.5pt, weight: 600, fill: primary)[{{ap_card1_zline}}]
+    ],
+    block(inset: (left: 5mm, right: 5mm, y: 1.5mm), stroke: (left: 0.5pt + rule_hair))[
+      #text(size: 7.5pt, weight: 600, tracking: 0.5pt, fill: muted)[#upper[{{ap_card2_label}}]]
+      #v(0.6mm)
+      #text(size: 20pt, weight: 700)[{{ap_card2_value}}] #h(1.5mm) #text(size: 7.5pt, fill: faint)[{{ap_card2_unit}}]
+      #v(0.6mm)
+      #text(size: 7.5pt, weight: 600, fill: primary)[{{ap_card2_zline}}]
+    ],
+    block(inset: (left: 5mm, y: 1.5mm), stroke: (left: 0.5pt + rule_hair))[
+      #text(size: 7.5pt, weight: 600, tracking: 0.5pt, fill: muted)[#upper[{{ap_card3_label}}]]
+      #v(0.6mm)
+      #text(size: 20pt, weight: 700)[{{ap_card3_value}}] #h(1.5mm) #text(size: 7.5pt, fill: faint)[{{ap_card3_unit}}]
+      #v(0.6mm)
+      #text(size: 7.5pt, weight: 600, fill: primary)[{{ap_card3_zline}}]
+    ]
+  )
+]
+{{/if}}
+
+// ══════ 02 Resting values ══════
 
 {{#if has_resting}}
-#v(0.6em)
-#block(breakable: false)[
-  #text(size: 10pt, weight: "semibold")[{{resting_title}}]
-  #v(0.3em)
+#sec[{{resting_title}}]
+#block(breakable: false, width: 100%, stroke: (top: 0.5pt + rule_soft, bottom: 0.5pt + rule_soft), inset: (y: 1.8mm))[
+  #let restcell(k, v, u) = align(center)[
+    #text(size: 7pt, tracking: 0.4pt, fill: faint)[#upper[#k]]
+    #v(0.3mm)
+    #text(size: 12pt, weight: 700)[#v]
+    #v(0.3mm)
+    #text(size: 7pt, fill: faint)[#u]
+  ]
   #grid(
     columns: (1fr, 1fr, 1fr, 1fr, 1fr, 1fr),
-    gutter: 0.5em,
-    align(center)[
-      #text(size: 8pt, fill: luma(110))[VO2]
-      #v(-0.3em)
-      #text(size: 14pt, weight: "bold")[{{resting_vo2}}]
-      #text(size: 8pt)[ mL/min]
-    ],
-    align(center)[
-      #text(size: 8pt, fill: luma(110))[VO2/kg]
-      #v(-0.3em)
-      #text(size: 14pt, weight: "bold")[{{resting_vo2_kg}}]
-      #text(size: 8pt)[ mL/kg/min]
-    ],
-    align(center)[
-      #text(size: 8pt, fill: luma(110))[HR]
-      #v(-0.3em)
-      #text(size: 14pt, weight: "bold")[{{resting_hr}}]
-      #text(size: 8pt)[ bpm]
-    ],
-    align(center)[
-      #text(size: 8pt, fill: luma(110))[VE]
-      #v(-0.3em)
-      #text(size: 14pt, weight: "bold")[{{resting_ve}}]
-      #text(size: 8pt)[ L/min]
-    ],
-    align(center)[
-      #text(size: 8pt, fill: luma(110))[RER]
-      #v(-0.3em)
-      #text(size: 14pt, weight: "bold")[{{resting_rer}}]
-    ],
-    align(center)[
-      #text(size: 8pt, fill: luma(110))[{{resting_duration_label}}]
-      #v(-0.3em)
-      #text(size: 14pt, weight: "bold")[{{resting_duration}}]
+    restcell[VO#sub[2]][{{resting_vo2}}][mL/min],
+    restcell[VO#sub[2]/kg][{{resting_vo2_kg}}][mL/kg/min],
+    restcell[{{label_hr_unit}}][{{resting_hr}}][bpm],
+    restcell[VE][{{resting_ve}}][L/min],
+    restcell[{{label_rer_peak}}][{{resting_rer}}][],
+    restcell[{{resting_duration_label}}][{{resting_duration}}][m:ss]
+  )
+]
+#v(1mm)
+#caption[{{resting_caption}}]
+{{/if}}
+
+// ══════ 03 Test validity ══════
+
+{{#if has_validity}}
+#sec[{{section_validity}}]
+#block(breakable: false, width: 100%, stroke: 0.5pt + rule_soft, inset: (x: 3.5mm, y: 2.5mm))[
+  #grid(
+    columns: (auto, 1fr),
+    column-gutter: 4mm,
+    align: top,
+    box(baseline: -1.2mm)[#circle(radius: 1.3mm, fill: {{validity_color}}, stroke: none)],
+    [
+      #text(size: 9pt, weight: 700, fill: {{validity_color}})[{{validity_title}}]
+      #v(0.8mm)
+      #text(size: 8.5pt, fill: mid_ink)[{{validity_detail}}]
     ]
   )
-  #v(0.2em)
-  #text(size: 8pt, fill: luma(110))[{{resting_caption}}]
 ]
 {{/if}}
+
+// ══════ 04 VO2-power relationship ══════
 
 {{#if graph_slope}}
-#v(0.6em)
-#block(breakable: false)[
-  == {{section_vo2_power_slope}}
-  #figure(
-    image("{{graph_slope}}", width: 100%),
-    caption: [#text(size: 9pt)[{{caption_vo2_power_slope}} {{slope_caption}}]]
-  )
+#sec[{{section_vo2_power_slope}}]
+#block(breakable: false, width: 100%)[
+  #image("{{graph_slope}}", width: 100%)
+  #v(1mm)
+  #caption[{{caption_vo2_power_slope}} {{slope_caption}}]
 ]
 {{/if}}
 
-{{#if graph_zstrip}}
-#v(0.6em)
-#block(breakable: false)[
-  == {{section_zscore_strip}}
-  #figure(
-    image("{{graph_zstrip}}", width: 100%),
-    caption: [#text(size: 9pt)[{{caption_zscore_strip}}]]
+// ══════ 05 Detailed results ══════
+
+#sec[{{section_detailed_results}}]
+#block(breakable: false, width: 100%)[
+  #clinical_table(
+    columns: (2.6fr, 1fr, 1fr, 1fr),
+    align_spec: (left, center, center, center),
+    th[{{label_parameter}}], th[{{label_value}}], th[{{label_predicted}}], th[% {{label_predicted}}],
+    [{{label_vo2_peak_abs}}], [#text(weight: 600)[{{vo2_peak_abs}}]], [#text(fill: muted)[{{vo2_predicted}}]], [#text(weight: 700, fill: primary)[{{vo2_percent}} %]],
+    [{{label_vo2_peak_rel}}], [#text(weight: 600)[{{vo2_peak_rel}}]], [#text(fill: muted)[{{vo2_rel_predicted}}]], [#text(weight: 700, fill: primary)[{{vo2_rel_percent}} %]],
+    [{{label_ve_peak}}], [#text(weight: 600)[{{ve_peak}}]], [#text(fill: muted)[{{ve_predicted}}]], [#text(weight: 700, fill: primary)[{{ve_percent}} %]],
+    [{{label_hr_peak_row}}], [#text(weight: 600)[{{hr_peak}}]], [#text(fill: muted)[{{hr_predicted}}]], [#text(weight: 700, fill: primary)[{{hr_percent}} %]],
+    [{{label_rer_peak}}], [#text(weight: 600)[{{rer_peak}}]], [#text(fill: muted)[—]], [#text(fill: muted)[—]],
+    [{{label_power_peak_row}}], [#text(weight: 600)[{{power_peak}}]], [#text(fill: muted)[{{power_predicted}}]], [#text(weight: 700, fill: primary)[{{power_percent}}]],
+    [{{label_o2_pulse}}], [#text(weight: 600)[{{o2_pulse}}]], [#text(fill: muted)[{{o2_pulse_predicted}}]], [#text(weight: 700, fill: primary)[{{o2_pulse_percent}} %]],
   )
-]
-{{/if}}
-
-#v(0.8em)
-{{/if}}
-
-// Detailed Results Table — keep together on one page
-// (Formerly preceded by a 3-card "Peak Values" block that duplicated
-// the front-page athlete profile; removed to avoid redundancy.)
-#block(breakable: false)[
-  == {{section_detailed_results}}
-
-  #table(
-    columns: (2.5fr, 1fr, 1fr, 1fr),
-    inset: (x: 10pt, y: 8pt),
-    stroke: none,
-    fill: (col, row) => if row == 0 { primary } else if calc.odd(row) { luma(250) } else { white },
-    align: (left, center, center, center),
-    [#text(weight: "bold", fill: white)[{{label_parameter}}]],
-    [#text(weight: "bold", fill: white)[{{label_value}}]],
-    [#text(weight: "bold", fill: white)[{{label_predicted}}]],
-    [#text(weight: "bold", fill: white)[% Pred.]],
-    [{{label_vo2_peak_abs}}], [#text(weight: "semibold")[{{vo2_peak_abs}}]], [{{vo2_predicted}}], [#text(weight: "bold", fill: primary)[{{vo2_percent}}%]],
-    [{{label_vo2_peak_rel}}], [#text(weight: "semibold")[{{vo2_peak_rel}}]], [{{vo2_rel_predicted}}], [#text(weight: "bold", fill: primary)[{{vo2_rel_percent}}%]],
-    [{{label_ve_peak}}], [#text(weight: "semibold")[{{ve_peak}}]], [{{ve_predicted}}], [#text(weight: "bold", fill: primary)[{{ve_percent}}%]],
-    [{{label_hr_peak_row}}], [#text(weight: "semibold")[{{hr_peak}}]], [{{hr_predicted}}], [#text(weight: "bold", fill: primary)[{{hr_percent}}%]],
-    [{{label_rer_peak}}], [#text(weight: "semibold")[{{rer_peak}}]], [—], [—],
-    [{{label_power_peak_row}}], [#text(weight: "semibold")[{{power_peak}}]], [{{power_predicted}}], [#text(weight: "bold", fill: primary)[{{power_percent}}]],
-    [{{label_o2_pulse}}], [#text(weight: "semibold")[{{o2_pulse}}]], [{{o2_pulse_predicted}}], [#text(weight: "bold", fill: primary)[{{o2_pulse_percent}}%]],
-  )
-
-  #v(0.3em)
-  #text(size: 8pt, fill: luma(120))[
-    {{predicted_values_note}}
-  ]
+  #v(1mm)
+  #caption[{{predicted_values_note}}]
 ]
 
-#v(0.8em)
+// ══════ 06 Population norms ══════
 
 {{#if has_population_norms}}
-#block[
-  #text(size: 18pt)[👥] #h(0.4em) #heading(level: 1, outlined: false)[{{pn_section_title}}]
-]
-#block(breakable: false)[
-  #text(size: 9pt, fill: luma(90), style: "italic")[{{pn_description}} — {{pn_citation_short}}]
-  #v(0.3em)
-  #table(
+#sec[{{pn_section_title}}]
+#block(breakable: false, width: 100%)[
+  #caption[_{{pn_description}} — {{pn_citation_short}}_]
+  #v(1.5mm)
+  #clinical_table(
     columns: (2fr, 1fr, 1fr, 1.3fr, 1.3fr),
-    inset: (x: 8pt, y: 5pt),
-    stroke: none,
-    fill: (col, row) => if row == 0 { primary } else if calc.odd(row) { luma(250) } else { white },
-    align: (left, center, center, center, center),
-    [#text(weight: "bold", fill: white)[{{pn_label_metric}}]],
-    [#text(weight: "bold", fill: white)[{{pn_label_patient}}]],
-    [#text(weight: "bold", fill: white)[{{pn_label_mean}}]],
-    [#text(weight: "bold", fill: white)[{{pn_label_band}}]],
-    [#text(weight: "bold", fill: white)[{{pn_label_zpct}}]],
+    align_spec: (left, center, center, center, center),
+    th[{{pn_label_metric}}], th[{{pn_label_patient}}], th[{{pn_label_mean}}],
+    th[{{pn_label_band}}], th[{{pn_label_zpct}}],
     {{pn_rows_content}}
   )
-  #v(0.3em)
-  #text(size: 8pt, fill: luma(120))[{{pn_sd_note}}]
+  #v(1mm)
+  #caption[{{pn_sd_note}}]
 ]
-#v(0.8em)
+{{#if graph_zstrip}}
+#block(breakable: false, width: 100%)[
+  #v(2mm)
+  #image("{{graph_zstrip}}", width: 100%)
+  #v(1mm)
+  #caption[{{caption_zscore_strip}}]
+]
+{{/if}}
 {{/if}}
 
-// Stage-by-Stage Results (optional)
+// ══════ 07 Stage-by-stage results ══════
+
 {{#if has_stage_table}}
-#block[
-  #text(size: 18pt)[📊] #h(0.4em) #heading(level: 1, outlined: false)[{{section_stage_table}}]
-]
-
+#sec[{{section_stage_table}}]
 {{stage_table}}
-
-#v(0.8em)
 {{/if}}
 
-// Economy Metrics (optional) - keep together on one page
-{{#if has_economy_metrics}}
-#block(breakable: false)[
-  #block[
-    #text(size: 18pt)[🏃] #h(0.4em) #heading(level: 1, outlined: false)[{{section_economy}}]
-  ]
+// ══════ Economy (optional, kept from the analysis) ══════
 
+{{#if has_economy_metrics}}
+#sec[{{section_economy}}]
+#block(breakable: false, width: 100%)[
   #grid(
     columns: (1fr, 1fr),
-    gutter: 1.5em,
     {{#if gross_efficiency}}
-    // Cycling Gross Efficiency
-    block(
-      fill: accent.lighten(92%),
-      stroke: (top: 3pt + accent),
-      inset: 1em,
-      radius: (bottom: 6pt),
-      width: 100%
-    )[
-      #align(center)[
-        #text(size: 28pt, weight: "bold", fill: accent)[{{gross_efficiency}}%]
-        #v(0.2em)
-        #text(size: 9pt, weight: "semibold")[{{label_gross_efficiency}}]
-        #v(0.3em)
-        #text(size: 8pt, fill: luma(100))[{{label_at_stage}} {{reference_stage}} ({{reference_power}} W)]
-      ]
+    block(inset: (right: 5mm, y: 1.5mm))[
+      #text(size: 7.5pt, weight: 600, tracking: 0.5pt, fill: muted)[#upper[{{label_gross_efficiency}}]]
+      #v(0.6mm)
+      #text(size: 15pt, weight: 700)[{{gross_efficiency}} %]
+      #v(0.6mm)
+      #caption[{{label_at_stage}} {{reference_stage}} — {{reference_power}}]
     ],
     {{/if}}
     {{#if running_economy}}
-    // Running Economy
-    block(
-      fill: warning.lighten(92%),
-      stroke: (top: 3pt + warning),
-      inset: 1em,
-      radius: (bottom: 6pt),
-      width: 100%
-    )[
-      #align(center)[
-        #text(size: 28pt, weight: "bold", fill: warning)[{{running_economy}}]
-        #v(0.2em)
-        #text(size: 9pt, weight: "semibold")[{{label_running_economy}}]
-        #v(0.1em)
-        #text(size: 8pt, fill: luma(100))[{{unit_ml_kg_km}}]
-        #v(0.3em)
-        #text(size: 8pt, fill: luma(100))[{{label_at_stage}} {{reference_stage}} ({{reference_speed}} km/h)]
-      ]
+    block(inset: (left: 5mm, y: 1.5mm), stroke: (left: 0.5pt + rule_hair))[
+      #text(size: 7.5pt, weight: 600, tracking: 0.5pt, fill: muted)[#upper[{{label_running_economy}}]]
+      #v(0.6mm)
+      #text(size: 15pt, weight: 700)[{{running_economy}}] #h(1.5mm) #text(size: 7.5pt, fill: faint)[{{unit_ml_kg_km}}]
+      #v(0.6mm)
+      #caption[{{label_at_stage}} {{reference_stage}} — {{reference_speed}}]
     ],
     {{/if}}
   )
 ]
-
-#v(0.8em)
 {{/if}}
 
-// Ventilatory Thresholds (only shown if detected) - keep together on one page
-{{#if thresholds_detected}}
-#block(breakable: false)[
-  #block[
-    #text(size: 18pt)[🎯] #h(0.4em) #heading(level: 1, outlined: false)[{{section_thresholds}}]
-  ]
+// ══════ 08 Ventilatory thresholds ══════
 
-  #table(
-    columns: (2fr, 1fr, 1fr, 1fr, 1fr),
-    inset: (x: 10pt, y: 8pt),
-    stroke: none,
-    fill: (col, row) => if row == 0 { warning } else if calc.odd(row) { luma(250) } else { white },
-    align: (left, center, center, center, center),
-    [#text(weight: "bold", fill: white)[{{label_threshold}}]],
-    [#text(weight: "bold", fill: white)[VO#sub[2] (mL/min)]],
-    [#text(weight: "bold", fill: white)[% VO#sub[2]max]],
-    [#text(weight: "bold", fill: white)[{{label_hr_unit}}]],
-    [#text(weight: "bold", fill: white)[{{label_power}} (W)]],
-    [VT1 ({{label_aerobic}})], [{{vt1_vo2}}], [{{vt1_percent}}%], [{{vt1_hr}}], [{{vt1_power}}],
-    [VT2 ({{label_anaerobic}})], [{{vt2_vo2}}], [{{vt2_percent}}%], [{{vt2_hr}}], [{{vt2_power}}],
+{{#if has_vt_table}}
+#sec[{{section_thresholds}}]
+#block(breakable: false, width: 100%)[
+  #clinical_table(
+    columns: (1.6fr, 1fr, 1fr, 1fr, 1fr),
+    align_spec: (left, center, center, center, center),
+    th[{{label_threshold}}], th[VO#sub[2] (mL/min)], th[% VO#sub[2]],
+    th[{{label_hr_unit}}], th[{{label_power}} (W)],
+    [#text(weight: 600, fill: vt1_col)[{{label_aerobic}}]], [{{vt1_vo2}}], [{{vt1_percent}} %], [{{vt1_hr}}], [{{vt1_power}}],
+    [#text(weight: 600, fill: vt2_col)[{{label_anaerobic}}]], [{{vt2_vo2}}], [{{vt2_percent}} %], [{{vt2_hr}}], [{{vt2_power}}],
   )
-
-  #v(0.3em)
-  #text(size: 8pt, fill: luma(120))[
-    {{label_detection_method}}: {{threshold_method}} #h(1em) {{label_confidence}}: {{threshold_confidence}}
-  ]
+  #v(1mm)
+  #caption[{{label_detection_method}} : {{threshold_method}} · {{label_confidence}} : {{threshold_confidence}}]
 ]
-
-#v(0.8em)
 {{/if}}
-
-{{#if has_graphs}}
-// Graphs
-#block[
-  #text(size: 18pt)[📈] #h(0.4em) #heading(level: 1, outlined: false)[{{section_graphs}}]
-]
-
-{{#if graph_panel}}
-#figure(
-  image("{{graph_panel}}", width: 100%),
-  caption: [#text(size: 9pt)[{{caption_panel}}]]
-)
-{{/if}}
-
-#v(0.5em)
 
 {{#if graph_vslope}}
-#grid(
-  columns: (1fr, 1fr),
-  gutter: 1em,
-  [
-    #figure(
-      image("{{graph_vslope}}", width: 100%),
-      caption: [#text(size: 9pt)[{{caption_vslope}}]]
-    )
-  ],
-  {{#if graph_predicted}}
-  [
-    #figure(
-      image("{{graph_predicted}}", width: 100%),
-      caption: [#text(size: 9pt)[{{caption_predicted}}]]
+#block(breakable: false, width: 100%)[
+  #v(1.5mm)
+  #grid(
+    columns: (1fr, 1fr),
+    column-gutter: 6mm,
+    [
+      #image("{{graph_vslope}}", width: 100%)
+      #v(1mm)
+      #caption[{{caption_vslope}}]
+    ],
+    {{#if graph_predicted}}
+    [
+      #image("{{graph_predicted}}", width: 100%)
+      #v(1mm)
+      #caption[{{caption_predicted}}]
+    ]
+    {{else}}
+    []
+    {{/if}}
+  )
+]
+{{/if}}
+
+// ══════ 09 Interpretation ══════
+
+#block(breakable: false, width: 100%)[
+  #sec[{{section_interpretation}}]
+  #let gauge(title, pct, value, rating, col, first) = block(
+    inset: if first { (right: 5mm, y: 1.5mm) } else { (left: 5mm, right: 5mm, y: 1.5mm) },
+    stroke: if first { none } else { (left: 0.5pt + rule_hair) }
+  )[
+    #text(size: 7pt, weight: 600, tracking: 0.7pt, fill: muted)[#upper[#title]]
+    #v(1mm)
+    #block(fill: rgb("#eceff3"), width: 100%, height: 1.6mm)[
+      #place(block(fill: col, width: pct, height: 1.6mm))
+    ]
+    #v(1mm)
+    #grid(
+      columns: (1fr, auto),
+      align: bottom,
+      text(size: 15pt, weight: 700)[#value],
+      text(size: 7.5pt, weight: 600, fill: ok)[#rating]
     )
   ]
-  {{/if}}
-)
-{{else}}
-{{#if graph_predicted}}
-#figure(
-  image("{{graph_predicted}}", width: 100%),
-  caption: [#text(size: 9pt)[{{caption_predicted}}]]
-)
-{{/if}}
-{{/if}}
-
-#v(0.8em)
-{{/if}}
-
-// Interpretation - Visual Summary - keep together on one page
-#block(breakable: false)[
-  #block[
-    #text(size: 18pt)[🧠] #h(0.4em) #heading(level: 1, outlined: false)[{{section_interpretation}}]
-  ]
-
   #grid(
     columns: (1fr, 1fr, 1fr),
-    gutter: 0.8em,
-    // Aerobic Capacity Gauge
-    block(
-      stroke: (left: 4pt + {{aerobic_color}}),
-      fill: luma(252),
-      inset: (left: 1em, right: 0.8em, y: 0.8em),
-      radius: (right: 6pt),
-      width: 100%
-    )[
-      #text(size: 8pt, weight: "semibold", fill: luma(80))[{{section_aerobic_capacity}}]
-      #v(0.3em)
-      #block(
-        fill: luma(225),
-        radius: 3pt,
-        width: 100%,
-        height: 8pt
-      )[
-        #place(
-          block(
-            fill: {{aerobic_color}},
-            radius: 3pt,
-            width: {{aerobic_percent}}%,
-            height: 8pt
-          )
-        )
-      ]
-      #v(0.3em)
-      #grid(
-        columns: (1fr, auto),
-        text(size: 20pt, weight: "bold", fill: {{aerobic_color}})[{{vo2_percent}}%],
-        align(right + bottom)[#text(size: 7pt, fill: luma(100))[{{aerobic_rating}}]]
-      )
-    ],
-    // Cardiovascular Response Gauge
-    block(
-      stroke: (left: 4pt + {{cardiovascular_color}}),
-      fill: luma(252),
-      inset: (left: 1em, right: 0.8em, y: 0.8em),
-      radius: (right: 6pt),
-      width: 100%
-    )[
-      #text(size: 8pt, weight: "semibold", fill: luma(80))[{{section_cardiovascular}}]
-      #v(0.3em)
-      #block(
-        fill: luma(225),
-        radius: 3pt,
-        width: 100%,
-        height: 8pt
-      )[
-        #place(
-          block(
-            fill: {{cardiovascular_color}},
-            radius: 3pt,
-            width: {{cardiovascular_percent}}%,
-            height: 8pt
-          )
-        )
-      ]
-      #v(0.3em)
-      #grid(
-        columns: (1fr, auto),
-        text(size: 20pt, weight: "bold", fill: {{cardiovascular_color}})[{{hr_percent}}%],
-        align(right + bottom)[#text(size: 7pt, fill: luma(100))[{{cardiovascular_rating}}]]
-      )
-    ],
-    // Ventilatory Response Gauge
-    block(
-      stroke: (left: 4pt + {{ventilatory_color}}),
-      fill: luma(252),
-      inset: (left: 1em, right: 0.8em, y: 0.8em),
-      radius: (right: 6pt),
-      width: 100%
-    )[
-      #text(size: 8pt, weight: "semibold", fill: luma(80))[{{section_ventilatory}}]
-      #v(0.3em)
-      #block(
-        fill: luma(225),
-        radius: 3pt,
-        width: 100%,
-        height: 8pt
-      )[
-        #place(
-          block(
-            fill: {{ventilatory_color}},
-            radius: 3pt,
-            width: {{ventilatory_percent}}%,
-            height: 8pt
-          )
-        )
-      ]
-      #v(0.3em)
-      #grid(
-        columns: (1fr, auto),
-        text(size: 20pt, weight: "bold", fill: {{ventilatory_color}})[{{rer_peak}}],
-        align(right + bottom)[#text(size: 7pt, fill: luma(100))[{{ventilatory_rating}}]]
-      )
-    ]
+    gauge([{{section_aerobic_capacity}}], {{aerobic_percent}}%, [{{vo2_percent}} %], [{{aerobic_rating}}], {{aerobic_color}}, true),
+    gauge([{{section_cardiovascular}}], {{cardiovascular_percent}}%, [{{hr_percent}} %], [{{cardiovascular_rating}}], {{cardiovascular_color}}, false),
+    gauge([{{section_ventilatory}}], {{ventilatory_percent}}%, [{{rer_peak}}], [{{ventilatory_rating}}], {{ventilatory_color}}, false)
   )
-
-  #v(0.6em)
-
-  // Summary text
+  #v(2mm)
   #block(
-    fill: primary.lighten(95%),
-    stroke: (left: 3pt + primary),
-    inset: (left: 1em, right: 1em, y: 0.8em),
-    radius: (right: 4pt),
-    width: 100%
+    width: 100%,
+    stroke: (top: 0.5pt + rule_soft, bottom: 0.5pt + rule_soft),
+    inset: (x: 0.5mm, y: 2.5mm)
   )[
-    #text(size: 9pt)[{{interpretation_summary}}]
+    #text(size: 8.5pt, fill: body_ink)[{{interpretation_summary}}]
   ]
 ]
 
-#v(0.8em)
+// ══════ 10 Nine-panel display ══════
 
-// Longitudinal comparison (Phase 7)
+{{#if graph_panel}}
+#sec[{{section_graphs}}]
+#block(breakable: false, width: 100%)[
+  #image("{{graph_panel}}", width: 100%)
+  #v(1mm)
+  #caption[{{caption_panel}}]
+]
+{{/if}}
+
+// ══════ Longitudinal comparison (optional) ══════
+
 {{#if has_longitudinal}}
 {{#if graph_longitudinal}}
-#block(breakable: false)[
-  #block[
-    #text(size: 18pt)[📉] #h(0.4em) #heading(level: 1, outlined: false)[{{section_longitudinal}}]
-  ]
-  #figure(
-    image("{{graph_longitudinal}}", width: 100%),
-    caption: [#text(size: 9pt)[{{caption_longitudinal}}]]
-  )
+#sec[{{section_longitudinal}}]
+#block(breakable: false, width: 100%)[
+  #image("{{graph_longitudinal}}", width: 100%)
+  #v(1mm)
+  #caption[{{caption_longitudinal}}]
 ]
-#v(0.8em)
 {{/if}}
 {{/if}}
 
-// Estimates & Caveats (Phase 7)
+// ══════ 11 Estimates and caveats ══════
+
 {{#if has_estimates_caveats}}
-#block(breakable: false)[
+#sec[{{estimates_and_caveats}}]
+#block(breakable: false, width: 100%)[
   #grid(
-    columns: (auto, 1fr),
-    gutter: 0.5em,
-    align(horizon)[⚖️],
-    heading(level: 1)[{{estimates_and_caveats}}]
+    columns: (1.4fr, 1fr),
+    column-gutter: 6mm,
+    align: top,
+    [
+      {{#if has_vt_block}}
+      #clinical_table(
+        columns: (1.6fr, 1fr, 1fr, 1fr),
+        align_spec: (left, center, center, center),
+        th[{{metric}}], th[{{low}}], th[{{high}}], th[{{point}}],
+        {{vt_rows_content}}
+      )
+      #v(1mm)
+      #caption[_{{vt_caveat}}_]
+      {{/if}}
+    ],
+    [
+      {{#if has_ftp_block}}
+      #block(inset: (left: 5mm), stroke: (left: 0.5pt + rule_soft))[
+        #text(size: 7pt, weight: 600, tracking: 0.7pt, fill: muted)[#upper[{{ftp_range}}]]
+        #v(1mm)
+        #text(size: 8.5pt, fill: mid_ink)[0,72–0,77 × PAM]
+        #v(1mm)
+        #text(size: 15pt, weight: 700)[{{ftp_low}}–{{ftp_high}} W]
+        #v(1.5mm)
+        #caption[_{{ftp_caveat}}_]
+      ]
+      {{/if}}
+    ]
   )
-
-  // VT range
-  {{#if has_vt_block}}
-  == {{vt_range_title}}
-  #block(
-    fill: luma(252),
-    stroke: (left: 3pt + warning),
-    inset: (left: 1em, right: 1em, y: 0.7em),
-    radius: (right: 4pt),
-    width: 100%
-  )[
-    #text(size: 10pt, weight: "bold", fill: luma(60))[{{vt_range}}]
-    #v(0.4em)
-    #table(
-      columns: (1.2fr, 1fr, 1fr, 1fr),
-      inset: (x: 8pt, y: 5pt),
-      stroke: none,
-      fill: (col, row) => if row == 0 { luma(235) } else if calc.odd(row) { luma(250) } else { white },
-      align: (left, center, center, center),
-      [#text(weight: "bold")[{{metric}}]],
-      [#text(weight: "bold")[{{low}}]],
-      [#text(weight: "bold")[{{high}}]],
-      [#text(weight: "bold")[{{point}}]],
-      {{vt_rows_content}}
-    )
-    #v(0.2em)
-    #text(size: 8pt, fill: luma(110), style: "italic")[{{vt_caveat}}]
-  ]
-  #v(0.6em)
-  {{/if}}
-
-  // FTP range
-  {{#if has_ftp_block}}
-  #block(
-    fill: luma(252),
-    stroke: (left: 3pt + accent),
-    inset: (left: 1em, right: 1em, y: 0.7em),
-    radius: (right: 4pt),
-    width: 100%
-  )[
-    #text(size: 10pt, weight: "bold", fill: luma(60))[{{ftp_range}}]
-    #v(0.3em)
-    #text(size: 10pt)[0.72–0.77 × MAP = #text(weight: "bold")[{{ftp_low}}–{{ftp_high}} W]]
-    #v(0.2em)
-    #text(size: 8pt, fill: luma(110), style: "italic")[{{ftp_caveat}}]
-  ]
-  #v(0.6em)
-  {{/if}}
-
-  // Critical power and substrate-oxidation blocks intentionally omitted
-  // from the PDF report: both require protocols (multi-trial CP; 3-6 min
-  // steady-state substrate) that a single ramp cannot support. The
-  // screen-side Estimates-&-caveats accordion keeps them as educational
-  // placeholders.
 ]
-#v(0.8em)
 {{/if}}
 
-// Clinical Notes (only if provided)
+// ══════ 12 Clinical notes ══════
+
 {{#if has_clinical_notes}}
-#block[
-  #text(size: 18pt)[📝] #h(0.4em) #heading(level: 1, outlined: false)[{{section_clinical_notes}}]
-]
-
+#sec[{{section_clinical_notes}}]
 #block(
-  fill: luma(252),
-  stroke: 0.5pt + luma(220),
-  inset: 1em,
-  radius: 4pt,
-  width: 100%
+  width: 100%,
+  stroke: (top: 0.5pt + rule_soft, bottom: 0.5pt + rule_soft),
+  inset: (x: 0.5mm, y: 2.5mm)
 )[
-  {{clinical_notes}}
+  #text(size: 9pt, fill: body_ink)[{{clinical_notes}}]
 ]
-
-#v(0.8em)
 {{/if}}
 
-#v(0.8em)
+// ══════ 13 Analysis parameters ══════
 
-// Signature
+{{#if has_analysis_params}}
+#sec[{{section_analysis_params}}]
+#block(breakable: false, width: 100%)[
+  #grid(
+    columns: (1fr, 1fr),
+    row-gutter: 1.4mm,
+    column-gutter: 8mm,
+    {{analysis_params_content}}
+  )
+]
+{{/if}}
+
+// ══════ Signature ══════
+
+#v(6mm)
 #grid(
   columns: (1fr, 1fr),
-  gutter: 3em,
+  column-gutter: 14mm,
   [
-    #v(1.5em)
-    #line(length: 90%, stroke: 0.5pt + luma(180))
-    #v(0.3em)
-    #text(size: 9pt, fill: luma(80))[{{label_technician_signature}}]
+    #v(10mm)
+    #line(length: 100%, stroke: 0.5pt + pale)
+    #v(1mm)
+    #text(size: 8pt, fill: muted)[{{label_technician_signature}}]
   ],
   [
-    #v(0.8em)
-    #text(size: 10pt)[{{signature_date}}]
-    #v(0.3em)
-    #line(length: 90%, stroke: 0.5pt + luma(180))
-    #v(0.3em)
-    #text(size: 9pt, fill: luma(80))[Date]
+    #v(10mm)
+    #text(size: 9.5pt)[{{signature_date}}]
+    #v(1mm)
+    #line(length: 100%, stroke: 0.5pt + pale)
+    #v(1mm)
+    #text(size: 8pt, fill: muted)[Date]
   ]
 )
 
-#v(1em)
-
+#v(4mm)
 #align(center)[
-  #block(
-    inset: (y: 0.5em),
-    width: 100%
-  )[
-    #text(size: 7.5pt, fill: luma(140))[
-      {{footer_disclaimer}}
-    ]
-  ]
+  #text(size: 7pt, fill: pale)[{{footer_disclaimer}}]
 ]

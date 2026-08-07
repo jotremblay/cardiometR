@@ -216,6 +216,24 @@ get_report_labels <- function(language = "en") {
     # Messages
     message_no_thresholds = "Ventilatory thresholds could not be reliably determined.",
     footer_left = "Confidential Medical Document",
+    report_kicker = "Clinical report \u2014 cardiopulmonary exercise test",
+    report_short_title = "CPET report",
+    label_record = "record",
+    section_validity = "Test validity",
+    section_analysis_params = "Analysis parameters",
+    validity_confirmed = "Maximal effort confirmed",
+    validity_not_confirmed = "Maximal effort not confirmed",
+    label_criteria_of = "of the ACSM mandatory criteria",
+    param_software = "Software",
+    param_averaging = "Averaging",
+    param_peak_rule = "Peak VO2",
+    param_peak_rule_value = "highest %d s average",
+    param_thresholds = "Thresholds",
+    param_predicted = "Predicted values",
+    param_exclusion = "Exclusion rule",
+    param_exclusion_value = "+/- 3 SD (Lamarra)",
+    param_render = "Render",
+    param_render_value = "Typst - PDF",
     footer_disclaimer = "This report is generated automatically and should be reviewed by a qualified healthcare professional.",
 
     # Pre-test conditions
@@ -324,6 +342,24 @@ get_report_labels <- function(language = "en") {
     # Messages
     message_no_thresholds = "Les seuils ventilatoires n'ont pas pu \u00eatre d\u00e9termin\u00e9s de mani\u00e8re fiable.",
     footer_left = "Document m\u00e9dical confidentiel",
+    report_kicker = "Rapport clinique \u2014 \u00e9preuve d'effort cardiorespiratoire",
+    report_short_title = "Rapport EECR",
+    label_record = "dossier",
+    section_validity = "Validit\u00e9 du test",
+    section_analysis_params = "Param\u00e8tres de l'analyse",
+    validity_confirmed = "Effort maximal confirm\u00e9",
+    validity_not_confirmed = "Effort maximal non confirm\u00e9",
+    label_criteria_of = "des crit\u00e8res obligatoires de l'ACSM",
+    param_software = "Logiciel",
+    param_averaging = "Moyennage",
+    param_peak_rule = "VO2 de pointe",
+    param_peak_rule_value = "moyenne %d s la plus \u00e9lev\u00e9e",
+    param_thresholds = "Seuils",
+    param_predicted = "Valeurs pr\u00e9dites",
+    param_exclusion = "R\u00e8gle d'exclusion",
+    param_exclusion_value = "+/- 3 ET (Lamarra)",
+    param_render = "Rendu",
+    param_render_value = "Typst - PDF",
     footer_disclaimer = "Ce rapport est g\u00e9n\u00e9r\u00e9 automatiquement et doit \u00eatre revu par un professionnel de sant\u00e9 qualifi\u00e9.",
 
     # Pre-test conditions
@@ -415,15 +451,21 @@ build_template_data <- function(analysis, config, labels, clinical_notes, interp
       lab_url = config@lab_url %||% "",
       report_date = format(Sys.Date(), "%Y-%m-%d"),
       signature_date = format(signature_date %||% Sys.Date(), "%Y-%m-%d"),
-      logo_path = config@logo_path,
-      lab_logo_path = {
-        ln <- config@lab_name %||% ""
-        if (length(ln) > 0 && nchar(ln) > 0 && grepl("LPEBA", ln, ignore.case = TRUE)) {
-          system.file("assets", "lpeba_logo.svg", package = "cardiometR")
+      # The header carries the two institutions and the lab. A configured
+      # logo replaces the institutional one; the others stay put.
+      logo_path = {
+        chosen <- config@logo_path
+        if (!is.null(chosen) && length(chosen) > 0 && nzchar(chosen)) {
+          chosen
         } else {
-          NULL
+          system.file("assets", "Ec-_kinesiologie_-act_-phy_officiel-RVB.png",
+                      package = "cardiometR")
         }
       },
+      epic_logo_path = system.file("assets", "Centre_EPIC_ICM.jpg",
+                                   package = "cardiometR"),
+      lab_logo_path = system.file("assets", "lpeba_logo.svg",
+                                  package = "cardiometR"),
 
       # Patient info (escape user data for Typst safety)
       patient_name = escape_typst(participant@name),
@@ -455,6 +497,30 @@ build_template_data <- function(analysis, config, labels, clinical_notes, interp
       test_duration = format_duration(max(data@breaths$time_s)),
       test_reason = "-"
     )
+  )
+
+  # Running header, footer and title lines. Every page names the record it
+  # belongs to, so a loose page can still be filed.
+  record_id <- escape_typst(participant@id)
+  test_date_str <- format(metadata@test_date, "%Y-%m-%d")
+  template_data$record_line <- paste(
+    test_date_str,
+    paste(labels$label_record, record_id),
+    sep = " \u00b7 "
+  )
+  template_data$running_header <- paste(
+    labels$report_short_title, record_id, test_date_str,
+    sep = " \u00b7 "
+  )
+  template_data$footer_left <- paste(
+    record_id, escape_typst(participant@name), test_date_str,
+    sep = " \u00b7 "
+  )
+  template_data$report_kicker <- labels$report_kicker
+  template_data$test_summary_line <- paste(
+    trimws(gsub("_", " ", metadata@protocol, fixed = TRUE)),
+    escape_typst(metadata@device),
+    sep = " \u00b7 "
   )
 
   # Add peak values if available
@@ -537,6 +603,7 @@ build_template_data <- function(analysis, config, labels, clinical_notes, interp
                     !is.na(thresholds@vt1_vo2)
 
   template_data$thresholds_detected <- has_thresholds
+  template_data$has_vt_table <- has_thresholds
 
   if (has_thresholds) {
     template_data <- c(template_data, list(
@@ -692,8 +759,13 @@ build_template_data <- function(analysis, config, labels, clinical_notes, interp
     } else {
       if (language == "fr") "\u00c9conomie de course" else "Running Economy"
     }
+    has_any_economy <- any(vapply(
+      list(em@gross_efficiency, em@running_economy),
+      function(v) !is.null(v) && length(v) > 0 && all(is.finite(v)),
+      logical(1)
+    ))
     template_data <- c(template_data, list(
-      has_economy_metrics = TRUE,
+      has_economy_metrics = has_any_economy,
       section_economy = economy_title,
       economy_modality = em@modality,
       gross_efficiency = em@gross_efficiency,
@@ -752,11 +824,23 @@ build_template_data <- function(analysis, config, labels, clinical_notes, interp
     }
     if (!"thresholds" %in% report_sections) {
       template_data$thresholds_detected <- FALSE
+      template_data$has_vt_table <- FALSE
     }
     if (!"clinical_notes" %in% report_sections) {
       template_data$has_clinical_notes <- FALSE
     }
   }
+
+  # Whether the effort was maximal, stated up front. A reader who sees a
+  # submaximal test should stop reading the peak values as peaks.
+  template_data <- c(template_data,
+                     build_validity_block(analysis, labels, language))
+
+  # What produced the numbers, printed so a second reader can reproduce
+  # the analysis.
+  template_data <- c(template_data,
+                     build_analysis_params_block(analysis, config, labels,
+                                                 language))
 
   # Add visual interpretation data
   visual_interp <- generate_visual_interpretation(analysis, config@language,
@@ -1531,6 +1615,7 @@ build_phase7_template_data <- function(analysis, language, report_sections,
 
   # VT-range table i18n labels (must be explicitly forwarded -- tr() keys
   # are not auto-merged into template_data)
+  out$estimates_and_caveats <- escape_typst(tr("estimates_and_caveats", language))
   out$vt_range        <- escape_typst(tr("vt_range", language))
   out$vt_range_title  <- escape_typst(tr("vt_range", language))
   out$vt_caveat       <- escape_typst(tr("vt_caveat", language))
@@ -2021,7 +2106,7 @@ render_typst_report <- function(template_path, data, output_file) {
   # Copy any image files to the temp directory and update paths
   image_vars <- c("graph_panel", "graph_vslope", "graph_predicted",
                   "graph_slope", "graph_zstrip", "graph_longitudinal",
-                  "logo_path", "lab_logo_path")
+                  "logo_path", "lab_logo_path", "epic_logo_path")
   for (var in image_vars) {
     val <- data[[var]]
     if (!is.null(val) && length(val) > 0 && !anyNA(val) && nchar(val) > 0 && file.exists(val)) {
@@ -2352,9 +2437,11 @@ has_lactate <- "lactate_mmol" %in% names(stage_summary) &&
     '#table(
   columns: (%s),
   align: center,
-  stroke: 0.5pt + luma(200),
-  inset: 6pt,
-  fill: (_, row) => if row == 0 { luma(240) } else { none },
+  inset: (x: 2mm, y: 1.4mm),
+  stroke: (x, y) => (
+    top: if y == 0 { 1pt + rgb("#16181c") } else if y == 1 { 0.5pt + rgb("#16181c") } else { 0.4pt + rgb("#e6e9ee") },
+    bottom: 0.4pt + rgb("#e6e9ee")
+  ),
   %s,
 %s
 )',
@@ -2489,4 +2576,134 @@ create_summary_table <- function(analysis, language = "en", prediction_source = 
     )
 
   tbl
+}
+
+
+#' Build the Test-Validity Block for the Report
+#'
+#' @description
+#' Runs the ACSM maximal-effort criteria and turns the verdict into the
+#' one-line banner the report opens with.
+#'
+#' @param analysis A [CpetAnalysis] object.
+#' @param labels The label list for the report language.
+#' @param language Language code.
+#'
+#' @return A named list of template values.
+#'
+#' @keywords internal
+build_validity_block <- function(analysis, labels, language = "en") {
+  criteria <- tryCatch(
+    assess_maximal_criteria(analysis@data),
+    error = function(e) NULL
+  )
+  if (is.null(criteria)) {
+    return(list(has_validity = FALSE))
+  }
+
+  confirmed <- identical(criteria@determination, "maximal")
+  peaks <- analysis@peaks
+
+  detail_parts <- character()
+  if (!is.null(peaks)) {
+    if (length(peaks@rer_peak) > 0 && is.finite(peaks@rer_peak)) {
+      detail_parts <- c(detail_parts,
+                        sprintf("%s %.2f", labels$label_rer_peak, peaks@rer_peak))
+    }
+    if (!is.null(peaks@hr_peak) && length(peaks@hr_peak) > 0 &&
+        is.finite(peaks@hr_peak)) {
+      detail_parts <- c(detail_parts,
+                        sprintf("%s %.0f bpm", tr("hr", language), peaks@hr_peak))
+    }
+  }
+
+  list(
+    has_validity = TRUE,
+    validity_color = if (confirmed) "ok" else "vt1_col",
+    validity_title = sprintf(
+      "%s \u2014 %d/%d %s",
+      if (confirmed) labels$validity_confirmed else labels$validity_not_confirmed,
+      criteria@criteria_met,
+      criteria@criteria_available,
+      labels$label_criteria_of
+    ),
+    validity_detail = escape_typst(paste(detail_parts, collapse = " \u00b7 "))
+  )
+}
+
+
+#' Build the Analysis-Parameters Block for the Report
+#'
+#' @description
+#' Lists the settings that produced the numbers, as Typst grid cells.
+#'
+#' @param analysis A [CpetAnalysis] object.
+#' @param config A [ReportConfig] object.
+#' @param labels The label list for the report language.
+#' @param language Language code.
+#'
+#' @return A named list of template values.
+#'
+#' @keywords internal
+build_analysis_params_block <- function(analysis, config, labels,
+                                        language = "en") {
+  window_s <- analysis@data@averaging_window %||% 30
+
+  averaging <- if (isTRUE(analysis@data@is_averaged)) {
+    sprintf("%s %d s",
+            if (identical(language, "fr")) "moyenne mobile" else "rolling average",
+            as.integer(round(window_s)))
+  } else {
+    if (identical(language, "fr")) "aucun" else "none"
+  }
+
+  thresholds <- analysis@thresholds
+  threshold_desc <- if (is.null(thresholds) || is.null(thresholds@vt1_method)) {
+    "\u2014"
+  } else if (identical(thresholds@vt1_method, "manual")) {
+    tr("threshold_method_manual", language)
+  } else {
+    thresholds@vt1_method
+  }
+
+  predicted_source <- switch(config@prediction_source %||% "jones",
+    prefaut = "Pr\u00e9faut",
+    "Jones et al. (1997)"
+  )
+
+  rows <- list(
+    list(labels$param_software,
+         paste("cardiometR", utils::packageVersion("cardiometR"))),
+    list(labels$param_averaging, averaging),
+    list(labels$param_peak_rule,
+         sprintf(labels$param_peak_rule_value %||% "%d s",
+                 as.integer(round(window_s)))),
+    list(labels$param_thresholds, threshold_desc),
+    list(labels$param_predicted, predicted_source),
+    list(labels$param_exclusion, labels$param_exclusion_value),
+    list(labels$param_render, labels$param_render_value)
+  )
+
+  # A missing label or value must not collapse the pair, or the whole
+  # block loses a row and the grid falls out of step.
+  as_cell <- function(x) {
+    if (is.null(x) || length(x) == 0 || is.na(x[[1]])) "\u2014" else as.character(x[[1]])
+  }
+  rows <- lapply(rows, function(row) c(as_cell(row[[1]]), as_cell(row[[2]])))
+
+  cells <- vapply(rows, function(row) {
+    sprintf(
+      paste0("grid(columns: (42mm, 1fr), inset: (bottom: 1.2mm), ",
+             "stroke: (bottom: 0.4pt + rgb(\"#eceff3\")), ",
+             "text(size: 8.5pt, fill: muted)[%s], ",
+             "text(size: 8.5pt, weight: 600)[%s])"),
+      escape_typst(row[[1]]),
+      escape_typst(row[[2]])
+    )
+  }, character(1))
+
+  list(
+    has_analysis_params = TRUE,
+    analysis_params_content = paste(cells, collapse = ",\n    ")
+  )
 }

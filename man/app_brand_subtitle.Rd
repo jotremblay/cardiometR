@@ -10,7 +10,7 @@ app_brand_subtitle(lang)
 \item{lang}{Language code.}
 }
 \value{
-A character string, e.g. \code{"Analyse EECR · LPEBA · v0.6.0"}.
+A character string, e.g. \code{"Analyse EECR - LPEBA - v0.6.0"}.
 }
 \description{
 Brand Subtitle Shown Under the App Name
