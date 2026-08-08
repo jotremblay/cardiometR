@@ -1,37 +1,6 @@
 # Visualization Functions for cardiometR
 # CPET-specific plots based on clinical guidelines
 
-#' Filter exercise data by removing warmup/rest/recovery phases
-#'
-#' @description
-#' Filters breath-by-breath data to exercise-only phases by detecting and
-#' removing warmup (stage 0), rest, and recovery data. Uses stage annotations,
-#' power output, or phase labels depending on what is available.
-#'
-#' @param breaths Data frame with breath-by-breath data
-#'
-#' @return Filtered data frame containing only exercise phase data
-#'
-#' @keywords internal
-filter_exercise_data <- function(breaths) {
-  if (nrow(breaths) == 0) return(breaths)
-
-  if ("stage" %in% names(breaths) && any(!is.na(breaths$stage))) {
-    return(breaths |> dplyr::filter(stage > 0))
-  }
-
-  if ("power_w" %in% names(breaths) && any(!is.na(breaths$power_w))) {
-    return(breaths |> dplyr::filter(power_w > 0))
-  }
-
-  if ("phase" %in% names(breaths) && any(!is.na(breaths$phase))) {
-    exclude <- c("rest", "warmup", "recovery", "cool")
-    return(breaths |> dplyr::filter(!tolower(phase) %in% exclude))
-  }
-
-  breaths
-}
-
 #' Calculate expected VO2 for treadmill exercise
 #'
 #' @description

@@ -80,6 +80,51 @@ has_signal <- function(df, col) {
 }
 
 
+#' Filter breath data to the exercise phase
+#'
+#' Removes rest, warmup, and recovery. Prefers phase labels when present,
+#' because stage numbers can mark recovery as a positive stage.
+#'
+#' @param breaths Data frame with breath-by-breath data.
+#'
+#' @return Filtered data frame containing only exercise-phase breaths.
+#'
+#' @keywords internal
+filter_exercise_data <- function(breaths) {
+  if (nrow(breaths) == 0) {
+    return(breaths)
+  }
+
+  # Phase labels are the most reliable exercise window.
+  if ("phase" %in% names(breaths) && any(!is.na(breaths$phase))) {
+    exclude <- c("rest", "warmup", "recovery", "cool")
+    return(breaths |> dplyr::filter(!tolower(.data$phase) %in% exclude))
+  }
+
+  if ("stage_name" %in% names(breaths) && any(!is.na(breaths$stage_name))) {
+    return(
+      breaths |>
+        dplyr::filter(
+          !grepl(
+            "^(rest|warmup|warm.?up|recovery|cool)",
+            tolower(as.character(.data$stage_name))
+          )
+        )
+    )
+  }
+
+  if ("stage" %in% names(breaths) && any(!is.na(breaths$stage))) {
+    return(breaths |> dplyr::filter(.data$stage > 0))
+  }
+
+  if ("power_w" %in% names(breaths) && any(!is.na(breaths$power_w))) {
+    return(breaths |> dplyr::filter(.data$power_w > 0))
+  }
+
+  breaths
+}
+
+
 #' Drop optional columns that hold no information
 #'
 #' Columns that are entirely missing, or entirely zero, survive import and then

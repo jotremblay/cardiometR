@@ -21,24 +21,21 @@ cardiometR is an R package for analyzing Cardiopulmonary Exercise Testing (CPET)
 ## Code Organization
 ```
 R/
-├── classes.R           # All S7 class definitions
-├── generics.R          # S7 generic function definitions
-├── methods-average.R   # S7 methods for averaging
-├── methods-validate.R  # S7 methods for validation
-├── methods-thresholds.R # S7 methods for threshold detection
-├── methods-print.R     # S7 print methods
-├── import.R            # read_cosmed(), read_cpet()
-├── process.R           # Stage extraction, peak determination
-├── plot.R              # ggplot2 visualization functions
-├── table.R             # gt table generation
-├── report.R            # render_report() with typr
-├── typst-helpers.R     # Typst content generation
-├── i18n.R              # Translation helpers (tr())
-├── run_app.R           # Shiny app launcher
-├── app_ui.R            # Main Shiny UI
-├── app_server.R        # Main Shiny server
-├── mod_*.R             # Shiny modules
-└── utils.R             # Utility functions
+├── classes.R                 # All S7 class definitions
+├── generics.R                # S7 generic function definitions
+├── analyze.R                 # analyze_cpet() orchestration
+├── methods-*.R               # S7 methods (average, peaks, thresholds, …)
+├── import*.R                 # Dialect-based import engine
+├── plots.R                   # ggplot2 visualization functions
+├── report.R                  # generate_report() public API
+├── report-data.R             # Template data builders
+├── report-graphs.R           # Report graph export and cache
+├── report-interpretation.R   # Auto / visual interpretation
+├── report-typst.R            # Typst render helpers
+├── i18n.R                    # Translation helpers (tr())
+├── run_app.R / app_*.R       # Shiny launcher and shell
+├── mod_*.R                   # Shiny modules
+└── utils.R                   # Shared helpers (filter_exercise_data, …)
 ```
 
 ## Bilingual Support (EN/FR)
@@ -49,18 +46,19 @@ R/
 
 ## CPET Analysis Standards
 - Follow ATS/ACCP Guidelines (DOI: 10.1164/rccm.167.2.211)
-- Peak values: 30-second rolling average by default
-- Threshold methods: V-slope, VE/VO2, VE/VCO2, end-tidal gases
+- Peak values: 30-second rolling average on exercise breaths only
+- Threshold methods: V-slope (slope-increase constraint), VE/VO2 dual condition when possible, VE/VCO2, end-tidal gases
+- Normative z-scores may use estimated SDs; surface `sd_source` to users
 - Physiological validation ranges per clinical guidelines
 
 ## Testing Guidelines
-- Test S7 objects with `expect_s7_class()` or check `inherits(x, "ClassName")`
+- Test S7 objects with `expect_s7_class()` or check `inherits(x, "S7_object")`
 - Mock CPET data with realistic physiological values:
   - Resting VO2: 150-400 mL/min
   - Resting RER: 0.70-0.90
   - Max HR: 60-220 bpm
   - Max RER: 0.70-1.30
-- Test edge cases: missing HR, aberrant breaths, incomplete stages
+- Test edge cases: missing HR, aberrant breaths, incomplete stages, recovery spikes
 
 ## Dependencies
 - **Core**: S7, dplyr, tidyr, purrr, readxl, ggplot2, gt, scales, zoo

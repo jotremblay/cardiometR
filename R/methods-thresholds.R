@@ -4,14 +4,17 @@
 #' @rdname detect_thresholds
 #' @export
 #' @usage NULL
-method(detect_thresholds, CpetData) <- function(x,
-                                                methods = c("v_slope", "ve_vo2", "ve_vco2"),
-                                                window_s = 30,
-                                                ...) {
-  breaths <- x@breaths
+method(detect_thresholds, CpetData) <- function(
+  x,
+  methods = c("v_slope", "ve_vo2", "ve_vco2"),
+  window_s = 30,
+  ...
+) {
+  # Drop rest/warmup/recovery so seated baseline does not flatten V-slope.
+  breaths <- filter_exercise_data(x@breaths)
 
   if (nrow(breaths) < 20) {
-    cli::cli_warn("Insufficient data for threshold detection")
+    cli::cli_warn("Insufficient exercise data for threshold detection")
     return(empty_thresholds("unable"))
   }
 
@@ -32,22 +35,31 @@ method(detect_thresholds, CpetData) <- function(x,
   vo2_s <- smooth_series(breaths$vo2_ml, k)
   vco2_s <- smooth_series(breaths$vco2_ml, k)
   ve_s <- smooth_series(breaths$ve_l, k)
-  peto2_s <- if ("peto2_mmhg" %in% names(breaths)) smooth_series(breaths$peto2_mmhg, k) else NULL
-  petco2_s <- if ("petco2_mmhg" %in% names(breaths)) smooth_series(breaths$petco2_mmhg, k) else NULL
+  peto2_s <- if ("peto2_mmhg" %in% names(breaths)) {
+    smooth_series(breaths$peto2_mmhg, k)
+  } else {
+    NULL
+  }
+  petco2_s <- if ("petco2_mmhg" %in% names(breaths)) {
+    smooth_series(breaths$petco2_mmhg, k)
+  } else {
+    NULL
+  }
 
   vt1_candidates <- list()
   vt2_candidates <- list()
 
   if ("v_slope" %in% methods_norm) {
     vslope <- detect_vslope_threshold(vo2_s, vco2_s)
-    if (!is.null(vslope$vo2)) {
+    if (!is.null(vslope$vo2) && is.finite(vslope$vo2)) {
       vt1_candidates$v_slope <- vslope$vo2
     }
   }
 
   if ("ve_vo2" %in% methods_norm && !all(is.na(ve_s)) && !all(is.na(vo2_s))) {
     ve_vo2 <- ve_s * 1000 / vo2_s
-    idx <- detect_threshold_rise(ve_vo2)
+    ve_vco2 <- if (!all(is.na(vco2_s))) ve_s * 1000 / vco2_s else NULL
+    idx <- detect_vt1_ve_vo2(ve_vo2, ve_vco2)
     if (!is.na(idx)) {
       vt1_candidates$ve_vo2 <- vo2_s[idx]
     }
@@ -78,22 +90,39 @@ method(detect_thresholds, CpetData) <- function(x,
   vt1_values <- unlist(vt1_candidates, use.names = FALSE)
   vt2_values <- unlist(vt2_candidates, use.names = FALSE)
 
-  vt1_vo2 <- if (length(vt1_values) > 0) stats::median(vt1_values, na.rm = TRUE) else NA_real_
-  vt2_vo2 <- if (length(vt2_values) > 0) stats::median(vt2_values, na.rm = TRUE) else NA_real_
+  vt1_vo2 <- if (length(vt1_values) > 0) {
+    stats::median(vt1_values, na.rm = TRUE)
+  } else {
+    NA_real_
+  }
+  vt2_vo2 <- if (length(vt2_values) > 0) {
+    stats::median(vt2_values, na.rm = TRUE)
+  } else {
+    NA_real_
+  }
 
   # Enforce VT2 > VT1 if both available
   if (!is.na(vt1_vo2) && !is.na(vt2_vo2) && vt2_vo2 <= vt1_vo2) {
     vt2_vo2 <- NA_real_
     vt2_candidates <- list()
+    vt2_values <- numeric()
   }
 
-  vt1_method <- if (length(vt1_candidates) > 0) paste(names(vt1_candidates), collapse = ", ") else NULL
-  vt2_method <- if (length(vt2_candidates) > 0) paste(names(vt2_candidates), collapse = ", ") else NULL
+  vt1_method <- if (length(vt1_candidates) > 0) {
+    paste(names(vt1_candidates), collapse = ", ")
+  } else {
+    NULL
+  }
+  vt2_method <- if (length(vt2_candidates) > 0) {
+    paste(names(vt2_candidates), collapse = ", ")
+  } else {
+    NULL
+  }
 
   vt1_vals <- lookup_threshold_values(vt1_vo2, breaths)
   vt2_vals <- lookup_threshold_values(vt2_vo2, breaths)
 
-  confidence <- threshold_confidence(length(vt1_candidates) + length(vt2_candidates))
+  confidence <- threshold_confidence(c(vt1_values, vt2_values))
 
   Thresholds(
     vt1_vo2 = vt1_vo2,
@@ -109,12 +138,15 @@ method(detect_thresholds, CpetData) <- function(x,
 }
 
 normalize_threshold_methods <- function(methods) {
-  if (is.null(methods) || length(methods) == 0) return(character())
+  if (is.null(methods) || length(methods) == 0) {
+    return(character())
+  }
 
   normalize_one <- function(x) {
     x <- tolower(x)
     x <- gsub("[^a-z0-9]", "", x)
-    switch(x,
+    switch(
+      x,
       vslope = "v_slope",
       vslopeanalysis = "v_slope",
       v_slope = "v_slope",
@@ -143,29 +175,58 @@ normalize_threshold_methods <- function(methods) {
 }
 
 smooth_series <- function(x, k) {
-  if (length(x) < k || k < 5) return(x)
+  if (length(x) < k || k < 5) {
+    return(x)
+  }
   zoo::rollmean(x, k = k, fill = NA, align = "center")
 }
 
 detect_vslope_threshold <- function(vo2, vco2) {
   df <- data.frame(vo2 = vo2, vco2 = vco2)
   df <- df[complete.cases(df), ]
-  if (nrow(df) < 20) return(list(vo2 = NA_real_))
+  if (nrow(df) < 20) {
+    return(list(vo2 = NA_real_))
+  }
 
   df <- df[order(df$vo2), ]
   n <- nrow(df)
 
-  candidates <- unique(round(seq(floor(n * 0.2), floor(n * 0.8), length.out = 30)))
+  candidates <- unique(round(seq(
+    floor(n * 0.2),
+    floor(n * 0.8),
+    length.out = 30
+  )))
   best <- list(sse = Inf, idx = NA_integer_)
 
   for (idx in candidates) {
-    if (idx < 5 || idx > n - 5) next
+    if (idx < 5 || idx > n - 5) {
+      next
+    }
     left <- df[1:idx, ]
     right <- df[(idx + 1):n, ]
 
-    fit_left <- tryCatch(stats::lm(vco2 ~ vo2, data = left), error = function(e) NULL)
-    fit_right <- tryCatch(stats::lm(vco2 ~ vo2, data = right), error = function(e) NULL)
-    if (is.null(fit_left) || is.null(fit_right)) next
+    fit_left <- tryCatch(
+      stats::lm(vco2 ~ vo2, data = left),
+      error = function(e) NULL
+    )
+    fit_right <- tryCatch(
+      stats::lm(vco2 ~ vo2, data = right),
+      error = function(e) NULL
+    )
+    if (is.null(fit_left) || is.null(fit_right)) {
+      next
+    }
+
+    slope_left <- stats::coef(fit_left)[["vo2"]]
+    slope_right <- stats::coef(fit_right)[["vo2"]]
+    # Beaver et al.: post-break VCO2–VO2 slope must exceed the pre-break slope.
+    if (
+      !is.finite(slope_left) ||
+        !is.finite(slope_right) ||
+        slope_right <= slope_left
+    ) {
+      next
+    }
 
     sse <- sum(stats::resid(fit_left)^2) + sum(stats::resid(fit_right)^2)
     if (!is.na(sse) && sse < best$sse) {
@@ -174,17 +235,86 @@ detect_vslope_threshold <- function(vo2, vco2) {
     }
   }
 
-  if (is.na(best$idx)) return(list(vo2 = NA_real_))
+  if (is.na(best$idx)) {
+    return(list(vo2 = NA_real_))
+  }
   list(vo2 = df$vo2[best$idx])
 }
 
+#' VT1 from VE/VO2 rise, with dual-condition check when VE/VCO2 exists
+#'
+#' Classic VT1: VE/VO2 rises while VE/VCO2 stays relatively flat.
+#' Falls back to a single-series rise when VE/VCO2 is unavailable.
+#'
+#' @keywords internal
+detect_vt1_ve_vo2 <- function(
+  ve_vo2,
+  ve_vco2 = NULL,
+  rise_pct = 0.05,
+  sustain = 5,
+  flat_pct = 0.03
+) {
+  idx <- detect_threshold_rise(ve_vo2, rise_pct = rise_pct, sustain = sustain)
+  if (is.na(idx)) {
+    return(NA_integer_)
+  }
+  if (is.null(ve_vco2) || all(is.na(ve_vco2))) {
+    return(idx)
+  }
+
+  # Prefer the first rise where VE/VCO2 has not yet broken upward.
+  n <- length(ve_vo2)
+  for (i in seq(idx, max(1L, n - sustain + 1L))) {
+    window_vo2 <- ve_vo2[i:min(n, i + sustain - 1L)]
+    window_vco2 <- ve_vco2[i:min(n, i + sustain - 1L)]
+    if (
+      sum(!is.na(window_vo2)) < sustain || sum(!is.na(window_vco2)) < sustain
+    ) {
+      next
+    }
+    baseline_vo2 <- stats::median(
+      ve_vo2[seq_len(max(1L, i - 1L))],
+      na.rm = TRUE
+    )
+    baseline_vco2 <- stats::median(
+      ve_vco2[seq_len(max(1L, i - 1L))],
+      na.rm = TRUE
+    )
+    if (
+      !is.finite(baseline_vo2) ||
+        !is.finite(baseline_vco2) ||
+        baseline_vo2 <= 0 ||
+        baseline_vco2 <= 0
+    ) {
+      next
+    }
+    vo2_up <- all(window_vo2 >= baseline_vo2 * (1 + rise_pct), na.rm = TRUE)
+    vco2_flat <- all(
+      window_vco2 <= baseline_vco2 * (1 + flat_pct),
+      na.rm = TRUE
+    )
+    if (vo2_up && vco2_flat) {
+      return(i)
+    }
+  }
+
+  # Dual condition not met; keep the single-series rise as a weaker proposal.
+  idx
+}
+
 detect_threshold_rise <- function(x, rise_pct = 0.05, sustain = 5) {
-  if (all(is.na(x)) || length(x) < (sustain + 5)) return(NA_integer_)
+  if (all(is.na(x)) || length(x) < (sustain + 5)) {
+    return(NA_integer_)
+  }
 
   x_clean <- x
   x_clean[is.na(x_clean)] <- Inf
   start_idx <- which.min(x_clean)
-  if (length(start_idx) == 0 || is.infinite(x_clean[start_idx]) || start_idx >= length(x)) {
+  if (
+    length(start_idx) == 0 ||
+      is.infinite(x_clean[start_idx]) ||
+      start_idx >= length(x)
+  ) {
     return(NA_integer_)
   }
 
@@ -193,7 +323,9 @@ detect_threshold_rise <- function(x, rise_pct = 0.05, sustain = 5) {
   threshold <- baseline * (1 + rise_pct)
   for (i in seq(start_idx + 1, length(x) - sustain + 1)) {
     window <- x[i:(i + sustain - 1)]
-    if (sum(!is.na(window)) < sustain) next
+    if (sum(!is.na(window)) < sustain) {
+      next
+    }
     if (all(window >= threshold, na.rm = TRUE)) return(i)
   }
 
@@ -201,12 +333,18 @@ detect_threshold_rise <- function(x, rise_pct = 0.05, sustain = 5) {
 }
 
 detect_threshold_drop <- function(x, drop_pct = 0.05, sustain = 5) {
-  if (all(is.na(x)) || length(x) < (sustain + 5)) return(NA_integer_)
+  if (all(is.na(x)) || length(x) < (sustain + 5)) {
+    return(NA_integer_)
+  }
 
   x_clean <- x
   x_clean[is.na(x_clean)] <- -Inf
   start_idx <- which.max(x_clean)
-  if (length(start_idx) == 0 || is.infinite(x_clean[start_idx]) || start_idx >= length(x)) {
+  if (
+    length(start_idx) == 0 ||
+      is.infinite(x_clean[start_idx]) ||
+      start_idx >= length(x)
+  ) {
     return(NA_integer_)
   }
 
@@ -215,7 +353,9 @@ detect_threshold_drop <- function(x, drop_pct = 0.05, sustain = 5) {
   threshold <- baseline * (1 - drop_pct)
   for (i in seq(start_idx + 1, length(x) - sustain + 1)) {
     window <- x[i:(i + sustain - 1)]
-    if (sum(!is.na(window)) < sustain) next
+    if (sum(!is.na(window)) < sustain) {
+      next
+    }
     if (all(window <= threshold, na.rm = TRUE)) return(i)
   }
 
@@ -235,11 +375,32 @@ lookup_threshold_values <- function(vo2_target, breaths) {
   )
 }
 
-threshold_confidence <- function(n_methods) {
-  if (n_methods >= 3) "high"
-  else if (n_methods == 2) "moderate"
-  else if (n_methods == 1) "low"
-  else "unable"
+threshold_confidence <- function(values, agreement_pct = 0.10) {
+  values <- as.numeric(values)
+  values <- values[is.finite(values)]
+  n <- length(values)
+  if (n == 0) {
+    return("unable")
+  }
+  if (n == 1) {
+    return("low")
+  }
+
+  med <- stats::median(values)
+  if (!is.finite(med) || med <= 0) {
+    return("low")
+  }
+
+  rel_span <- (max(values) - min(values)) / med
+  n_agree <- sum(abs(values - med) / med <= agreement_pct)
+
+  if (n_agree >= 3 || (n >= 2 && rel_span <= agreement_pct)) {
+    "high"
+  } else if (n_agree >= 2 || rel_span <= agreement_pct * 1.5) {
+    "moderate"
+  } else {
+    "low"
+  }
 }
 
 #' Detect VT1 and VT2 as Ranges Across Methods and Smoothing
@@ -272,24 +433,53 @@ threshold_confidence <- function(n_methods) {
 #'   supplied, leading seated-rest breaths (stage 0) are excluded before
 #'   detection so resting values don't shift VT1/VT2 downward.
 #' @export
-detect_threshold_range <- function(breath_df,
-                                   methods = NULL,
-                                   smoothing = c("default", "narrow", "wide"),
-                                   stages = NULL) {
+detect_threshold_range <- function(
+  breath_df,
+  methods = NULL,
+  smoothing = c("default", "narrow", "wide"),
+  stages = NULL
+) {
   empty <- list(
-    vt1_range = NULL, vt2_range = NULL,
-    vt1_values = tibble::tibble(method = character(), smoothing = character(), vo2 = numeric()),
-    vt2_values = tibble::tibble(method = character(), smoothing = character(), vo2 = numeric())
+    vt1_range = NULL,
+    vt2_range = NULL,
+    vt1_values = tibble::tibble(
+      method = character(),
+      smoothing = character(),
+      vo2 = numeric()
+    ),
+    vt2_values = tibble::tibble(
+      method = character(),
+      smoothing = character(),
+      vo2 = numeric()
+    )
   )
 
   required <- c("time_s", "vo2_ml", "vco2_ml", "ve_l")
-  if (!is.data.frame(breath_df) || !all(required %in% names(breath_df)) || nrow(breath_df) < 20) {
+  if (
+    !is.data.frame(breath_df) ||
+      !all(required %in% names(breath_df)) ||
+      nrow(breath_df) < 20
+  ) {
     return(empty)
   }
 
+  # Prefer phase/stage exercise window when available.
+  if (
+    "phase" %in%
+      names(breath_df) ||
+      "stage" %in% names(breath_df) ||
+      "stage_name" %in% names(breath_df)
+  ) {
+    breath_df <- filter_exercise_data(breath_df)
+    if (nrow(breath_df) < 20) return(empty)
+  }
+
   ex_start <- NA_real_
-  if (!is.null(stages) && is.data.frame(stages) &&
-      all(c("time_s", "stage") %in% names(stages))) {
+  if (
+    !is.null(stages) &&
+      is.data.frame(stages) &&
+      all(c("time_s", "stage") %in% names(stages))
+  ) {
     ex_rows <- stages |> dplyr::filter(!is.na(.data$stage), .data$stage > 0)
     if (nrow(ex_rows) > 0) ex_start <- min(ex_rows$time_s, na.rm = TRUE)
   }
@@ -311,16 +501,24 @@ detect_threshold_range <- function(breath_df,
   } else {
     methods_norm <- normalize_threshold_methods(methods)
   }
-  if (!length(methods_norm)) return(empty)
+  if (!length(methods_norm)) {
+    return(empty)
+  }
 
   smoothing <- match.arg(smoothing, several.ok = TRUE)
   window_map <- c(narrow = 10, default = 30, wide = 60)
 
   avg_interval <- mean(diff(breath_df$time_s), na.rm = TRUE)
-  if (!is.finite(avg_interval) || avg_interval <= 0) avg_interval <- 1
+  if (!is.finite(avg_interval) || avg_interval <= 0) {
+    avg_interval <- 1
+  }
 
-  has_peto2 <- "peto2_mmhg" %in% names(breath_df) && !all(is.na(breath_df$peto2_mmhg))
-  has_petco2 <- "petco2_mmhg" %in% names(breath_df) && !all(is.na(breath_df$petco2_mmhg))
+  has_peto2 <- "peto2_mmhg" %in%
+    names(breath_df) &&
+    !all(is.na(breath_df$peto2_mmhg))
+  has_petco2 <- "petco2_mmhg" %in%
+    names(breath_df) &&
+    !all(is.na(breath_df$petco2_mmhg))
 
   vt1_rows <- list()
   vt2_rows <- list()
@@ -330,66 +528,101 @@ detect_threshold_range <- function(breath_df,
     k <- max(5, round(window_s / avg_interval))
     k <- min(k, nrow(breath_df) %/% 2)
 
-    vo2_s  <- smooth_series(breath_df$vo2_ml,  k)
+    vo2_s <- smooth_series(breath_df$vo2_ml, k)
     vco2_s <- smooth_series(breath_df$vco2_ml, k)
-    ve_s   <- smooth_series(breath_df$ve_l,    k)
-    peto2_s  <- if (has_peto2)  smooth_series(breath_df$peto2_mmhg,  k) else NULL
-    petco2_s <- if (has_petco2) smooth_series(breath_df$petco2_mmhg, k) else NULL
+    ve_s <- smooth_series(breath_df$ve_l, k)
+    peto2_s <- if (has_peto2) smooth_series(breath_df$peto2_mmhg, k) else NULL
+    petco2_s <- if (has_petco2) {
+      smooth_series(breath_df$petco2_mmhg, k)
+    } else {
+      NULL
+    }
 
     push <- function(bucket, method, vo2_val) {
-      if (is.null(vo2_val) || !is.finite(vo2_val)) return(bucket)
-      c(bucket, list(tibble::tibble(method = method, smoothing = sm, vo2 = vo2_val)))
+      if (is.null(vo2_val) || !is.finite(vo2_val)) {
+        return(bucket)
+      }
+      c(
+        bucket,
+        list(tibble::tibble(method = method, smoothing = sm, vo2 = vo2_val))
+      )
     }
 
     if ("v_slope" %in% methods_norm) {
-      res <- tryCatch(detect_vslope_threshold(vo2_s, vco2_s), error = function(e) NULL)
+      res <- tryCatch(
+        detect_vslope_threshold(vo2_s, vco2_s),
+        error = function(e) NULL
+      )
       vt1_rows <- push(vt1_rows, "v_slope", res$vo2)
     }
     if ("ve_vo2" %in% methods_norm) {
-      res <- tryCatch({
-        ratio <- ve_s * 1000 / vo2_s
-        idx <- detect_threshold_rise(ratio)
-        if (!is.na(idx)) vo2_s[idx] else NULL
-      }, error = function(e) NULL)
+      res <- tryCatch(
+        {
+          ratio <- ve_s * 1000 / vo2_s
+          ve_vco2_ratio <- ve_s * 1000 / vco2_s
+          idx <- detect_vt1_ve_vo2(ratio, ve_vco2_ratio)
+          if (!is.na(idx)) vo2_s[idx] else NULL
+        },
+        error = function(e) NULL
+      )
       vt1_rows <- push(vt1_rows, "ve_vo2", res)
     }
     if ("peto2" %in% methods_norm && !is.null(peto2_s)) {
-      res <- tryCatch({
-        idx <- detect_threshold_rise(peto2_s)
-        if (!is.na(idx)) vo2_s[idx] else NULL
-      }, error = function(e) NULL)
+      res <- tryCatch(
+        {
+          idx <- detect_threshold_rise(peto2_s)
+          if (!is.na(idx)) vo2_s[idx] else NULL
+        },
+        error = function(e) NULL
+      )
       vt1_rows <- push(vt1_rows, "peto2", res)
     }
 
     if ("ve_vco2" %in% methods_norm) {
-      res <- tryCatch({
-        ratio <- ve_s * 1000 / vco2_s
-        idx <- detect_threshold_rise(ratio)
-        if (!is.na(idx)) vo2_s[idx] else NULL
-      }, error = function(e) NULL)
+      res <- tryCatch(
+        {
+          ratio <- ve_s * 1000 / vco2_s
+          idx <- detect_threshold_rise(ratio)
+          if (!is.na(idx)) vo2_s[idx] else NULL
+        },
+        error = function(e) NULL
+      )
       vt2_rows <- push(vt2_rows, "ve_vco2", res)
     }
     if ("petco2" %in% methods_norm && !is.null(petco2_s)) {
-      res <- tryCatch({
-        idx <- detect_threshold_drop(petco2_s)
-        if (!is.na(idx)) vo2_s[idx] else NULL
-      }, error = function(e) NULL)
+      res <- tryCatch(
+        {
+          idx <- detect_threshold_drop(petco2_s)
+          if (!is.na(idx)) vo2_s[idx] else NULL
+        },
+        error = function(e) NULL
+      )
       vt2_rows <- push(vt2_rows, "petco2", res)
     }
   }
 
-  vt1_values <- if (length(vt1_rows)) dplyr::bind_rows(vt1_rows) else empty$vt1_values
-  vt2_values <- if (length(vt2_rows)) dplyr::bind_rows(vt2_rows) else empty$vt2_values
+  vt1_values <- if (length(vt1_rows)) {
+    dplyr::bind_rows(vt1_rows)
+  } else {
+    empty$vt1_values
+  }
+  vt2_values <- if (length(vt2_rows)) {
+    dplyr::bind_rows(vt2_rows)
+  } else {
+    empty$vt2_values
+  }
 
   range_or_null <- function(v) {
     v <- v[is.finite(v)]
-    if (!length(v)) return(NULL)
+    if (!length(v)) {
+      return(NULL)
+    }
     as.numeric(c(min(v), max(v)))
   }
 
   list(
-    vt1_range  = range_or_null(vt1_values$vo2),
-    vt2_range  = range_or_null(vt2_values$vo2),
+    vt1_range = range_or_null(vt1_values$vo2),
+    vt2_range = range_or_null(vt2_values$vo2),
     vt1_values = vt1_values,
     vt2_values = vt2_values
   )
@@ -412,9 +645,12 @@ populate_threshold_ranges <- function(analysis, breath_df, stages = NULL) {
   res <- tryCatch(
     if (!is.null(breath_df)) {
       detect_threshold_range(breath_df, stages = stages)
-    } else NULL,
+    } else {
+      NULL
+    },
     error = function(e) {
-      cli::cli_warn("VT range detection failed: {e$message}"); NULL
+      cli::cli_warn("VT range detection failed: {e$message}")
+      NULL
     }
   )
   if (!is.null(res)) {

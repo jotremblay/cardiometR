@@ -82,3 +82,36 @@ test_that("calculate_gross_efficiency returns plausible values", {
   result_elite <- calculate_gross_efficiency(2800, 280, 0.95)
   expect_true(result_elite >= 18 && result_elite <= 30)
 })
+
+test_that("calculate_economy_metrics gates on steady state by default", {
+  analysis <- create_mock_cpet_analysis()
+  skip_if(is.null(analysis@stage_summary) || nrow(analysis@stage_summary) == 0)
+
+  ref <- analysis@stage_summary$stage
+  if (is.null(ref)) {
+    ref <- seq_len(nrow(analysis@stage_summary))
+  }
+  ref <- as.integer(ref[ref > 0][1])
+  skip_if(is.na(ref))
+
+  # Force every stage to fail steady state
+  analysis@steady_state_stages <- tibble::tibble(
+    stage = as.integer(analysis@stage_summary$stage %||% seq_len(nrow(analysis@stage_summary))),
+    steady_state_ok = FALSE
+  )
+
+  expect_warning(
+    econ <- calculate_economy_metrics(analysis, reference_stage = ref),
+    "steady state"
+  )
+  expect_null(econ@gross_efficiency)
+  expect_null(econ@running_economy)
+
+  # Override allowed
+  econ2 <- calculate_economy_metrics(
+    analysis,
+    reference_stage = ref,
+    require_steady_state = FALSE
+  )
+  expect_true(inherits(econ2, "S7_object"))
+})

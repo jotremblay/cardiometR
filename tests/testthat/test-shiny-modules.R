@@ -296,3 +296,81 @@ test_that("a French label is not simply the English one left in place", {
     identical(en[[k]], fr[[k]]), logical(1)))
   expect_lt(identical_share, 0.5)
 })
+
+test_that("save_analysis_session and load_analysis_session round-trip", {
+  mock <- create_mock_breath_data(n_breaths = 80)
+  participant <- Participant(
+    id = mock$participant$id, name = mock$participant$name,
+    age = mock$participant$age, sex = mock$participant$sex,
+    height_cm = mock$participant$height_cm, weight_kg = mock$participant$weight_kg
+  )
+  data <- CpetData(
+    participant = participant,
+    metadata = CpetMetadata(test_date = Sys.Date(), device = "Mock", protocol = "Ramp"),
+    breaths = mock$breaths
+  )
+  path <- withr::local_tempfile(fileext = ".rds")
+  save_analysis_session(
+    path = path,
+    cpet_data = data,
+    settings = list(averaging_window = 30, athlete_sport = "cycling"),
+    threshold_override = list(vt1_vo2 = 2000)
+  )
+  loaded <- load_analysis_session(path)
+  expect_true(S7::S7_inherits(loaded$cpet_data, CpetData))
+  expect_equal(loaded$settings$averaging_window, 30)
+  expect_equal(loaded$threshold_override$vt1_vo2, 2000)
+})
+
+test_that("mod_results_server produces peaks for mock data", {
+  skip_if_not_installed("shiny")
+  mock <- create_mock_breath_data(n_breaths = 120)
+  participant <- Participant(
+    id = mock$participant$id, name = mock$participant$name,
+    age = mock$participant$age, sex = mock$participant$sex,
+    height_cm = mock$participant$height_cm, weight_kg = mock$participant$weight_kg
+  )
+  data <- CpetData(
+    participant = participant,
+    metadata = CpetMetadata(test_date = Sys.Date(), device = "Mock", protocol = "Ramp"),
+    breaths = mock$breaths
+  )
+
+  shiny::testServer(
+    mod_results_server,
+    args = list(
+      language = shiny::reactiveVal("en"),
+      cpet_data = shiny::reactive(data),
+      participant = shiny::reactive(participant),
+      settings = shiny::reactive(list(
+        averaging_method = "rolling",
+        averaging_window = 30,
+        threshold_methods = c("v_slope", "ve_vo2"),
+        protocol = "ramp",
+        stage_duration = 60,
+        increment_size = 25,
+        modality = "cycling",
+        starting_intensity = 0,
+        athlete_sport = "cycling",
+        athlete_level = "recreational"
+      )),
+      prediction_source = shiny::reactive("jones"),
+      dark_mode = shiny::reactive(FALSE),
+      threshold_override = shiny::reactive(NULL)
+    ),
+    {
+      a <- analysis()
+      expect_true(inherits(a, "S7_object"))
+      expect_gt(a@peaks@vo2_peak, 0)
+    }
+  )
+})
+
+test_that("threshold override persists through apply_threshold_override", {
+  data <- create_mock_cpet_analysis()@data
+  th <- detect_thresholds(data, methods = c("v_slope", "ve_vo2"))
+  ov <- list(vt1_vo2 = 1800, vt2_vo2 = 2600)
+  out <- apply_threshold_override(th, ov, data)
+  expect_equal(out@vt1_vo2, 1800)
+  expect_equal(out@vt2_vo2, 2600)
+})

@@ -31,7 +31,12 @@ method(assess_maximal_criteria, CpetData) <- function(x,
                                                        hr_threshold_pct = 85,
                                                        plateau_threshold = 150,
                                                        ...) {
-  breaths <- x@breaths
+  # Effort criteria use the exercise window only. Recovery spikes must not
+  # satisfy RER or HR criteria.
+  breaths <- filter_exercise_data(x@breaths)
+  if (nrow(breaths) < 3) {
+    breaths <- x@breaths
+  }
   age <- x@participant@age
 
 

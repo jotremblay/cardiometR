@@ -12,7 +12,7 @@
 app_server <- function(input, output, session) {
 
   # Reactive language state
-language <- shiny::reactiveVal(getOption("cardiometR.language", "fr"))
+  language <- shiny::reactiveVal(getOption("cardiometR.language", "fr"))
 
   # Language toggle handler
   # Nav tabs updated via JS custom message handler; dropdowns updated
@@ -64,8 +64,10 @@ language <- shiny::reactiveVal(getOption("cardiometR.language", "fr"))
 
   # ---- Module: Settings ----
   # Returns: list(settings = reactive())
-  settings_result <- mod_settings_server("settings", language,
-                                         cpet_data = upload_result$cpet_data)
+  settings_result <- mod_settings_server(
+    "settings", language,
+    cpet_data = upload_result$cpet_data
+  )
 
   # Reactive: dark-mode flag for plots (TRUE when bslib input_dark_mode == "dark")
   dark_mode <- shiny::reactive({

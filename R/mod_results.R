@@ -129,10 +129,20 @@ mod_results_server <- function(id, language, cpet_data, participant, settings,
           }
 
           shiny::incProgress(0.2, detail = tr("step_peaks", lang))
-          peaks <- find_peaks(
-            data_avg,
-            averaging = s$averaging_window %||% 30
-          )
+          peaks <- tryCatch({
+            find_peaks(
+              data_avg,
+              averaging = s$averaging_window %||% 30
+            )
+          }, error = function(e) {
+            shiny::showNotification(
+              paste(tr("warning_peaks_failed", lang), e$message),
+              type = "error",
+              duration = 8
+            )
+            NULL
+          })
+          shiny::req(peaks)
 
           shiny::incProgress(0.2, detail = tr("step_thresholds", lang))
           thresholds <- NULL
@@ -145,7 +155,7 @@ mod_results_server <- function(id, language, cpet_data, participant, settings,
               )
             }, error = function(e) {
               shiny::showNotification(
-                tr("warning_thresholds_failed", lang),
+                paste(tr("warning_thresholds_failed", lang), e$message),
                 type = "warning",
                 duration = 5
               )
@@ -209,6 +219,14 @@ mod_results_server <- function(id, language, cpet_data, participant, settings,
             stages = stages_tbl
           )
 
+          if (is.null(analysis_obj@z_scores)) {
+            shiny::showNotification(
+              tr("warning_metrics_partial", lang),
+              type = "warning",
+              duration = 5
+            )
+          }
+
           analysis_obj
         })
       }
@@ -223,10 +241,24 @@ mod_results_server <- function(id, language, cpet_data, participant, settings,
       if (!is.finite(z) || !is.finite(pct)) {
         return(shiny::span(class = "text-muted small", "\u2014"))
       }
+      sd_src <- z_entry$sd_source %||% NA_character_
+      approx_note <- if (identical(sd_src, "estimated")) {
+        paste0(" \u00b7 ", tr("norms_sd_estimated_short", lang))
+      } else if (identical(sd_src, "tabulated")) {
+        paste0(" \u00b7 ", tr("norms_sd_tabulated_short", lang))
+      } else {
+        ""
+      }
+      # Soften precision language when SD is estimated from a published range.
+      pct_txt <- if (identical(sd_src, "estimated")) {
+        sprintf("~p%.0f", pct)
+      } else {
+        sprintf("p%.0f", pct)
+      }
       shiny::tags$small(
         class = "text-muted d-block",
-        sprintf("%s %.2f \u00b7 p%.0f",
-                tr("z_score", lang), z, pct)
+        sprintf("%s %.2f \u00b7 %s%s",
+                tr("z_score", lang), z, pct_txt, approx_note)
       )
     }
 
@@ -483,10 +515,26 @@ mod_results_server <- function(id, language, cpet_data, participant, settings,
         error = function(e) NULL
       )
       if (is.null(norms)) return(NULL)
-      shiny::tags$small(
-        class = "text-muted d-block mb-2",
-        shiny::icon("chart-bar"),
-        paste0(" ", norms$description, " (", norms$citation_short, ")")
+      zs <- a@z_scores %||% list()
+      sd_sources <- unique(vapply(zs, function(z) {
+        if (is.list(z) && !is.null(z$sd_source)) as.character(z$sd_source) else NA_character_
+      }, character(1)))
+      sd_sources <- sd_sources[!is.na(sd_sources)]
+      sd_note <- NULL
+      if ("estimated" %in% sd_sources) {
+        sd_note <- tr("norms_sd_estimated", language())
+      } else if ("tabulated" %in% sd_sources) {
+        sd_note <- tr("norms_sd_tabulated", language())
+      }
+      shiny::tagList(
+        shiny::tags$small(
+          class = "text-muted d-block mb-2",
+          shiny::icon("chart-bar"),
+          paste0(" ", norms$description, " (", norms$citation_short, ")")
+        ),
+        if (!is.null(sd_note)) {
+          shiny::tags$small(class = "text-warning d-block mb-2", sd_note)
+        }
       )
     })
 

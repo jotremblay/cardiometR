@@ -5,22 +5,32 @@
 #' @export
 #' @usage NULL
 method(find_peaks, CpetData) <- function(x, averaging = 30, ...) {
-  breaths <- x@breaths
+  breaths <- filter_exercise_data(x@breaths)
   weight_kg <- x@participant@weight_kg
 
   # Apply rolling average for peak determination
   if (nrow(breaths) < 3) {
-    cli::cli_abort("Insufficient data for peak determination")
+    cli::cli_abort("Insufficient exercise data for peak determination")
   }
 
   # Calculate window size in number of breaths
   avg_interval <- mean(diff(breaths$time_s), na.rm = TRUE)
   k <- max(3, round(averaging / avg_interval))
-  k <- min(k, nrow(breaths))  # Can't exceed data length
+  k <- min(k, nrow(breaths)) # Can't exceed data length
 
   # Apply rolling average to key variables
-  vo2_smooth <- zoo::rollmean(breaths$vo2_ml, k = k, fill = NA, align = "center")
-  vco2_smooth <- zoo::rollmean(breaths$vco2_ml, k = k, fill = NA, align = "center")
+  vo2_smooth <- zoo::rollmean(
+    breaths$vo2_ml,
+    k = k,
+    fill = NA,
+    align = "center"
+  )
+  vco2_smooth <- zoo::rollmean(
+    breaths$vco2_ml,
+    k = k,
+    fill = NA,
+    align = "center"
+  )
   ve_smooth <- zoo::rollmean(breaths$ve_l, k = k, fill = NA, align = "center")
   rer_smooth <- zoo::rollmean(breaths$rer, k = k, fill = NA, align = "center")
 
@@ -33,7 +43,12 @@ method(find_peaks, CpetData) <- function(x, averaging = 30, ...) {
   # Optional HR peak
   hr_peak <- NULL
   if ("hr_bpm" %in% names(breaths) && !all(is.na(breaths$hr_bpm))) {
-    hr_smooth <- zoo::rollmean(breaths$hr_bpm, k = k, fill = NA, align = "center")
+    hr_smooth <- zoo::rollmean(
+      breaths$hr_bpm,
+      k = k,
+      fill = NA,
+      align = "center"
+    )
     hr_peak <- max(hr_smooth, na.rm = TRUE)
   }
 
@@ -41,7 +56,12 @@ method(find_peaks, CpetData) <- function(x, averaging = 30, ...) {
   power_peak <- NULL
   if ("power_w" %in% names(breaths) && !all(is.na(breaths$power_w))) {
     # Power is typically already stable, but smooth anyway
-    power_smooth <- zoo::rollmean(breaths$power_w, k = k, fill = NA, align = "center")
+    power_smooth <- zoo::rollmean(
+      breaths$power_w,
+      k = k,
+      fill = NA,
+      align = "center"
+    )
     power_peak <- max(power_smooth, na.rm = TRUE)
   }
 
@@ -49,7 +69,12 @@ method(find_peaks, CpetData) <- function(x, averaging = 30, ...) {
   # column, filled with zeros, so presence alone is not enough.
   speed_peak <- NULL
   if (has_signal(breaths, "speed_kmh")) {
-    speed_smooth <- zoo::rollmean(breaths$speed_kmh, k = k, fill = NA, align = "center")
+    speed_smooth <- zoo::rollmean(
+      breaths$speed_kmh,
+      k = k,
+      fill = NA,
+      align = "center"
+    )
     speed_peak <- max(speed_smooth, na.rm = TRUE)
   }
 
@@ -77,14 +102,22 @@ method(find_peaks, CpetData) <- function(x, averaging = 30, ...) {
 #'
 #' @export
 find_time_to_peak <- function(x, averaging = 30) {
-  breaths <- x@breaths
+  breaths <- filter_exercise_data(x@breaths)
+  if (nrow(breaths) < 3) {
+    cli::cli_abort("Insufficient exercise data for time-to-peak")
+  }
 
   # Calculate rolling average
   avg_interval <- mean(diff(breaths$time_s), na.rm = TRUE)
   k <- max(3, round(averaging / avg_interval))
   k <- min(k, nrow(breaths))
 
-  vo2_smooth <- zoo::rollmean(breaths$vo2_ml, k = k, fill = NA, align = "center")
+  vo2_smooth <- zoo::rollmean(
+    breaths$vo2_ml,
+    k = k,
+    fill = NA,
+    align = "center"
+  )
 
   # Find index of peak
   peak_idx <- which.max(vo2_smooth)
@@ -170,8 +203,11 @@ check_vo2_plateau <- function(x, threshold = 150) {
     vo2_increase = vo2_diff,
     power_increase = power_diff,
     message = if (plateau_achieved) {
-      sprintf("VO2 plateau achieved (increase of %.0f mL/min < %.0f threshold)",
-              vo2_diff, threshold)
+      sprintf(
+        "VO2 plateau achieved (increase of %.0f mL/min < %.0f threshold)",
+        vo2_diff,
+        threshold
+      )
     } else {
       sprintf("No plateau (VO2 increased by %.0f mL/min)", vo2_diff)
     }

@@ -242,11 +242,14 @@ mod_settings_ui <- function(id, language = "en") {
 #' @param id Module namespace ID.
 #' @param language Reactive language value.
 #'
+#' @param session_restore Optional reactive that yields a settings list to restore.
+#'
 #' @return A list with reactive values:
 #'   - `settings`: Reactive list of analysis parameters.
 #'
 #' @keywords internal
-mod_settings_server <- function(id, language, cpet_data = shiny::reactive(NULL)) {
+mod_settings_server <- function(id, language, cpet_data = shiny::reactive(NULL),
+                                session_restore = shiny::reactive(NULL)) {
   shiny::moduleServer(id, function(input, output, session) {
 
     # Auto-detect protocol when data changes
@@ -552,6 +555,37 @@ mod_settings_server <- function(id, language, cpet_data = shiny::reactive(NULL))
         selected = input$report_sections
       )
     })
+
+    # Optional restore of settings from a saved session (UI currently hidden).
+    shiny::observeEvent(session_restore(), {
+      rest <- session_restore()
+      if (is.null(rest) || !is.list(rest)) return()
+      s <- rest
+      if (!is.null(s$averaging_method)) {
+        shiny::updateSelectInput(session, "avg_method", selected = s$averaging_method)
+      }
+      if (!is.null(s$averaging_window)) {
+        shiny::updateSliderInput(session, "avg_window", value = s$averaging_window)
+      }
+      if (!is.null(s$protocol)) {
+        shiny::updateRadioButtons(session, "protocol_type", selected = s$protocol)
+      }
+      if (!is.null(s$modality)) {
+        shiny::updateRadioButtons(session, "modality", selected = s$modality)
+      }
+      if (!is.null(s$athlete_sport)) {
+        shiny::updateSelectInput(session, "athlete_sport", selected = s$athlete_sport)
+      }
+      if (!is.null(s$athlete_level)) {
+        shiny::updateSelectInput(session, "athlete_level", selected = s$athlete_level)
+      }
+      if (!is.null(s$threshold_methods)) {
+        shiny::updateCheckboxGroupInput(
+          session, "threshold_methods",
+          selected = s$threshold_methods
+        )
+      }
+    }, ignoreNULL = TRUE)
 
     # Return settings
     list(

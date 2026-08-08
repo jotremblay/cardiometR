@@ -365,10 +365,13 @@
   align-items: center;
   gap: 0.4rem;
   padding-left: 0.5rem;
+  max-height: 2.75rem;
 }
 .navbar .app-toolbar .btn {
   border-width: 1px;
-  min-width: 3rem;
+  min-width: 2.5rem;
+  padding: 0.2rem 0.55rem;
+  line-height: 1.2;
 }
 .bslib-page-navbar .tab-content {
   padding-top: 0.25rem;
@@ -377,6 +380,52 @@
   padding-left: var(--app-content-xpad);
   padding-right: var(--app-content-xpad);
 }
+
+.session-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 1rem;
+}
+.session-toolbar-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+.session-toolbar-actions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+.session-toolbar-hint {
+  display: block;
+}
+.session-load-compact {
+  display: inline-flex;
+  align-items: center;
+}
+.session-load-compact .shiny-input-container {
+  margin-bottom: 0;
+  width: auto;
+}
+.session-load-compact label.control-label {
+  display: none;
+}
+.session-load-compact .input-group {
+  width: auto;
+}
+.session-load-compact input[type="text"],
+.session-load-compact .form-control[readonly],
+.session-load-compact .progress {
+  display: none !important;
+}
+.session-load-compact .btn-file {
+  border-radius: var(--bs-border-radius-sm, 0.25rem);
+}
+
 .app-page {
   width: min(100%, var(--app-content-max-width));
   margin-left: auto;

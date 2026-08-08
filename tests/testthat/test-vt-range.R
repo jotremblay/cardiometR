@@ -71,3 +71,34 @@ test_that("returns empty structure when breath_df is too short or missing cols",
   res3 <- detect_threshold_range(NULL)
   expect_null(res3$vt1_range)
 })
+
+test_that("detect_thresholds excludes rest and recovery phases", {
+  df <- make_ramp_breath_df(n = 200)
+  n <- nrow(df)
+  df$phase <- c(rep("rest", 30), rep("exercise", n - 50), rep("recovery", 20))
+  df$rer <- df$vco2_ml / df$vo2_ml
+  # Inflate rest VO2 so an unfiltered detector would be pulled down/up wrongly
+  df$vo2_ml[1:30] <- 800
+  df$vco2_ml[1:30] <- 650
+  df$rer[1:30] <- df$vco2_ml[1:30] / df$vo2_ml[1:30]
+
+  participant <- Participant(
+    id = "VT001", name = "VT", age = 30, sex = "M",
+    height_cm = 175, weight_kg = 70
+  )
+  metadata <- CpetMetadata(test_date = Sys.Date(), device = "Mock", protocol = "Ramp")
+  data <- CpetData(participant = participant, metadata = metadata, breaths = df)
+
+  th <- detect_thresholds(data, methods = c("v_slope", "ve_vo2", "ve_vco2"))
+  expect_true(is.finite(th@vt1_vo2) || th@confidence == "unable" ||
+                th@confidence %in% c("low", "moderate", "high"))
+  # Exercise-only VO2 starts near 500 and rises; rest-inflated path would differ
+  expect_true(is.na(th@vt1_vo2) || th@vt1_vo2 > 900)
+})
+
+test_that("threshold_confidence uses method agreement not mere count", {
+  expect_equal(cardiometR:::threshold_confidence(numeric()), "unable")
+  expect_equal(cardiometR:::threshold_confidence(2000), "low")
+  expect_equal(cardiometR:::threshold_confidence(c(2000, 2050, 1980)), "high")
+  expect_equal(cardiometR:::threshold_confidence(c(1500, 3000)), "low")
+})

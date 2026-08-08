@@ -463,6 +463,19 @@
 
 // ══════ 10 Nine-panel display ══════
 
+{{#if graphs_missing}}
+#block(
+  width: 100%,
+  fill: rgb("#fff3cd"),
+  stroke: 1pt + rgb("#856404"),
+  inset: 3mm,
+  radius: 2pt
+)[
+  #text(size: 9pt, weight: "bold", fill: rgb("#856404"))[{{graphs_missing_banner}}]
+]
+#v(2mm)
+{{/if}}
+
 {{#if graph_panel}}
 #block(breakable: false, width: 100%)[
   #sec[{{section_graphs}}]

@@ -69,6 +69,7 @@ reference:
   - title: Analysis Functions
     desc: Core analysis operations
     contents:
+      - analyze_cpet
       - validate
       - average
       - find_peaks

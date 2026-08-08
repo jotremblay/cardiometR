@@ -135,8 +135,11 @@ calculate_gross_efficiency <- function(vo2_ml, power_w, rer = 1.0) {
 #' @param reference_stage Stage number to use for economy calculations
 #' @param speed_kmh For treadmill tests, the speed at the reference stage in km/h.
 #'   If NULL and stage_summary has a speed column, that will be used.
+#' @param require_steady_state When TRUE (default), refuse economy metrics unless
+#'   the reference stage passes `check_steady_state()`.
 #'
-#' @return An EconomyMetrics S7 object
+#' @return An EconomyMetrics S7 object. Metrics are NULL when steady-state gating
+#'   blocks the calculation.
 #'
 #' @details
 #' For cycling tests: Calculates gross efficiency using power and VO2 at the
@@ -157,8 +160,9 @@ calculate_gross_efficiency <- function(vo2_ml, power_w, rer = 1.0) {
 #' }
 #'
 #' @export
-calculate_economy_metrics <- function(analysis, reference_stage, speed_kmh = NULL) {
-  if (!inherits(analysis, "CpetAnalysis")) {
+calculate_economy_metrics <- function(analysis, reference_stage, speed_kmh = NULL,
+                                      require_steady_state = TRUE) {
+  if (!S7::S7_inherits(analysis, CpetAnalysis)) {
     cli::cli_abort("analysis must be a CpetAnalysis object")
   }
 
@@ -187,6 +191,40 @@ calculate_economy_metrics <- function(analysis, reference_stage, speed_kmh = NUL
   # Override with protocol_config if available
   if (!is.null(analysis@protocol_config)) {
     modality <- analysis@protocol_config@modality
+  }
+
+  empty_economy <- function() {
+    EconomyMetrics(
+      modality = modality,
+      gross_efficiency = NULL,
+      running_economy = NULL,
+      reference_stage = reference_stage,
+      reference_speed = NULL,
+      reference_power = NULL
+    )
+  }
+
+  if (isTRUE(require_steady_state)) {
+    ss <- analysis@steady_state_stages
+    stage_ok <- FALSE
+    if (!is.null(ss) && is.data.frame(ss) && nrow(ss) > 0 &&
+        "steady_state_ok" %in% names(ss)) {
+      if ("stage" %in% names(ss)) {
+        row <- ss[as.character(ss$stage) == as.character(reference_stage), , drop = FALSE]
+        if (nrow(row) > 0) {
+          stage_ok <- isTRUE(row$steady_state_ok[[1]])
+        }
+      } else if (reference_stage <= nrow(ss)) {
+        stage_ok <- isTRUE(ss$steady_state_ok[[reference_stage]])
+      }
+    }
+    if (!stage_ok) {
+      cli::cli_warn(c(
+        "Economy metrics blocked: stage {reference_stage} is not at steady state.",
+        "i" = "Set require_steady_state = FALSE to override (not recommended for substrate claims)."
+      ))
+      return(empty_economy())
+    }
   }
 
   # Initialize result

@@ -253,7 +253,15 @@ mod_upload_server <- function(id, language) {
     list(
       cpet_data = cpet_data,
       validation = validation,
-      go_configure = shiny::reactive(input$go_configure)
+      go_configure = shiny::reactive(input$go_configure),
+      set_cpet_data = function(data) {
+        cpet_data(data)
+        if (is.null(data)) {
+          validation(NULL)
+        } else {
+          validation(validate(data, language = language()))
+        }
+      }
     )
   })
 }

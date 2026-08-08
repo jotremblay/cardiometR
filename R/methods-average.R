@@ -22,7 +22,7 @@ method(average, CpetData) <- function(x,
                                        ...) {
   method <- match.arg(method)
 
-  if (x@is_averaged) {
+  if (isTRUE(x@is_averaged)) {
     cli::cli_warn("Data is already averaged (window: {x@averaging_window}s). Re-averaging.")
   }
 

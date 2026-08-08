@@ -2,7 +2,7 @@
 # Note: is_s7_class helper defined in helper-mock-data.R
 
 # Helper to create test data
-create_test_cpet_data <- function() {
+create_test_cpet_data <- function(n = 100) {
   participant <- Participant(
     id = "TEST001",
     name = "Test Subject",
@@ -19,7 +19,6 @@ create_test_cpet_data <- function() {
   )
 
   # Create realistic breath data
-  n <- 100
   time_s <- seq(0, by = 10, length.out = n)
   intensity <- pmin(time_s / max(time_s), 1)
 
@@ -192,6 +191,41 @@ test_that("find_peaks() includes power when available", {
 
   expect_false(is.null(peaks@power_peak))
   expect_gte(peaks@power_peak, 0)
+})
+
+test_that("find_peaks() ignores recovery VO2 spikes", {
+  data <- create_test_cpet_data(n = 120)
+  n <- nrow(data@breaths)
+  exercise_end <- floor(n * 0.8)
+  data@breaths$phase <- c(
+    rep("rest", 10),
+    rep("exercise", exercise_end - 10),
+    rep("recovery", n - exercise_end)
+  )
+  # Spike recovery VO2 above any exercise value
+  data@breaths$vo2_ml[exercise_end:n] <- max(data@breaths$vo2_ml) + 800
+  data@breaths$hr_bpm[exercise_end:n] <- 220
+  data@breaths$rer[exercise_end:n] <- 1.6
+
+  exercise_vo2 <- max(data@breaths$vo2_ml[data@breaths$phase == "exercise"])
+  peaks <- find_peaks(data, averaging = 10)
+
+  expect_lt(peaks@vo2_peak, exercise_vo2 + 100)
+  expect_lt(peaks@vo2_peak, max(data@breaths$vo2_ml) - 400)
+  expect_lt(peaks@hr_peak, 210)
+  expect_lt(peaks@rer_peak, 1.5)
+})
+
+test_that("assess_maximal_criteria ignores recovery RER spikes", {
+  data <- create_test_cpet_data(n = 120)
+  n <- nrow(data@breaths)
+  data@breaths$phase <- c(rep("exercise", n - 20), rep("recovery", 20))
+  data@breaths$rer <- pmin(data@breaths$rer, 1.05)
+  data@breaths$rer[(n - 19):n] <- 1.45
+
+  criteria <- assess_maximal_criteria(data)
+  expect_lt(criteria@peak_rer, 1.15)
+  expect_false(isTRUE(criteria@rer_met))
 })
 
 

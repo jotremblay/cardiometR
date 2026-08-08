@@ -453,7 +453,7 @@ CpetData <- new_class("CpetData",
     metadata = CpetMetadata,
     breaths = class_data.frame,
     stages = class_data.frame | NULL,
-    is_averaged = class_logical,
+    is_averaged = new_property(class_logical, default = FALSE),
     averaging_window = class_numeric | NULL,
     # NULL first in the union, so omitting it yields NULL rather than a
     # prototype report. See the note on CpetMetadata@modality.
@@ -472,7 +472,7 @@ CpetData <- new_class("CpetData",
     }
 
     # Check averaging consistency
-    if (self@is_averaged && is.null(self@averaging_window)) {
+    if (isTRUE(self@is_averaged) && is.null(self@averaging_window)) {
       errors <- c(errors,
         "averaging_window is required when is_averaged is TRUE"
       )

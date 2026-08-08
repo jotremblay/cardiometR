@@ -4,12 +4,19 @@
 \alias{mod_settings_server}
 \title{Settings Module Server}
 \usage{
-mod_settings_server(id, language, cpet_data = shiny::reactive(NULL))
+mod_settings_server(
+  id,
+  language,
+  cpet_data = shiny::reactive(NULL),
+  session_restore = shiny::reactive(NULL)
+)
 }
 \arguments{
 \item{id}{Module namespace ID.}
 
 \item{language}{Reactive language value.}
+
+\item{session_restore}{Optional reactive that yields a settings list to restore.}
 }
 \value{
 A list with reactive values:

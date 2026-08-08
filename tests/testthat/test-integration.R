@@ -356,3 +356,40 @@ test_that("minimal data requirements are enforced", {
     )
   )
 })
+
+test_that("analyze_cpet runs the full pipeline", {
+  mock <- create_mock_breath_data(n_breaths = 300)
+  participant <- Participant(
+    id = mock$participant$id,
+    name = mock$participant$name,
+    age = mock$participant$age,
+    sex = mock$participant$sex,
+    height_cm = mock$participant$height_cm,
+    weight_kg = mock$participant$weight_kg
+  )
+  metadata <- CpetMetadata(
+    test_date = mock$metadata$test_date,
+    device = mock$metadata$device,
+    protocol = mock$metadata$protocol
+  )
+  cpet_data <- CpetData(
+    participant = participant,
+    metadata = metadata,
+    breaths = mock$breaths
+  )
+
+  analysis <- analyze_cpet(
+    cpet_data,
+    settings = list(
+      averaging_window = 30,
+      athlete_sport = "cycling",
+      athlete_level = "recreational",
+      modality = "cycling"
+    )
+  )
+
+  expect_true(is_s7_class(analysis, "CpetAnalysis"))
+  expect_true(is_s7_class(analysis@peaks, "PeakValues"))
+  expect_gt(analysis@peaks@vo2_peak, 0)
+  expect_true(isTRUE(analysis@data@is_averaged))
+})

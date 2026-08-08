@@ -4,7 +4,12 @@
 \alias{calculate_economy_metrics}
 \title{Calculate Economy Metrics for Analysis}
 \usage{
-calculate_economy_metrics(analysis, reference_stage, speed_kmh = NULL)
+calculate_economy_metrics(
+  analysis,
+  reference_stage,
+  speed_kmh = NULL,
+  require_steady_state = TRUE
+)
 }
 \arguments{
 \item{analysis}{CpetAnalysis object with stage_summary populated}
@@ -13,9 +18,13 @@ calculate_economy_metrics(analysis, reference_stage, speed_kmh = NULL)
 
 \item{speed_kmh}{For treadmill tests, the speed at the reference stage in km/h.
 If NULL and stage_summary has a speed column, that will be used.}
+
+\item{require_steady_state}{When TRUE (default), refuse economy metrics unless
+the reference stage passes \code{check_steady_state()}.}
 }
 \value{
-An EconomyMetrics S7 object
+An EconomyMetrics S7 object. Metrics are NULL when steady-state gating
+blocks the calculation.
 }
 \description{
 Wrapper function to calculate all economy/efficiency metrics for a CpetAnalysis

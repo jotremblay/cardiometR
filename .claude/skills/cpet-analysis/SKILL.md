@@ -60,6 +60,8 @@ See [CPET-GUIDELINES.md](CPET-GUIDELINES.md) for detailed information on:
 
 ## Files in cardiometR
 
-- `R/process.R` - Peak determination, stage extraction
+- `R/analyze.R` - `analyze_cpet()` orchestration
+- `R/methods-peaks.R` - Peak determination (exercise window)
+- `R/methods-stages.R` - Stage extraction
 - `R/methods-validate.R` - Data quality validation
 - `R/methods-thresholds.R` - Threshold detection algorithms

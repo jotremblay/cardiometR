@@ -168,22 +168,15 @@ local quirk without waiting for a release.
 #| label: analysis-workflow
 #| eval: false
 
-# 1. Validate the data
+# Preferred: one-call pipeline (mirrors the Shiny Results tab)
+analysis <- analyze_cpet(data)
+print(analysis@peaks)
+
+# Or step by step when you need intermediate objects
 validation <- validate(data)
-print(validation)
-
-# 2. Apply rolling average (30-second window)
 averaged <- average(data, method = "rolling", window = 30)
-
-# 3. Find peak values
 peaks <- find_peaks(averaged, averaging = 30)
-print(peaks)
-
-# 4. Detect ventilatory thresholds
-thresholds <- detect_thresholds(averaged, methods = c("V-slope", "VE_VO2"))
-print(thresholds)
-
-# 5. Create analysis object
+thresholds <- detect_thresholds(averaged, methods = c("v_slope", "ve_vo2"))
 analysis <- CpetAnalysis(
   data = averaged,
   peaks = peaks,
@@ -191,6 +184,13 @@ analysis <- CpetAnalysis(
   validation = validation
 )
 ```
+
+### Scientific limits to keep in mind
+
+- Peaks and point VT estimates use **exercise breaths only** (rest/recovery excluded).
+- VT confidence reflects **method agreement** within about 10% VO2, not only how many methods fired.
+- Sport normative z-scores often use an **estimated SD** from published ranges; treat approximate percentiles carefully. Sport strata are largely age-blind today.
+- Economy / substrate claims require a **steady-state** stage by default.
 
 ## S7 Class Structure
 

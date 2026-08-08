@@ -67,17 +67,8 @@ library(cardiometR)
 # Import COSMED file
 data <- read_cpet("path/to/cosmed_export.xlsx")
 
-# Validate and analyze
-validation <- validate(data)
-averaged <- average(data, method = "rolling", window = 30)
-peaks <- find_peaks(averaged)
-
-# Create analysis object
-analysis <- CpetAnalysis(
-  data = averaged,
-  peaks = peaks,
-  validation = validation
-)
+# Run the standard analysis pipeline
+analysis <- analyze_cpet(data)
 
 # Generate 9-panel CPET plot
 plot_cpet_panel(analysis)

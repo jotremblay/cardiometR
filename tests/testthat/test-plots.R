@@ -433,6 +433,19 @@ test_that("filter_exercise_data filters by phase column", {
   expect_equal(nrow(result), 7)  # exercise only (warmup excluded)
 })
 
+test_that("filter_exercise_data prefers phase over stage for recovery", {
+  df <- tibble::tibble(
+    time_s = 1:8,
+    vo2_ml = c(300, 400, 2000, 2500, 3000, 2800, 5000, 4800),
+    stage = c(0, 0, 1, 2, 3, 4, 5, 5),
+    phase = c("rest", "warmup", "exercise", "exercise", "exercise",
+              "exercise", "recovery", "recovery")
+  )
+  result <- filter_exercise_data(df)
+  expect_equal(nrow(result), 4)
+  expect_true(all(result$phase == "exercise"))
+})
+
 test_that("filter_exercise_data returns unchanged data without indicators", {
   df <- tibble::tibble(
     time_s = 1:5,
