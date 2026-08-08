@@ -41,6 +41,11 @@ reference:
     contents:
       - read_cpet
       - read_cosmed
+      - preview_cpet_columns
+      - list_cpet_dialects
+      - clear_dialect_cache
+      - cpet_import_report
+      - CpetImportReport
 
   - title: S7 Classes
     desc: Type-safe data structures for CPET analysis
@@ -53,6 +58,13 @@ reference:
       - ValidationReport
       - CpetAnalysis
       - ReportConfig
+      - PreTestConditions
+      - ProtocolConfig
+      - EconomyMetrics
+      - ExerciseQualityCriteria
+      - ProtocolQuality
+      - DataQualityReport
+      - QualityAssessment
 
   - title: Analysis Functions
     desc: Core analysis operations
@@ -63,6 +75,32 @@ reference:
       - detect_thresholds
       - extract_stages
       - summarize_stages
+      - detect_protocol_config
+      - detect_threshold_range
+      - find_time_to_peak
+      - check_vo2_plateau
+      - check_steady_state
+      - has_resting
+      - compute_resting_values
+
+  - title: Power and Economy
+    desc: Power metrics and movement economy
+    contents:
+      - compute_map_kuipers
+      - fit_vo2_power_slope
+      - calculate_economy_metrics
+      - calculate_gross_efficiency
+      - calculate_running_economy
+      - calculate_expected_vo2_cycling
+      - calculate_expected_vo2_treadmill
+
+  - title: Quality Assessment
+    desc: Test validity and data quality against ACSM criteria
+    contents:
+      - assess_quality
+      - assess_maximal_criteria
+      - assess_protocol_quality
+      - assess_data_quality
 
   - title: Visualization
     desc: Plotting functions for CPET data
@@ -74,6 +112,12 @@ reference:
       - plot_heart_rate
       - plot_power
       - plot_predicted_comparison
+      - plot_vo2_power_slope
+      - plot_zscore_strip
+      - plot_longitudinal_delta
+      - theme_cardiometr
+      - palette_cardiometr
+      - stratum_band_layer
 
   - title: Reports
     desc: PDF report generation
@@ -98,6 +142,10 @@ reference:
     contents:
       - starts_with("get_normative")
       - starts_with("calculate_predicted")
+      - list_normative_categories
+      - compare_vo2peak_registries
+      - z_score
+      - percentile_from_z
 
 articles:
   - title: Getting Started

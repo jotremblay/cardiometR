@@ -32,3 +32,6 @@ tmp/
 
 # Local report outputs (dev artifacts)
 /cpet_report*.pdf
+
+# pkgdown site (built by CI)
+docs/
