@@ -52,5 +52,4 @@ VignetteBuilder: quarto
 URL: https://github.com/jotremblay/cardiometR,
     https://jotremblay.github.io/cardiometR/
 BugReports: https://github.com/jotremblay/cardiometR/issues
-LazyData: true
 Config/roxygen2/version: 8.1.0
