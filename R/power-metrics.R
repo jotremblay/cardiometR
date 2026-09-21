@@ -14,6 +14,11 @@
 #'   and `last_stage_fraction`.
 #' @references Kuipers H et al. 1985. Variability of aerobic performance.
 #'   Int J Sports Med 6:197-201.
+#' @examples
+#' file <- system.file("extdata", "example_cosmed.xlsx", package = "cardiometR")
+#' data <- extract_stages(read_cpet(file, quiet = TRUE))
+#' compute_map_kuipers(summarize_stages(data))
+#'
 #' @export
 compute_map_kuipers <- function(stage_summary) {
   stopifnot(inherits(stage_summary, "data.frame"))
@@ -91,6 +96,13 @@ compute_map_kuipers <- function(stage_summary) {
 #'   seated-rest points don't drag the regression down.
 #' @return A list with `slope`, `intercept`, `slope_ci_low`, `slope_ci_high`,
 #'   `n`, `r_squared`.
+#' @examples
+#' file <- system.file("extdata", "example_cosmed.xlsx", package = "cardiometR")
+#' data <- extract_stages(read_cpet(file, quiet = TRUE))
+#' stage_summary <- summarize_stages(data)
+#' slope <- fit_vo2_power_slope(data@breaths, stage_summary, stages = data@stages)
+#' slope$slope
+#'
 #' @export
 fit_vo2_power_slope <- function(breath_df, stage_summary, vt2_power = NULL,
                                 stages = NULL) {

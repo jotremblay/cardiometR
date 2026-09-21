@@ -100,6 +100,11 @@ method(find_peaks, CpetData) <- function(x, averaging = 30, ...) {
 #'
 #' @return Numeric time in seconds at peak VO2
 #'
+#' @examples
+#' file <- system.file("extdata", "example_cosmed.xlsx", package = "cardiometR")
+#' data <- read_cpet(file, quiet = TRUE)
+#' find_time_to_peak(data)
+#'
 #' @export
 find_time_to_peak <- function(x, averaging = 30) {
   breaths <- filter_exercise_data(x@breaths)
@@ -135,6 +140,11 @@ find_time_to_peak <- function(x, averaging = 30) {
 #' @param threshold Maximum VO2 increase to consider a plateau (default 150 mL/min)
 #'
 #' @return List with plateau status and details
+#'
+#' @examples
+#' file <- system.file("extdata", "example_cosmed.xlsx", package = "cardiometR")
+#' data <- extract_stages(read_cpet(file, quiet = TRUE))
+#' check_vo2_plateau(data)
 #'
 #' @export
 check_vo2_plateau <- function(x, threshold = 150) {

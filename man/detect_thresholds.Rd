@@ -33,9 +33,9 @@ Detection methods:
 }
 }
 \examples{
-\dontrun{
-thresholds <- detect_thresholds(averaged_data, methods = c("V-slope", "VE_VO2"))
-print(thresholds@vt1_vo2)
-}
+file <- system.file("extdata", "example_cosmed.xlsx", package = "cardiometR")
+data <- read_cpet(file, quiet = TRUE)
+thresholds <- detect_thresholds(data, methods = c("v_slope", "ve_vo2"))
+thresholds@vt1_vo2
 
 }

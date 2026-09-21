@@ -18,3 +18,9 @@ List with plateau status and details
 Checks if a VO2 plateau was achieved (< 150 mL/min increase
 in final stage despite increased workload).
 }
+\examples{
+file <- system.file("extdata", "example_cosmed.xlsx", package = "cardiometR")
+data <- extract_stages(read_cpet(file, quiet = TRUE))
+check_vo2_plateau(data)
+
+}

@@ -26,10 +26,10 @@ size to reduce breath-by-breath variability. The recommended default is
 30 seconds per ATS/ACCP guidelines.
 }
 \examples{
-\dontrun{
-peaks <- find_peaks(cpet_data, averaging = 30)
-print(peaks@vo2_peak)
-print(peaks@vo2_kg_peak)
-}
+file <- system.file("extdata", "example_cosmed.xlsx", package = "cardiometR")
+data <- read_cpet(file, quiet = TRUE)
+peaks <- find_peaks(data, averaging = 30)
+peaks@vo2_peak
+peaks@vo2_kg_peak
 
 }

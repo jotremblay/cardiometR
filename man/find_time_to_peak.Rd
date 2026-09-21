@@ -17,3 +17,9 @@ Numeric time in seconds at peak VO2
 \description{
 Determines the time point at which peak VO2 occurred.
 }
+\examples{
+file <- system.file("extdata", "example_cosmed.xlsx", package = "cardiometR")
+data <- read_cpet(file, quiet = TRUE)
+find_time_to_peak(data)
+
+}
