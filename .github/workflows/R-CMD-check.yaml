@@ -38,9 +38,17 @@ jobs:
           http-user-agent: ${{ matrix.config.http-user-agent }}
           use-public-rspm: true
 
+      # CRAN macOS R 4.6 binaries for knitr, xfun, and readxl are zstd.
+      # pak/pkgdepends only extracts gzip/bzip2/xz/zip, so those three
+      # must come from source until pak learns zstd (otherwise
+      # setup-r-dependencies dies with "unknown archive type").
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
-          extra-packages: any::rcmdcheck
+          extra-packages: |
+            any::rcmdcheck
+            knitr=?source
+            xfun=?source
+            readxl=?source
           needs: check
 
       - uses: r-lib/actions/check-r-package@v2
