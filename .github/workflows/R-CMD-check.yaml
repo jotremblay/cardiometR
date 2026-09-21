@@ -26,6 +26,10 @@ jobs:
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
       R_KEEP_PKG_SOURCE: yes
+      # shinytest2/chromote sysreqs run `add-apt-repository ppa:xtradeb/apps`.
+      # Launchpad is returning HTTP 500 (GPGKeyTemporarilyNotFoundError).
+      # GHA Ubuntu already has Google Chrome and RSPM binaries; skip sysreqs.
+      PKG_SYSREQS: ${{ runner.os == 'Linux' && 'false' || 'true' }}
 
     steps:
       - uses: actions/checkout@v4
@@ -40,9 +44,7 @@ jobs:
 
       # CRAN macOS R 4.6 binaries for knitr, xfun, and readxl are zstd.
       # pak/pkgdepends only extracts gzip/bzip2/xz/zip, so those three
-      # must come from source on macOS. Keep binaries on Linux/Windows:
-      # installing them from source on Ubuntu pulls chromote sysreqs
-      # (ppa:xtradeb/apps) and Launchpad 500'd in CI.
+      # must come from source on macOS only.
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
           extra-packages: |
