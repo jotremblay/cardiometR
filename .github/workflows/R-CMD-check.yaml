@@ -40,15 +40,16 @@ jobs:
 
       # CRAN macOS R 4.6 binaries for knitr, xfun, and readxl are zstd.
       # pak/pkgdepends only extracts gzip/bzip2/xz/zip, so those three
-      # must come from source until pak learns zstd (otherwise
-      # setup-r-dependencies dies with "unknown archive type").
+      # must come from source on macOS. Keep binaries on Linux/Windows:
+      # installing them from source on Ubuntu pulls chromote sysreqs
+      # (ppa:xtradeb/apps) and Launchpad 500'd in CI.
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
           extra-packages: |
             any::rcmdcheck
-            knitr=?source
-            xfun=?source
-            readxl=?source
+            ${{ runner.os == 'macOS' && 'knitr=?source' || '' }}
+            ${{ runner.os == 'macOS' && 'xfun=?source' || '' }}
+            ${{ runner.os == 'macOS' && 'readxl=?source' || '' }}
           needs: check
 
       - uses: r-lib/actions/check-r-package@v2
