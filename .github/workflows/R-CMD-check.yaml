@@ -19,17 +19,17 @@ jobs:
       fail-fast: false
       matrix:
         config:
-          - {os: macos-latest,   r: 'release'}
-          - {os: windows-latest, r: 'release'}
-          - {os: ubuntu-latest,  r: 'release'}
+          - {os: macos-latest,   r: 'release', sysreqs: 'true'}
+          - {os: windows-latest, r: 'release', sysreqs: 'true'}
+          - {os: ubuntu-latest,  r: 'release', sysreqs: 'false'}
 
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
       R_KEEP_PKG_SOURCE: yes
-      # shinytest2/chromote sysreqs run `add-apt-repository ppa:xtradeb/apps`.
+      # shinytest2/chromote sysreqs run add-apt-repository ppa:xtradeb/apps.
       # Launchpad is returning HTTP 500 (GPGKeyTemporarilyNotFoundError).
       # GHA Ubuntu already has Google Chrome and RSPM binaries; skip sysreqs.
-      PKG_SYSREQS: ${{ runner.os == 'Linux' && 'false' || 'true' }}
+      PKG_SYSREQS: ${{ matrix.config.sysreqs }}
 
     steps:
       - uses: actions/checkout@v4
