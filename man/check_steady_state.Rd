@@ -26,6 +26,13 @@ across the last 90 s, and sub-unity RER (max RER < 1.0 in the last 90 s).
 HR drift is computed as \verb{mean(HR[last 30s]) - mean(HR[prior 60s])}
 within each stage; RER drift is the same for RER.
 }
+\examples{
+file <- system.file("extdata", "example_cosmed.xlsx", package = "cardiometR")
+data <- extract_stages(read_cpet(file, quiet = TRUE))
+stage_summary <- summarize_stages(data)
+check_steady_state(data@breaths, stage_summary)
+
+}
 \references{
 Achten J, Jeukendrup AE. 2004. Optimizing fat oxidation
 through exercise and diet. Nutrition 20:716-727.

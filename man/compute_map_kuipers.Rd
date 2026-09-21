@@ -20,6 +20,12 @@ ramp or incremental CPET using the Kuipers (1985) last-stage adjustment:
 \code{PPO = P_last_complete + (t_final / t_stage) * P_increment}. When the
 last stage is completed fully, \verb{map == ppo == power of last complete stage}.
 }
+\examples{
+file <- system.file("extdata", "example_cosmed.xlsx", package = "cardiometR")
+data <- extract_stages(read_cpet(file, quiet = TRUE))
+compute_map_kuipers(summarize_stages(data))
+
+}
 \references{
 Kuipers H et al. 1985. Variability of aerobic performance.
 Int J Sports Med 6:197-201.

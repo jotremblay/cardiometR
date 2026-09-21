@@ -29,3 +29,11 @@ Linear regression of VO2 (mL/min) on Power (W) using the submax portion
 of the test only — up to VT2 power if available, else 85\% of PPO. Returns
 slope, intercept, 95\% CI, \code{n}, and \code{r_squared}.
 }
+\examples{
+file <- system.file("extdata", "example_cosmed.xlsx", package = "cardiometR")
+data <- extract_stages(read_cpet(file, quiet = TRUE))
+stage_summary <- summarize_stages(data)
+slope <- fit_vo2_power_slope(data@breaths, stage_summary, stages = data@stages)
+slope$slope
+
+}

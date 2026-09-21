@@ -26,6 +26,11 @@ jobs:
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
       R_KEEP_PKG_SOURCE: yes
+      # Ubuntu: chromote sysreqs run add-apt-repository ppa:xtradeb/apps,
+      # and Launchpad currently returns GPGKeyTemporarilyNotFoundError.
+      # macOS/Windows: PKG_SYSREQS=true makes pak call sysreqs2_command()
+      # and fail with "Unknown OS" (darwin/mingw). Skip sysreqs everywhere.
+      PKG_SYSREQS: "false"
 
     steps:
       - uses: actions/checkout@v4
@@ -38,9 +43,16 @@ jobs:
           http-user-agent: ${{ matrix.config.http-user-agent }}
           use-public-rspm: true
 
+      # CRAN macOS R 4.6 binaries for knitr, xfun, and readxl are zstd.
+      # pak/pkgdepends only extracts gzip/bzip2/xz/zip, so those three
+      # must come from source on macOS only.
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
-          extra-packages: any::rcmdcheck
+          extra-packages: |
+            any::rcmdcheck
+            ${{ runner.os == 'macOS' && 'knitr=?source' || '' }}
+            ${{ runner.os == 'macOS' && 'xfun=?source' || '' }}
+            ${{ runner.os == 'macOS' && 'readxl=?source' || '' }}
           needs: check
 
       - uses: r-lib/actions/check-r-package@v2

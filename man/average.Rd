@@ -24,15 +24,9 @@ A new CpetData object with averaged data and is_averaged = TRUE
 Apply averaging to breath-by-breath CPET data.
 }
 \examples{
-\dontrun{
-# 30-second time-based averaging
-averaged <- average(cpet_data, method = "time", window = 30)
-
-# 10-breath averaging
-averaged <- average(cpet_data, method = "breath", window = 10)
-
-# 30-second rolling average
-averaged <- average(cpet_data, method = "rolling", window = 30)
-}
+file <- system.file("extdata", "example_cosmed.xlsx", package = "cardiometR")
+data <- read_cpet(file, quiet = TRUE)
+averaged <- average(data, method = "time", window = 30)
+averaged@is_averaged
 
 }

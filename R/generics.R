@@ -17,16 +17,10 @@
 #' @return A new CpetData object with averaged data and is_averaged = TRUE
 #'
 #' @examples
-#' \dontrun{
-#' # 30-second time-based averaging
-#' averaged <- average(cpet_data, method = "time", window = 30)
-#'
-#' # 10-breath averaging
-#' averaged <- average(cpet_data, method = "breath", window = 10)
-#'
-#' # 30-second rolling average
-#' averaged <- average(cpet_data, method = "rolling", window = 30)
-#' }
+#' file <- system.file("extdata", "example_cosmed.xlsx", package = "cardiometR")
+#' data <- read_cpet(file, quiet = TRUE)
+#' averaged <- average(data, method = "time", window = 30)
+#' averaged@is_averaged
 #'
 #' @export
 average <- new_generic("average", "x")
@@ -86,10 +80,10 @@ validate <- new_generic("validate", "x")
 #' - **PETCO2**: End-tidal CO2 plateau/decline
 #'
 #' @examples
-#' \dontrun{
-#' thresholds <- detect_thresholds(averaged_data, methods = c("V-slope", "VE_VO2"))
-#' print(thresholds@vt1_vo2)
-#' }
+#' file <- system.file("extdata", "example_cosmed.xlsx", package = "cardiometR")
+#' data <- read_cpet(file, quiet = TRUE)
+#' thresholds <- detect_thresholds(data, methods = c("v_slope", "ve_vo2"))
+#' thresholds@vt1_vo2
 #'
 #' @importFrom stats complete.cases
 #' @export
@@ -114,11 +108,11 @@ detect_thresholds <- new_generic("detect_thresholds", "x")
 #' 30 seconds per ATS/ACCP guidelines.
 #'
 #' @examples
-#' \dontrun{
-#' peaks <- find_peaks(cpet_data, averaging = 30)
-#' print(peaks@vo2_peak)
-#' print(peaks@vo2_kg_peak)
-#' }
+#' file <- system.file("extdata", "example_cosmed.xlsx", package = "cardiometR")
+#' data <- read_cpet(file, quiet = TRUE)
+#' peaks <- find_peaks(data, averaging = 30)
+#' peaks@vo2_peak
+#' peaks@vo2_kg_peak
 #'
 #' @export
 find_peaks <- new_generic("find_peaks", "x")

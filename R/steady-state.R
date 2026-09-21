@@ -19,6 +19,12 @@
 #'   `hr_drift_bpm`, `rer_drift`, `rer_sub_unity`, `steady_state_ok`.
 #' @references Achten J, Jeukendrup AE. 2004. Optimizing fat oxidation
 #'   through exercise and diet. Nutrition 20:716-727.
+#' @examples
+#' file <- system.file("extdata", "example_cosmed.xlsx", package = "cardiometR")
+#' data <- extract_stages(read_cpet(file, quiet = TRUE))
+#' stage_summary <- summarize_stages(data)
+#' check_steady_state(data@breaths, stage_summary)
+#'
 #' @export
 check_steady_state <- function(breath_df, stage_summary) {
   stopifnot(inherits(breath_df, "data.frame"))
