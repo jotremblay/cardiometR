@@ -112,9 +112,25 @@ if (nrow(base_rows) >= 5 && nrow(s1) >= 2) {
   cat("VE/VO2 stage1 / warm-up baseline:", round(ratio, 3), " -> VT1", if (vt1_undetermined) "non determine" else "retained", "\n")
 } else cat("VT1 check skipped (no warm-up baseline below the first stage)\n")
 
+# Plausibility: the first threshold lies below the functional threshold power
+# (FTP, 0.72-0.77 x MAP). A detected SV1 at or above the lower FTP bound, or an
+# SV2 that is missing or not above the SV1, is not reliable for a test that
+# starts at ~70 % of VO2peak.
+th <- a@thresholds
+vt1_w <- if (length(th@vt1_power)) th@vt1_power else NA_real_
+vt2_w <- if (length(th@vt2_power)) th@vt2_power else NA_real_
+if (is.finite(vt1_w) && is.finite(a@map_watts) && vt1_w >= 0.72 * a@map_watts) {
+  vt1_undetermined <- TRUE
+  cat("SV1", vt1_w, "W >= FTP low bound", round(0.72 * a@map_watts), "W -> non determine\n")
+}
+vt2_undetermined <- !is.finite(vt2_w) || (is.finite(vt1_w) && vt2_w <= vt1_w)
+if (vt2_undetermined) cat("SV2 missing or not above SV1 -> non determine\n")
+
 fmt_int <- function(x) if (length(x) && is.finite(x)) format(round(x), big.mark = "") else "—"
 ND <- "Non déterminé : le premier palier du test est déjà au-dessus du seuil"
 vt1_row_std <- "[#text(weight: 600, fill: vt1_col)[Premier seuil ventilatoire (SV1)]], [{{vt1_vo2}}], [{{vt1_percent}} %], [{{vt1_hr}}], [{{vt1_power}}],"
+vt2_row_std <- "[#text(weight: 600, fill: vt2_col)[Deuxième seuil ventilatoire (SV2)]], [{{vt2_vo2}}], [{{vt2_percent}} %], [{{vt2_hr}}], [{{vt2_power}}],"
+vt2_row_nd <- "[#text(weight: 600, fill: vt2_col)[Deuxième seuil ventilatoire (SV2)]], table.cell(colspan: 4)[#text(fill: muted)[Non déterminé]],"
 vt1_row_nd <- paste0("[#text(weight: 600, fill: vt1_col)[Premier seuil ventilatoire (SV1)]], table.cell(colspan: 4)[#text(fill: muted)[", ND, "]],")
 vt_rows_nd <- paste0("[VT1], table.cell(colspan: 3)[#text(fill: muted)[Non déterminé]],\n        [VT2], [", fmt_int(a@vt2_range[1]), "], [", fmt_int(a@vt2_range[2]), "], [", fmt_int(a@thresholds@vt2_vo2), "]")
 
@@ -124,6 +140,7 @@ cfg <- {
   txt <- paste(readLines(tpl, warn = FALSE), collapse = "\n")
   txt <- sub("%%COMPARAISON%%", gsub("\\", "\\\\", comparison_block(a, d), fixed = TRUE), txt, fixed = TRUE)
   txt <- sub("%%VT1ROW%%", if (vt1_undetermined) vt1_row_nd else vt1_row_std, txt, fixed = TRUE)
+  txt <- sub("%%VT2ROW%%", if (vt2_undetermined) vt2_row_nd else vt2_row_std, txt, fixed = TRUE)
   txt <- sub("%%VTROWS%%", if (vt1_undetermined) vt_rows_nd else "{{vt_rows_content}}", txt, fixed = TRUE)
   writeLines(txt, tmp)
   ReportConfig(language = "fr", template = tmp)

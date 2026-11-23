@@ -360,7 +360,7 @@
     th[{{label_threshold}}], th[VO#sub[2] (mL/min)], th[% VO#sub[2]],
     th[{{label_hr_unit}}], th[{{label_power}} (W)],
     %%VT1ROW%%
-    [#text(weight: 600, fill: vt2_col)[Deuxième seuil ventilatoire (SV2)]], [{{vt2_vo2}}], [{{vt2_percent}} %], [{{vt2_hr}}], [{{vt2_power}}],
+    %%VT2ROW%%
   )
 ]
 {{/if}}
