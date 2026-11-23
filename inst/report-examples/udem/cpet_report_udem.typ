@@ -349,7 +349,6 @@
 
 // ══════ 08 Ventilatory thresholds ══════
 
-{{#if has_vt_table}}
 #block(breakable: false, width: 100%)[
   #sec[{{section_thresholds}}]
   #clinical_table(
@@ -360,8 +359,9 @@
     %%VT1ROW%%
     %%VT2ROW%%
   )
+  #v(1mm)
+  #caption[Le premier seuil ventilatoire (SV1) ne peut pas être détecté : le test débute à une intensité déjà supérieure à ce seuil.]
 ]
-{{/if}}
 
 // ══════ 10 Nine-panel display ══════
 

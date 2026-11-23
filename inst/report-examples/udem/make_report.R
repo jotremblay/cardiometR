@@ -28,7 +28,8 @@ e <- b[which(b$phase == "exercise" & !is.na(b$power_w)), ]
 start_w <- e$power_w[1]
 
 settings <- list(protocol = "step", starting_intensity = start_w,
-                 stage_duration = STAGE_S, increment_size = INCR_W)
+                 stage_duration = STAGE_S, increment_size = INCR_W,
+                 threshold_methods = "ve_vco2")
 a <- analyze_cpet(d, settings = settings)
 
 # stages: renumber from 1, full stages = 180 s, last stage = real duration
@@ -102,33 +103,15 @@ comparison_block <- function(a, d) {
 
 # Ventilatory thresholds. The test starts at ~70 % of VO2peak, so no stage lies
 # below the first threshold (SV1): it cannot be located and is left out. The
-# second threshold (SV2) is the breakpoint of VE against VCO2 (two straight
-# lines fitted to 30-s rolling means, first 60 s of the test left out).
-roll <- function(x, k = 3) as.numeric(stats::filter(x, rep(1 / k, k), sides = 1))
-detect_sv2 <- function(ex, vo2_peak, minseg = 5) {
-  x <- ex; x$ve <- roll(x$ve_l); x$vco2 <- roll(x$vco2_ml) / 1000
-  x$vo2 <- roll(x$vo2_ml); x$hr <- roll(x$hr_bpm); x$pe <- roll(x$petco2_mmhg)
-  x <- x[x$time_s >= min(x$time_s) + 60 & stats::complete.cases(x[, c("ve", "vco2", "vo2")]), ]
-  n <- nrow(x)
-  if (n < 2 * minseg + 5) return(NULL)
-  best <- NULL
-  for (i in minseg:(n - minseg)) {
-    X <- cbind(1, x$vco2, pmax(x$vco2 - x$vco2[i], 0))
-    fit <- stats::lm.fit(X, x$ve)
-    rss <- sum(fit$residuals^2)
-    if (is.null(best) || rss < best$rss) best <- list(rss = rss, i = i, s1 = fit$coefficients[2], s2 = fit$coefficients[2] + fit$coefficients[3])
-  }
-  rss1 <- sum(stats::lm.fit(cbind(1, x$vco2), x$ve)$residuals^2)
-  F <- ((rss1 - best$rss) / 2) / (best$rss / (n - 4))
-  ok <- is.finite(F) && F >= 10 && best$s2 / best$s1 >= 1.3
-  if (!ok) return(NULL)
-  row <- x[best$i, ]
-  list(vo2 = row$vo2, pct = 100 * row$vo2 / vo2_peak, hr = row$hr, power = row$power_w,
-       ratio = best$s2 / best$s1, F = F)
-}
-sv2 <- detect_sv2(e, a@peaks@vo2_peak)
-if (is.null(sv2)) cat("SV2 non determine (no clear breakpoint)\n") else
-  cat("SV2:", round(sv2$power), "W |", round(sv2$vo2), "mL/min |", round(sv2$pct), "% VO2pk | slope ratio", round(sv2$ratio, 2), " F", round(sv2$F), "\n")
+# second threshold (SV2) is the package's own VE/VCO2 detection (rise of 5 %
+# above the lowest value, sustained), run without the SV1 and therefore
+# without the "SV2 must be above SV1" check that discarded it.
+th <- a@thresholds
+sv2 <- if (length(th@vt2_vo2) && is.finite(th@vt2_vo2)) {
+  list(vo2 = th@vt2_vo2, pct = 100 * th@vt2_vo2 / a@peaks@vo2_peak, hr = th@vt2_hr, power = th@vt2_power)
+} else NULL
+if (is.null(sv2)) cat("SV2 non determine\n") else
+  cat("SV2:", round(sv2$power), "W |", round(sv2$vo2), "mL/min |", round(sv2$pct), "% VO2pk\n")
 
 vt2_row <- if (is.null(sv2)) {
   "[#text(weight: 600, fill: vt2_col)[Deuxième seuil ventilatoire (SV2)]], table.cell(colspan: 4)[#text(fill: muted)[Non déterminé]],"

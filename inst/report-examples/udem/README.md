@@ -27,12 +27,10 @@ Rscript make_report.R participant.xlsx my_template.typ out.pdf
   participant marker) from `get_normative_data()`.
 * **Ventilatory thresholds.** A test that starts at about 70 % of VO2peak
   leaves no stage below the first threshold (SV1), so the report does not
-  show it. The second threshold (SV2) is the breakpoint of VE against VCO2
-  (two straight lines on 30-s rolling means, first 60 s left out) and is
-  shown as "not determined" when there is no clear break. It is an estimate
-  precise to about one stage, from an in-house implementation that has not
-  been validated against expert readings: check it by hand before relying
-  on it.
+  show it and says why. The second threshold (SV2) comes from the package's
+  VE/VCO2 detection, run on its own: without an SV1 there is no "SV2 must be
+  above SV1" check, which was discarding it. It is an estimate; with this
+  start intensity it can fall on the first stage, so check it by hand.
 * The report text uses the preferred French terms of the INS Quebec glossary
   of sport science ("aptitude aerobie", "RER", "premier/deuxieme seuil
   ventilatoire"); the definitions table cites it.
