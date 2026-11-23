@@ -25,14 +25,14 @@ Rscript make_report.R participant.xlsx my_template.typ out.pdf
   works with older ones.
 * **Population comparison** is drawn natively in Typst (range bar, mean tick,
   participant marker) from `get_normative_data()`.
-* **Ventilatory thresholds** are reported as "not determined" when they are
-  not reliable. This is a heuristic, not a validated method: the SV1 is
-  dropped when VE/VO2 at the end of the first stage is at least 5 % above the
-  end of the warm-up, or when it sits at or above the lower bound of the
-  estimated FTP (0.72 x MAP), since the SV1 should lie below the FTP. The
-  SV2 is dropped when it is missing or not above the SV1. A test that starts
-  at about 70 % of VO2peak often leaves no stage below the SV1. Review these
-  cases by hand.
+* **Ventilatory thresholds.** A test that starts at about 70 % of VO2peak
+  leaves no stage below the first threshold (SV1), so the report does not
+  show it. The second threshold (SV2) is the breakpoint of VE against VCO2
+  (two straight lines on 30-s rolling means, first 60 s left out) and is
+  shown as "not determined" when there is no clear break. It is an estimate
+  precise to about one stage, from an in-house implementation that has not
+  been validated against expert readings: check it by hand before relying
+  on it.
 * The report text uses the preferred French terms of the INS Quebec glossary
   of sport science ("aptitude aerobie", "RER", "premier/deuxieme seuil
   ventilatoire"); the definitions table cites it.

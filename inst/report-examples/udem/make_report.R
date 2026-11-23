@@ -100,48 +100,49 @@ comparison_block <- function(a, d) {
   paste(c(legend, vapply(rows, one, character(1))), collapse = "\n  ")
 }
 
-# VT1 can't be located when the first stage is already past it: VE/VO2 at stage 1
-# is clearly above the end of the warm-up (heuristic, +5 %). Needs a warm-up baseline.
-vt1_undetermined <- FALSE
-base_rows <- b[which(b$time_s < min(e$time_s) & b$time_s >= min(e$time_s) - 110 & b$power_w > 0 & b$power_w < start_w), ]
-s1 <- e[which(e$power_w == start_w), ]
-s1 <- s1[s1$time_s >= max(s1$time_s) - 30, ]
-if (nrow(base_rows) >= 5 && nrow(s1) >= 2) {
-  ratio <- mean(s1$ve_vo2, na.rm = TRUE) / mean(base_rows$ve_vo2, na.rm = TRUE)
-  vt1_undetermined <- is.finite(ratio) && ratio >= 1.05
-  cat("VE/VO2 stage1 / warm-up baseline:", round(ratio, 3), " -> VT1", if (vt1_undetermined) "non determine" else "retained", "\n")
-} else cat("VT1 check skipped (no warm-up baseline below the first stage)\n")
-
-# Plausibility: the first threshold lies below the functional threshold power
-# (FTP, 0.72-0.77 x MAP). A detected SV1 at or above the lower FTP bound, or an
-# SV2 that is missing or not above the SV1, is not reliable for a test that
-# starts at ~70 % of VO2peak.
-th <- a@thresholds
-vt1_w <- if (length(th@vt1_power)) th@vt1_power else NA_real_
-vt2_w <- if (length(th@vt2_power)) th@vt2_power else NA_real_
-if (is.finite(vt1_w) && is.finite(a@map_watts) && vt1_w >= 0.72 * a@map_watts) {
-  vt1_undetermined <- TRUE
-  cat("SV1", vt1_w, "W >= FTP low bound", round(0.72 * a@map_watts), "W -> non determine\n")
+# Ventilatory thresholds. The test starts at ~70 % of VO2peak, so no stage lies
+# below the first threshold (SV1): it cannot be located and is left out. The
+# second threshold (SV2) is the breakpoint of VE against VCO2 (two straight
+# lines fitted to 30-s rolling means, first 60 s of the test left out).
+roll <- function(x, k = 3) as.numeric(stats::filter(x, rep(1 / k, k), sides = 1))
+detect_sv2 <- function(ex, vo2_peak, minseg = 5) {
+  x <- ex; x$ve <- roll(x$ve_l); x$vco2 <- roll(x$vco2_ml) / 1000
+  x$vo2 <- roll(x$vo2_ml); x$hr <- roll(x$hr_bpm); x$pe <- roll(x$petco2_mmhg)
+  x <- x[x$time_s >= min(x$time_s) + 60 & stats::complete.cases(x[, c("ve", "vco2", "vo2")]), ]
+  n <- nrow(x)
+  if (n < 2 * minseg + 5) return(NULL)
+  best <- NULL
+  for (i in minseg:(n - minseg)) {
+    X <- cbind(1, x$vco2, pmax(x$vco2 - x$vco2[i], 0))
+    fit <- stats::lm.fit(X, x$ve)
+    rss <- sum(fit$residuals^2)
+    if (is.null(best) || rss < best$rss) best <- list(rss = rss, i = i, s1 = fit$coefficients[2], s2 = fit$coefficients[2] + fit$coefficients[3])
+  }
+  rss1 <- sum(stats::lm.fit(cbind(1, x$vco2), x$ve)$residuals^2)
+  F <- ((rss1 - best$rss) / 2) / (best$rss / (n - 4))
+  ok <- is.finite(F) && F >= 10 && best$s2 / best$s1 >= 1.3
+  if (!ok) return(NULL)
+  row <- x[best$i, ]
+  list(vo2 = row$vo2, pct = 100 * row$vo2 / vo2_peak, hr = row$hr, power = row$power_w,
+       ratio = best$s2 / best$s1, F = F)
 }
-vt2_undetermined <- !is.finite(vt2_w) || (is.finite(vt1_w) && vt2_w <= vt1_w)
-if (vt2_undetermined) cat("SV2 missing or not above SV1 -> non determine\n")
+sv2 <- detect_sv2(e, a@peaks@vo2_peak)
+if (is.null(sv2)) cat("SV2 non determine (no clear breakpoint)\n") else
+  cat("SV2:", round(sv2$power), "W |", round(sv2$vo2), "mL/min |", round(sv2$pct), "% VO2pk | slope ratio", round(sv2$ratio, 2), " F", round(sv2$F), "\n")
 
-fmt_int <- function(x) if (length(x) && is.finite(x)) format(round(x), big.mark = "") else "—"
-ND <- "Non déterminé : le premier palier du test est déjà au-dessus du seuil"
-vt1_row_std <- "[#text(weight: 600, fill: vt1_col)[Premier seuil ventilatoire (SV1)]], [{{vt1_vo2}}], [{{vt1_percent}} %], [{{vt1_hr}}], [{{vt1_power}}],"
-vt2_row_std <- "[#text(weight: 600, fill: vt2_col)[Deuxième seuil ventilatoire (SV2)]], [{{vt2_vo2}}], [{{vt2_percent}} %], [{{vt2_hr}}], [{{vt2_power}}],"
-vt2_row_nd <- "[#text(weight: 600, fill: vt2_col)[Deuxième seuil ventilatoire (SV2)]], table.cell(colspan: 4)[#text(fill: muted)[Non déterminé]],"
-vt1_row_nd <- paste0("[#text(weight: 600, fill: vt1_col)[Premier seuil ventilatoire (SV1)]], table.cell(colspan: 4)[#text(fill: muted)[", ND, "]],")
-vt_rows_nd <- paste0("[VT1], table.cell(colspan: 3)[#text(fill: muted)[Non déterminé]],\n        [VT2], [", fmt_int(a@vt2_range[1]), "], [", fmt_int(a@vt2_range[2]), "], [", fmt_int(a@thresholds@vt2_vo2), "]")
+vt2_row <- if (is.null(sv2)) {
+  "[#text(weight: 600, fill: vt2_col)[Deuxième seuil ventilatoire (SV2)]], table.cell(colspan: 4)[#text(fill: muted)[Non déterminé]],"
+} else {
+  paste0("[#text(weight: 600, fill: vt2_col)[Deuxième seuil ventilatoire (SV2)]], [", round(sv2$vo2), "], [", round(sv2$pct), " %], [", round(sv2$hr), "], [", round(sv2$power), "],")
+}
 
 out <- if (length(args) >= 3 && nzchar(args[3])) args[3] else file.path(dirname(f), sub("\\.xlsx$", "_report.pdf", basename(f)))
 cfg <- {
   tmp <- tempfile(fileext = ".typ")
   txt <- paste(readLines(tpl, warn = FALSE), collapse = "\n")
   txt <- sub("%%COMPARAISON%%", gsub("\\", "\\\\", comparison_block(a, d), fixed = TRUE), txt, fixed = TRUE)
-  txt <- sub("%%VT1ROW%%", if (vt1_undetermined) vt1_row_nd else vt1_row_std, txt, fixed = TRUE)
-  txt <- sub("%%VT2ROW%%", if (vt2_undetermined) vt2_row_nd else vt2_row_std, txt, fixed = TRUE)
-  txt <- sub("%%VTROWS%%", if (vt1_undetermined) vt_rows_nd else "{{vt_rows_content}}", txt, fixed = TRUE)
+  txt <- sub("%%VT1ROW%%", "", txt, fixed = TRUE)
+  txt <- sub("%%VT2ROW%%", vt2_row, txt, fixed = TRUE)
   writeLines(txt, tmp)
   ReportConfig(language = "fr", template = tmp)
 }

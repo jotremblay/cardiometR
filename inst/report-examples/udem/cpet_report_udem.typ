@@ -271,8 +271,6 @@
     [Quantité d'air respiré en une minute, exprimée en litres par minute (L/min). Plus l'effort est intense, plus la respiration s'accélère et s'approfondit, et plus la VE augmente.],
     text(weight: 600)[RER (quotient d'échange respiratoire)],
     [Rapport entre le gaz carbonique rejeté et l'oxygène consommé, mesuré à la bouche. Il indique le type de carburant utilisé par le corps : autour de 0,7, surtout des graisses ; autour de 1,0, surtout des glucides. À l'effort maximal, il dépasse généralement 1,10, ce qui montre que le participant s'est rendu à sa limite.],
-    text(weight: 600, fill: vt1_col)[Premier seuil ventilatoire (SV1)],
-    [Premier point où la respiration s'accélère plus vite que l'effort : la ventilation augmente de façon disproportionnée par rapport à l'oxygène consommé, mais reste proportionnelle au gaz carbonique produit. En dessous, l'effort est confortable et peut être maintenu longtemps.],
     text(weight: 600, fill: vt2_col)[Deuxième seuil ventilatoire (SV2)],
     [Deuxième point où la respiration s'emballe : la ventilation augmente de façon disproportionnée par rapport au gaz carbonique produit. Au-delà, l'effort devient très difficile et ne peut être maintenu que peu de temps.],
   )
