@@ -700,3 +700,21 @@ test_that("the report renders when the test has a resting block", {
   )
   expect_equal(rawToChar(readBin(output_file, what = "raw", n = 4)), "%PDF")
 })
+
+test_that("the averaging label shows the analysis window, not the file's sampling window", {
+  analysis <- create_test_analysis()
+  # An already-averaged file sampled every 10 s, analysed with a 30 s window.
+  data <- analysis@data
+  data@is_averaged <- TRUE
+  data@averaging_window <- 10
+  analysis@data <- data
+  analysis@peaks <- find_peaks(data, averaging = 30)
+
+  params <- build_analysis_params_block(
+    analysis, ReportConfig(), get_report_labels("fr"), language = "fr"
+  )
+  txt <- paste(unlist(params), collapse = " ")
+
+  expect_match(txt, "30 s")
+  expect_no_match(txt, "10 s")
+})

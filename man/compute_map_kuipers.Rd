@@ -8,7 +8,9 @@ compute_map_kuipers(stage_summary)
 }
 \arguments{
 \item{stage_summary}{A tibble as produced by \code{\link[=summarize_stages]{summarize_stages()}} with at
-least \code{stage}, \code{duration_s}, and \code{power_w} columns.}
+least \code{stage}, \code{power_w}, and either \code{stage_span_s} (full stage duration,
+preferred) or \code{duration_s} columns. \code{duration_s} only covers the summary
+window (e.g. the last 30 s), so it cannot reveal a partial last stage.}
 }
 \value{
 A one-row tibble with \code{map_watts}, \code{ppo_watts}, \code{kuipers_fraction},
