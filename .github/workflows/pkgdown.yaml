@@ -19,6 +19,9 @@ jobs:
       group: pkgdown-${{ github.event_name != 'pull_request' || github.run_id }}
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+      # chromote sysreqs run add-apt-repository ppa:xtradeb/apps, and
+      # Launchpad currently returns GPGKeyTemporarilyNotFoundError.
+      PKG_SYSREQS: "false"
     steps:
       - uses: actions/checkout@v4
 
