@@ -42,3 +42,19 @@ test_that("fit_vo2_power_slope recovers slope of 11 mL/min/W", {
   expect_true(fit$slope_ci_low <= 11 && fit$slope_ci_high >= 11)
   expect_gt(fit$r_squared, 0.95)
 })
+
+test_that("compute_map_kuipers uses the full stage span, not the summary window", {
+  # duration_s only covers the last-30-s summary window, so it is 30 for every
+  # stage. The full span shows the last stage stopped at 70 of 180 s.
+  ss <- tibble::tibble(
+    stage        = 1:4,
+    duration_s   = c(30, 30, 30, 30),
+    stage_span_s = c(180, 180, 180, 70),
+    power_w      = c(100, 200, 300, 400)
+  )
+  res <- compute_map_kuipers(ss)
+
+  expect_equal(res$map_watts, 300)
+  expect_equal(res$ppo_watts, 300 + 70 / 180 * 100)
+  expect_equal(res$kuipers_fraction, 70 / 180)
+})

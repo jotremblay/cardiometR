@@ -9,7 +9,9 @@
 #' last stage is completed fully, `map == ppo == power of last complete stage`.
 #'
 #' @param stage_summary A tibble as produced by [summarize_stages()] with at
-#'   least `stage`, `duration_s`, and `power_w` columns.
+#'   least `stage`, `power_w`, and either `stage_span_s` (full stage duration,
+#'   preferred) or `duration_s` columns. `duration_s` only covers the summary
+#'   window (e.g. the last 30 s), so it cannot reveal a partial last stage.
 #' @return A one-row tibble with `map_watts`, `ppo_watts`, `kuipers_fraction`,
 #'   and `last_stage_fraction`.
 #' @references Kuipers H et al. 1985. Variability of aerobic performance.
@@ -22,7 +24,8 @@
 #' @export
 compute_map_kuipers <- function(stage_summary) {
   stopifnot(inherits(stage_summary, "data.frame"))
-  if (!all(c("duration_s", "power_w") %in% names(stage_summary)) ||
+  dur_col <- if ("stage_span_s" %in% names(stage_summary)) "stage_span_s" else "duration_s"
+  if (!all(c(dur_col, "power_w") %in% names(stage_summary)) ||
       nrow(stage_summary) == 0) {
     return(tibble::tibble(
       map_watts = NA_real_, ppo_watts = NA_real_,
@@ -31,6 +34,7 @@ compute_map_kuipers <- function(stage_summary) {
   }
 
   ss <- stage_summary |>
+    dplyr::mutate(duration_s = .data[[dur_col]]) |>
     dplyr::filter(!is.na(.data$power_w), !is.na(.data$duration_s)) |>
     dplyr::arrange(dplyr::across(dplyr::any_of("stage")))
 

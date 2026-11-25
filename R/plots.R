@@ -1435,24 +1435,24 @@ plot_predicted_comparison <- function(x,
     subtitle_text <- if (language == "fr") {
       sprintf("Comparaison: %s, %d ans | Norme: %s",
               if (participant@sex == "M") "homme" else "femme",
-              participant@age,
+              as.integer(round(participant@age)),
               norms$description)
     } else {
       sprintf("Comparison: %s, age %d | Norm: %s",
               if (participant@sex == "M") "male" else "female",
-              participant@age,
+              as.integer(round(participant@age)),
               norms$description)
     }
   } else {
     subtitle_text <- if (language == "fr") {
       sprintf("Valeurs pr\u00e9dites pour %s, %d ans (%s)",
               if (participant@sex == "M") "homme" else "femme",
-              participant@age,
+              as.integer(round(participant@age)),
               predicted$citation_short)
     } else {
       sprintf("Predicted values for %s, age %d (%s)",
               if (participant@sex == "M") "male" else "female",
-              participant@age,
+              as.integer(round(participant@age)),
               predicted$citation_short)
     }
   }

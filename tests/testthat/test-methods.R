@@ -396,3 +396,12 @@ test_that("Full analysis workflow works", {
 
   expect_true(is_s7_class(analysis, "CpetAnalysis"))
 })
+
+test_that("summarize_stages() reports the full stage span next to the window", {
+  data <- create_test_cpet_data()
+  with_stages <- extract_stages(data, protocol = "step", stage_duration = 180)
+  summary <- summarize_stages(with_stages, method = "last30s", window_s = 30)
+
+  expect_true("stage_span_s" %in% names(summary))
+  expect_true(all(summary$stage_span_s >= summary$duration_s))
+})

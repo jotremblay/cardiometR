@@ -662,7 +662,10 @@ build_validity_block <- function(analysis, labels, language = "en") {
 #' @keywords internal
 build_analysis_params_block <- function(analysis, config, labels,
                                         language = "en") {
-  window_s <- analysis@data@averaging_window %||% 30
+  # Window used for peak detection; the data slot only holds the sampling
+  # interval of an already-averaged file (e.g. 10 s), not the analysis window.
+  window_s <- tryCatch(analysis@peaks@averaging_s, error = function(e) NULL) %||%
+    analysis@data@averaging_window %||% 30
 
   averaging <- if (isTRUE(analysis@data@is_averaged)) {
     sprintf("%s %d s",

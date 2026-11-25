@@ -498,6 +498,18 @@ method(summarize_stages, CpetData) <- function(x,
     dplyr::group_modify(~ summary_fn(.x)) |>
     dplyr::ungroup()
 
+  # Full time span of each stage (duration_s only covers the summary window,
+  # e.g. the last 30 s). Needed by compute_map_kuipers() for the last stage.
+  stage_spans <- breaths |>
+    dplyr::filter(!is.na(stage), stage > 0) |>
+    dplyr::group_by(stage) |>
+    dplyr::summarise(
+      stage_span_s = max(time_s, na.rm = TRUE) - min(time_s, na.rm = TRUE) +
+        stats::median(diff(sort(unique(time_s))), na.rm = TRUE),
+      .groups = "drop"
+    )
+  stage_summary <- dplyr::left_join(stage_summary, stage_spans, by = "stage")
+
   # Add stage names if available
   if ("stage_name" %in% names(breaths)) {
     stage_names <- breaths |>

@@ -1,5 +1,19 @@
 # cardiometR (development version)
 
+## Bug fixes
+
+* `compute_map_kuipers()` no longer treats a partial last stage as complete.
+  `summarize_stages()` only reported the length of its summary window (for
+  example 30 s) as `duration_s`, so every stage looked the same length and
+  the last-stage fraction was always 1. `summarize_stages()` now also returns
+  `stage_span_s`, the full stage duration, and `compute_map_kuipers()` uses it
+  when present.
+* `plot_predicted_comparison()` no longer errors when the participant's age
+  is not a whole number (the subtitle formatted it with `%d`).
+* The "averaging" and "peak VO2" lines of the report's analysis parameters
+  now show the window used for peak detection (for example 30 s) instead of
+  the sampling interval of an already-averaged file (for example 10 s).
+
 ## Import rewritten to read files in any language
 
 The importer no longer assumes an English COSMED export with one fixed layout.

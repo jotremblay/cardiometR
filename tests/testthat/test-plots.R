@@ -488,3 +488,15 @@ test_that("calculate_expected_vo2_cycling responds to slope", {
   high_slope <- calculate_expected_vo2_cycling(200, 70, slope_ml_per_w = 12)
   expect_true(high_slope > low_slope)
 })
+
+test_that("plot_predicted_comparison accepts a fractional age", {
+  skip_if_not_installed("ggplot2")
+
+  analysis <- create_mock_cpet_analysis()
+  participant <- analysis@data@participant
+  participant@age <- 23.7837053464479
+  analysis@data@participant <- participant
+
+  expect_no_error(plot_predicted_comparison(analysis, language = "fr"))
+  expect_no_error(plot_predicted_comparison(analysis, language = "en"))
+})
